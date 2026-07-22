@@ -122,6 +122,8 @@ def _parse_list_params(request: Request):
         'ngay_tu': qp.get('ngay_tu'),
         'ngay_den': qp.get('ngay_den'),
         'ho_ten': qp.get('ho_ten'),
+        'q': qp.get('q'),
+        'q_hoten_only': qp.get('q_hoten_only'),
         'so_cccd': qp.get('so_cccd'),
         'ma_ho_so': qp.get('ma_ho_so'),
         'trang_thai': qp.getlist('trang_thai'),
@@ -164,26 +166,72 @@ def danh_muc(user=Depends(auth.get_current_user)):
     return out
 
 
+def _global_search_rank(rows, q_stripped):
+    """Đợt 7 criterion 5: tìm TOÀN CỘT — dòng khớp bất kỳ cột hiển thị nào
+    (chuỗi con không dấu) thì lấy. Xếp hạng: khớp cột HỌ TÊN lên trước (theo
+    fuzzy.match_score giảm dần), rồi đến dòng khớp cột khác (giữ thứ tự tt).
+    Trả list[Row] đã sắp — KHÔNG cắt limit (khác fuzzy họ-tên-only 50 dòng)."""
+    group_a, group_b = [], []
+    for r in rows:
+        ho_ten_val = r['ho_ten'] or ''
+        if q_stripped in fuzzy.strip_diacritics(ho_ten_val):
+            group_a.append((fuzzy.match_score(q_stripped, ho_ten_val), r))
+            continue
+        other_vals = [
+            (r['ngay_sinh'] or '')[-4:],
+            r['gioi_tinh'],
+            r['so_cccd'],
+            r['maxa_cu_tru'],
+            r['ngay_vao'],
+            str(r['phan_loai_sk']) if r['phan_loai_sk'] is not None else '',
+            r['ket_luan_benh'],
+            qc.TEN_CQ.get(r['co_quan_benh_chinh'], r['co_quan_benh_chinh']),
+            r['ma_ho_so'],
+            TRANG_THAI_NHAN.get(r['trang_thai'], r['trang_thai']),
+        ]
+        if any(v and q_stripped in fuzzy.strip_diacritics(str(v)) for v in other_vals):
+            group_b.append(r)
+    group_a.sort(key=lambda x: -x[0])
+    return [r for _, r in group_a] + group_b
+
+
 @router.get('/ho-so')
 def list_ho_so(request: Request, page: int = Query(1, ge=1),
-                page_size: int = Query(50, ge=1, le=200),
+                page_size: int = Query(20, ge=1, le=200),
                 user=Depends(auth.get_current_user)):
     params = _parse_list_params(request)
     conn = db.get_connection()
     try:
         where_sql, args = build_where(params, user)
 
-        ho_ten_q = (params.get('ho_ten') or '').strip()
-        if ho_ten_q:
+        # Đợt 7 criterion 4/5: `q` = từ khóa tìm kiếm; `q_hoten_only` = chỉ
+        # tìm cột họ tên (fuzzy hiện có). `ho_ten` (tên cũ) vẫn hoạt động như
+        # bí danh của chế độ q_hoten_only=true — tương thích ngược.
+        legacy_ho_ten = (params.get('ho_ten') or '').strip()
+        q_raw = (params.get('q') or legacy_ho_ten or '').strip()
+        hoten_only = bool(legacy_ho_ten) or (
+            (params.get('q_hoten_only') or '').strip().lower() in ('1', 'true', 'yes'))
+
+        if q_raw and hoten_only:
             # fuzzy: lấy ứng viên đã lọc bằng SQL trước, rồi sắp theo điểm ở Python
             rows = conn.execute(
                 f'SELECT * FROM ho_so WHERE {where_sql} ORDER BY tt',
                 args).fetchall()
             # SPEC §3.3: giới hạn 50 kết quả fuzzy, sắp theo điểm giảm dần
-            ranked = fuzzy.rank_by_name(rows, ho_ten_q, limit=50)
+            ranked = fuzzy.rank_by_name(rows, q_raw, limit=50)
             total = len(ranked)
             start = (page - 1) * page_size
             page_rows = ranked[start:start + page_size]
+        elif q_raw:
+            # tìm toàn cột (checkbox "Chỉ tìm họ tên" TẮT) — áp dụng SAU các
+            # filter SQL khác (xã, trạng thái, ngày...), KHÔNG giới hạn 50.
+            rows = conn.execute(
+                f'SELECT * FROM ho_so WHERE {where_sql} ORDER BY tt',
+                args).fetchall()
+            matched = _global_search_rank(rows, fuzzy.strip_diacritics(q_raw))
+            total = len(matched)
+            start = (page - 1) * page_size
+            page_rows = matched[start:start + page_size]
         else:
             total = conn.execute(
                 f'SELECT COUNT(*) FROM ho_so WHERE {where_sql}', args).fetchone()[0]

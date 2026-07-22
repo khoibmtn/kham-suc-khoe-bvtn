@@ -85,7 +85,21 @@ body {
   border-radius: 4px; cursor: pointer; font-size: 12px;
 }
 #btn-xoa-loc:hover { background: #475569; }
-.list-summary { font-size: 13px; color: #334155; margin: 0 2px 8px; }
+.list-summary { font-size: 13px; color: #334155; }
+.list-summary-row {
+  display: flex; justify-content: space-between; align-items: center;
+  margin: 0 2px 8px; gap: 10px; flex-wrap: wrap;
+}
+.page-size-box { font-size: 12px; color: #334155; }
+.page-size-select { width: auto; height: 26px; padding: 2px 6px; display: inline-block; margin-left: 4px; }
+.search-with-toggle { display: flex; align-items: center; gap: 10px; }
+.search-with-toggle input[type="text"] { flex: 1 1 auto; }
+.search-toggle-label {
+  display: flex; align-items: center; gap: 4px; font-size: 12px; color: #334155;
+  white-space: nowrap; cursor: pointer;
+}
+.list-empty { text-align: center; color: #64748b; padding: 16px !important; white-space: normal !important; }
+mark { background: #fef08a; color: inherit; border-radius: 2px; padding: 0 1px; }
 
 /* ---------- Multiselect (checkbox-dropdown, tiêu chí 8) ---------- */
 .ms-wrap { position: relative; width: 100%; outline: none; }

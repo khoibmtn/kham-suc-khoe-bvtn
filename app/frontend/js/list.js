@@ -1,8 +1,12 @@
-// list.js — màn hình DANH SÁCH: 9 (10 với admin) bộ lọc §3.2, bảng kết quả,
-// phân trang, di chuyển bàn phím ↑↓/Enter, tô màu dòng theo cờ (§4).
+// list.js — màn hình DANH SÁCH: bộ lọc §3.2, bảng kết quả, phân trang, di
+// chuyển bàn phím ↑↓/Enter, tô màu dòng theo cờ (§4).
 // Đợt 2 (tiêu chí 6, 8): bộ lọc gọn dùng Multiselect (checkbox-dropdown) cho
 // Xã/phường, Cờ cảnh báo, Phân loại SK, Trạng thái, Cơ quan bệnh chính; ngày
 // khám tách 2 ô có nhãn rõ; đếm kết quả "Hiển thị a–b / X kết quả".
+// Đợt 7: chọn số dòng/trang (mặc định 20), cột STT liên tục toàn danh sách,
+// cột "Mã hồ sơ" trở lại (cuối bảng), ô tìm kiếm gọn (bỏ CCCD/Mã hồ sơ) +
+// checkbox "Chỉ tìm họ tên" (mặc định TẮT = tìm toàn cột + highlight), ESC
+// trong ô tìm/ngày xóa-tại-chỗ (không kích hoạt Esc-đóng-chi-tiết toàn cục).
 
 const ListView = (() => {
   let root, danhMuc, user, onOpen;
@@ -10,15 +14,16 @@ const ListView = (() => {
   let items = [];
   let selectedIdx = -1;
   let page = 1;
-  const pageSize = 50;
+  let pageSize = 20;
   let total = 0;
   let debounceTimer = null;
+  let lastQStripped = ''; // dùng để highlight (chỉ khi tìm toàn cột)
   const msRefs = {}; // tham chiếu Multiselect + input ngày để "Xóa hết bộ lọc"
 
   function defaultFilters() {
     return {
       xa: [], trang_thai: [], co_qc: [], phan_loai_sk: [], co_quan_benh_chinh: [],
-      ngay_tu: '', ngay_den: '', ho_ten: '', so_cccd: '', ma_ho_so: '',
+      ngay_tu: '', ngay_den: '', q: '', q_hoten_only: false,
       nguoi_ra_soat_id: '',
     };
   }
@@ -44,6 +49,26 @@ const ListView = (() => {
     return box;
   }
 
+  // ESC trong ô text lọc: xóa sạch + reset kết quả, KHÔNG để nổi bọt lên phím
+  // tắt toàn cục Esc-đóng-chi-tiết (keyboard.js) — criterion 7.
+  function wireEscClear(inp, onClear) {
+    inp.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      e.stopPropagation();
+      inp.value = '';
+      onClear();
+      page = 1;
+      reload();
+    });
+  }
+
+  function searchPlaceholder() {
+    return filters.q_hoten_only
+      ? 'vd: nguyen van, thanh...'
+      : 'Tìm mọi cột: tên, CCCD, xã, mã, bệnh...';
+  }
+
   function buildLayout() {
     root.innerHTML = '';
     const bar = document.createElement('div');
@@ -53,30 +78,39 @@ const ListView = (() => {
     const rowText = document.createElement('div');
     rowText.className = 'filter-row filter-row-text';
 
-    rowText.appendChild(fieldBox('Họ tên (gõ gần đúng)', () => {
+    rowText.appendChild(fieldBox('Tìm kiếm', () => {
+      const wrap = document.createElement('div');
+      wrap.className = 'search-with-toggle';
+
       const inp = document.createElement('input'); inp.type = 'text'; inp.id = 'search-box';
-      inp.placeholder = 'vd: nguyen van, thanh...';
+      inp.placeholder = searchPlaceholder();
       msRefs.hoTenInput = inp;
       inp.addEventListener('input', () => {
         clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => { filters.ho_ten = inp.value; page = 1; reload(); }, 200);
+        debounceTimer = setTimeout(() => { filters.q = inp.value; page = 1; reload(); }, 200);
       });
-      return inp;
+      wireEscClear(inp, () => { filters.q = ''; });
+      wrap.appendChild(inp);
+
+      const lbl = document.createElement('label');
+      lbl.className = 'search-toggle-label';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.id = 'search-hoten-only';
+      cb.checked = filters.q_hoten_only;
+      cb.addEventListener('change', () => {
+        filters.q_hoten_only = cb.checked;
+        inp.placeholder = searchPlaceholder();
+        page = 1;
+        reload();
+      });
+      msRefs.hotenOnlyCb = cb;
+      lbl.appendChild(cb);
+      lbl.appendChild(document.createTextNode(' Chỉ tìm họ tên'));
+      wrap.appendChild(lbl);
+
+      return wrap;
     }, 'filter-field-grow'));
-
-    rowText.appendChild(fieldBox('Số CCCD', () => {
-      const inp = document.createElement('input'); inp.type = 'text';
-      msRefs.cccdInput = inp;
-      inp.addEventListener('input', () => { filters.so_cccd = inp.value; page = 1; reload(); });
-      return inp;
-    }));
-
-    rowText.appendChild(fieldBox('Mã hồ sơ', () => {
-      const inp = document.createElement('input'); inp.type = 'text';
-      msRefs.maHoSoInput = inp;
-      inp.addEventListener('input', () => { filters.ma_ho_so = inp.value; page = 1; reload(); });
-      return inp;
-    }));
 
     bar.appendChild(rowText);
 
@@ -164,6 +198,8 @@ const ListView = (() => {
     [tu, den].forEach((inp) => inp.addEventListener('change', () => {
       filters.ngay_tu = tu.value; filters.ngay_den = den.value; page = 1; reload();
     }));
+    wireEscClear(tu, () => { filters.ngay_tu = ''; });
+    wireEscClear(den, () => { filters.ngay_den = ''; });
     rowDate.appendChild(fieldBox('Từ ngày', () => tu));
     rowDate.appendChild(fieldBox('Đến ngày', () => den));
 
@@ -210,22 +246,48 @@ const ListView = (() => {
 
     root.appendChild(bar);
 
-    // ---- Đếm kết quả (tiêu chí 6) ----
+    // ---- Đếm kết quả + chọn số dòng/trang (tiêu chí 6, Đợt 7 criterion 1) ----
+    const summaryRow = document.createElement('div');
+    summaryRow.className = 'list-summary-row';
+
     const summary = document.createElement('div');
     summary.id = 'list-summary';
     summary.className = 'list-summary';
-    root.appendChild(summary);
+    summaryRow.appendChild(summary);
+
+    const pageSizeBox = document.createElement('div');
+    pageSizeBox.className = 'page-size-box';
+    const pageSizeLbl = document.createElement('label');
+    pageSizeLbl.textContent = 'Số dòng/trang: ';
+    pageSizeLbl.htmlFor = 'page-size-sel';
+    const pageSizeSel = document.createElement('select');
+    pageSizeSel.id = 'page-size-sel';
+    pageSizeSel.className = 'filter-select page-size-select';
+    [10, 20, 50, 100, 200].forEach((n) => {
+      const o = document.createElement('option'); o.value = n; o.textContent = n;
+      if (n === pageSize) o.selected = true;
+      pageSizeSel.appendChild(o);
+    });
+    pageSizeSel.addEventListener('change', () => {
+      pageSize = Number(pageSizeSel.value);
+      page = 1;
+      reload();
+    });
+    pageSizeLbl.appendChild(pageSizeSel);
+    pageSizeBox.appendChild(pageSizeLbl);
+    summaryRow.appendChild(pageSizeBox);
+
+    root.appendChild(summaryRow);
 
     const tableWrap = document.createElement('div');
     tableWrap.className = 'table-wrap';
     const table = document.createElement('table');
     table.id = 'ho-so-table';
-    // Đợt 6 criterion 2: bỏ cột "Mã hồ sơ" (vẫn là khoá nội bộ để mở chi
-    // tiết/lọc — chỉ ẩn khỏi bảng); thêm cột CCCD ngay SAU cột Giới.
+    // Đợt 7 criterion 2/3: STT liên tục ở ĐẦU bảng, "Mã hồ sơ" trở lại CUỐI.
     table.innerHTML = `<thead><tr>
-        <th>Họ tên</th><th>Năm sinh</th><th>Giới</th><th>CCCD</th>
+        <th>STT</th><th>Họ tên</th><th>Năm sinh</th><th>Giới</th><th>CCCD</th>
         <th>Xã</th><th>Ngày khám</th><th>Phân loại SK</th><th>Bệnh chính</th>
-        <th>Số cờ</th><th>Trạng thái</th></tr></thead><tbody></tbody>`;
+        <th>Số cờ</th><th>Trạng thái</th><th>Mã hồ sơ</th></tr></thead><tbody></tbody>`;
     tableWrap.appendChild(table);
     root.appendChild(tableWrap);
 
@@ -235,6 +297,8 @@ const ListView = (() => {
     root.appendChild(pager);
   }
 
+  const TABLE_COLSPAN = 12;
+
   function clearAllFilters() {
     filters = defaultFilters();
     if (msRefs.xa) msRefs.xa.setSelected([]);
@@ -243,9 +307,8 @@ const ListView = (() => {
     if (msRefs.trangThai) msRefs.trangThai.setSelected([]);
     if (msRefs.coQuan) msRefs.coQuan.setSelected([]);
     if (msRefs.nguoiRaSoatSel) msRefs.nguoiRaSoatSel.value = '';
-    if (msRefs.hoTenInput) msRefs.hoTenInput.value = '';
-    if (msRefs.cccdInput) msRefs.cccdInput.value = '';
-    if (msRefs.maHoSoInput) msRefs.maHoSoInput.value = '';
+    if (msRefs.hoTenInput) { msRefs.hoTenInput.value = ''; msRefs.hoTenInput.placeholder = searchPlaceholder(); }
+    if (msRefs.hotenOnlyCb) msRefs.hotenOnlyCb.checked = false;
     if (msRefs.tuInput) msRefs.tuInput.value = '';
     if (msRefs.denInput) msRefs.denInput.value = '';
     page = 1;
@@ -255,7 +318,7 @@ const ListView = (() => {
   function currentFilterParams() {
     return {
       xa: filters.xa, ngay_tu: filters.ngay_tu, ngay_den: filters.ngay_den,
-      ho_ten: filters.ho_ten, so_cccd: filters.so_cccd, ma_ho_so: filters.ma_ho_so,
+      q: filters.q, q_hoten_only: filters.q_hoten_only ? 'true' : '',
       trang_thai: filters.trang_thai, nguoi_ra_soat_id: filters.nguoi_ra_soat_id,
       co_qc: filters.co_qc, phan_loai_sk: filters.phan_loai_sk,
       co_quan_benh_chinh: filters.co_quan_benh_chinh,
@@ -267,7 +330,13 @@ const ListView = (() => {
     const data = await Api.listHoSo(params);
     items = data.items;
     total = data.total;
+    page = data.page;
+    pageSize = data.page_size;
     selectedIdx = items.length ? 0 : -1;
+    // highlight chỉ khi tìm TOÀN CỘT (checkbox tắt) và có từ khóa
+    lastQStripped = (!filters.q_hoten_only && filters.q && filters.q.trim())
+      ? Fuzzy.stripDiacriticsAligned(filters.q.trim())
+      : '';
     renderTable();
     renderPager();
     renderSummary();
@@ -279,21 +348,44 @@ const ListView = (() => {
     }[c]));
   }
 
+  // Đợt 7 criterion 6: highlight đoạn khớp không dấu trong MỌI ô — escape
+  // HTML TRƯỚC (chống XSS), khớp không dấu nhưng bôi đúng ký tự gốc (map
+  // index dùng strip 1-ký-tự-gốc↔1-ký-tự-không-dấu — xem Fuzzy.stripDiacriticsAligned).
+  function highlightCell(value) {
+    const original = String(value == null ? '' : value);
+    if (!lastQStripped) return esc(original);
+    const aligned = Fuzzy.stripDiacriticsAligned(original);
+    const idx = aligned.indexOf(lastQStripped);
+    if (idx < 0) return esc(original);
+    const chars = Array.from(original);
+    const before = chars.slice(0, idx).join('');
+    const mid = chars.slice(idx, idx + lastQStripped.length).join('');
+    const after = chars.slice(idx + lastQStripped.length).join('');
+    return esc(before) + '<mark>' + esc(mid) + '</mark>' + esc(after);
+  }
+
   function renderTable() {
     const tbody = document.querySelector('#ho-so-table tbody');
     tbody.innerHTML = '';
+    if (!items.length) {
+      tbody.innerHTML = `<tr><td colspan="${TABLE_COLSPAN}" class="list-empty">Không có hồ sơ phù hợp bộ lọc</td></tr>`;
+      return;
+    }
     items.forEach((it, idx) => {
+      const stt = (page - 1) * pageSize + idx + 1;
       const tr = document.createElement('tr');
       tr.dataset.idx = idx;
       if (it.muc_co === 'do') tr.classList.add('row-do');
       else if (it.muc_co === 'vang') tr.classList.add('row-vang');
       if (idx === selectedIdx) tr.classList.add('selected');
-      tr.innerHTML = `<td>${esc(it.ho_ten)}</td>
-        <td>${esc(it.nam_sinh)}</td><td>${esc(it.gioi_tinh)}</td>
-        <td>${esc(it.so_cccd)}</td>
-        <td>${esc(it.maxa_cu_tru)}</td><td>${esc(it.ngay_vao)}</td>
-        <td>${esc(it.phan_loai_sk)}</td><td>${esc(it.ket_luan_benh)}</td>
-        <td>${esc(it.so_loi)}</td><td>${esc(it.trang_thai_nhan)}</td>`;
+      tr.innerHTML = `<td>${stt}</td>
+        <td>${highlightCell(it.ho_ten)}</td>
+        <td>${highlightCell(it.nam_sinh)}</td><td>${highlightCell(it.gioi_tinh)}</td>
+        <td>${highlightCell(it.so_cccd)}</td>
+        <td>${highlightCell(it.maxa_cu_tru)}</td><td>${highlightCell(it.ngay_vao)}</td>
+        <td>${highlightCell(it.phan_loai_sk)}</td><td>${highlightCell(it.ket_luan_benh)}</td>
+        <td>${esc(it.so_loi)}</td><td>${highlightCell(it.trang_thai_nhan)}</td>
+        <td>${highlightCell(it.ma_ho_so)}</td>`;
       tr.addEventListener('click', () => { selectedIdx = idx; renderTable(); openSelected(); });
       tbody.appendChild(tr);
     });

@@ -131,8 +131,12 @@ def _apply_sinh_hieu(conn, row, changes_in, user_id):
 
 def _build_sinh_hieu_where(qp, user):
     """Dùng CHUNG cho /danh-sach và /mau-excel (criterion 3/5): xã multi +
-    trạng thái + thiếu/đủ sinh hiệu, cùng phạm vi vai trò của build_where()."""
-    params = {'xa': qp.getlist('xa'), 'trang_thai': qp.getlist('trang_thai')}
+    trạng thái + thiếu/đủ sinh hiệu + lọc ngày khám (Đợt 7 criterion 8, tái
+    dùng _ymd/build_where của ho_so.py), cùng phạm vi vai trò của build_where()."""
+    params = {
+        'xa': qp.getlist('xa'), 'trang_thai': qp.getlist('trang_thai'),
+        'ngay_tu': qp.get('ngay_tu'), 'ngay_den': qp.get('ngay_den'),
+    }
     where_sql, args = build_where(params, user)
     sinh_hieu = qp.get('sinh_hieu')  # 'thieu' | 'du'
     if sinh_hieu == 'thieu':

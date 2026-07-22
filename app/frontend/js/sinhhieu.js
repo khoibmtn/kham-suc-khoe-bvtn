@@ -24,7 +24,7 @@
 
 const SinhHieuView = (() => {
   let panel, danhMuc;
-  let filters = { xa: [], trang_thai: '', sinh_hieu: '', ho_ten: '' };
+  let filters = { xa: [], trang_thai: '', sinh_hieu: '', ho_ten: '', ngay_tu: '', ngay_den: '' };
   let page = 1;
   const pageSize = 30;
   let total = 0;
@@ -58,6 +58,20 @@ const SinhHieuView = (() => {
     return box;
   }
 
+  // Đợt 7 criterion 9: ESC trong ô tìm/ngày -> xóa sạch + reset kết quả,
+  // KHÔNG nổi bọt lên phím tắt toàn cục Esc-đóng-chi-tiết (khớp list.js A7).
+  function wireEscClear(inp, onClear) {
+    inp.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      e.stopPropagation();
+      inp.value = '';
+      onClear();
+      page = 1;
+      reload();
+    });
+  }
+
   function render() {
     panel.innerHTML = '';
 
@@ -81,8 +95,29 @@ const SinhHieuView = (() => {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => { filters.ho_ten = inp.value; page = 1; reload(); }, 200);
       });
+      wireEscClear(inp, () => { filters.ho_ten = ''; });
       return inp;
     }, 'filter-field-grow'));
+
+    row.appendChild(fieldBox('Từ ngày', () => {
+      const inp = document.createElement('input');
+      inp.type = 'date'; inp.id = 'sh-flt-ngay-tu';
+      inp.value = filters.ngay_tu;
+      inp.addEventListener('change', () => { filters.ngay_tu = inp.value; page = 1; reload(); });
+      wireEscClear(inp, () => { filters.ngay_tu = ''; });
+      msRefs.ngayTuInput = inp;
+      return inp;
+    }));
+
+    row.appendChild(fieldBox('Đến ngày', () => {
+      const inp = document.createElement('input');
+      inp.type = 'date'; inp.id = 'sh-flt-ngay-den';
+      inp.value = filters.ngay_den;
+      inp.addEventListener('change', () => { filters.ngay_den = inp.value; page = 1; reload(); });
+      wireEscClear(inp, () => { filters.ngay_den = ''; });
+      msRefs.ngayDenInput = inp;
+      return inp;
+    }));
 
     row.appendChild(fieldBox('Xã/phường', () => {
       const ms = Multiselect.create({
@@ -192,6 +227,8 @@ const SinhHieuView = (() => {
       trang_thai: filters.trang_thai ? [filters.trang_thai] : [],
       sinh_hieu: filters.sinh_hieu,
       ho_ten: filters.ho_ten,
+      ngay_tu: filters.ngay_tu,
+      ngay_den: filters.ngay_den,
     };
   }
 
