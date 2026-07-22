@@ -23,7 +23,7 @@ const ListView = (() => {
   function defaultFilters() {
     return {
       xa: [], trang_thai: [], co_qc: [], phan_loai_sk: [], co_quan_benh_chinh: [],
-      ngay_tu: '', ngay_den: '', q: '', q_hoten_only: false,
+      ngay_tu: '', ngay_den: '', q: '', q_hoten_only: true,
       nguoi_ra_soat_id: '',
     };
   }
@@ -166,34 +166,8 @@ const ListView = (() => {
     rowDate.appendChild(fieldBox('Từ ngày', () => tu));
     rowDate.appendChild(fieldBox('Đến ngày', () => den));
 
-    const presetsBox = document.createElement('div');
-    presetsBox.className = 'date-presets';
-    const mkChip = (label, fn, extraClass) => {
-      const b = document.createElement('button'); b.type = 'button';
-      b.className = 'date-chip' + (extraClass ? ' ' + extraClass : '');
-      b.textContent = label;
-      b.addEventListener('click', () => { fn(); page = 1; reload(); });
-      return b;
-    };
-    presetsBox.appendChild(mkChip('Hôm nay', () => {
-      const t = new Date().toISOString().slice(0, 10);
-      tu.value = t; den.value = t; filters.ngay_tu = t; filters.ngay_den = t;
-    }));
-    presetsBox.appendChild(mkChip('Tuần này', () => {
-      const now = new Date();
-      const day = (now.getDay() + 6) % 7; // thứ 2 = 0
-      const monday = new Date(now); monday.setDate(now.getDate() - day);
-      const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
-      tu.value = monday.toISOString().slice(0, 10); den.value = sunday.toISOString().slice(0, 10);
-      filters.ngay_tu = tu.value; filters.ngay_den = den.value;
-    }));
-    presetsBox.appendChild(mkChip('Cả đợt', () => {
-      tu.value = ''; den.value = ''; filters.ngay_tu = ''; filters.ngay_den = '';
-    }));
-    presetsBox.appendChild(mkChip('✕ Xóa lọc ngày', () => {
-      tu.value = ''; den.value = ''; filters.ngay_tu = ''; filters.ngay_den = '';
-    }, 'clear'));
-    rowDate.appendChild(fieldBox('Chọn nhanh', () => presetsBox));
+    // (Bỏ khối "Chọn nhanh" — badge làm vỡ bố cục; dùng 2 ô ngày + "Xóa hết
+    //  bộ lọc" là đủ. Phản hồi anh Khôi.)
 
     bar.appendChild(rowDate);
 
@@ -356,7 +330,7 @@ const ListView = (() => {
     if (msRefs.coQuan) msRefs.coQuan.setSelected([]);
     if (msRefs.nguoiRaSoatSel) msRefs.nguoiRaSoatSel.value = '';
     if (msRefs.hoTenInput) { msRefs.hoTenInput.value = ''; msRefs.hoTenInput.placeholder = searchPlaceholder(); }
-    if (msRefs.hotenOnlyCb) msRefs.hotenOnlyCb.checked = false;
+    if (msRefs.hotenOnlyCb) msRefs.hotenOnlyCb.checked = true; // giữ "Chỉ tìm họ tên"
     if (msRefs.tuInput) msRefs.tuInput.value = '';
     if (msRefs.denInput) msRefs.denInput.value = '';
     page = 1;

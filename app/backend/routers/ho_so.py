@@ -124,17 +124,18 @@ def build_where(params, user):
 
 
 def _like_tokens(col, q_kd):
-    """Khớp TỪNG TIẾNG theo RANH GIỚI TỪ (phản hồi anh Khôi): mỗi token phải là
-    ĐẦU một tiếng trong `col`, KHÔNG phải chuỗi con giữa tiếng. vd 'hoang ha'
-    khớp 'HOÀNG THỊ HÀ' (có tiếng 'ha') nhưng KHÔNG khớp 'HOÀNG THỊ THẠCH'
-    ('ha' nằm giữa 'thach'). Kỹ thuật: thêm dấu cách đầu chuỗi rồi
-    `(' '||col) LIKE '% <token>%'` — token đứng ngay sau một dấu cách. Vẫn cho
-    tiền tố ('than' khớp 'thanh'). Nối các điều kiện bằng AND. Trả (sql, args)."""
+    """Khớp ĐÚNG TỪNG TIẾNG TRỌN VẸN (phản hồi anh Khôi): mỗi token phải là
+    MỘT TIẾNG (từ) hoàn chỉnh trong `col` — không phân biệt hoa/thường/dấu (đã
+    chuẩn hóa sẵn ở ho_ten_kd/search_blob_kd). vd 'hoang ha' khớp 'HOÀNG THỊ HÀ'
+    (có tiếng 'ha') nhưng KHÔNG khớp 'HOÀNG THỊ HẠNH'/'HẢI' ('hanh'/'hai' là
+    tiếng khác) và KHÔNG khớp 'THẠCH' ('ha' giữa tiếng). Kỹ thuật: đệm dấu cách
+    2 đầu rồi `(' '||col||' ') LIKE '% token %'` — token đứng giữa 2 dấu cách =
+    trọn 1 tiếng. Nối các điều kiện bằng AND. Trả (sql, args)."""
     toks = [t for t in q_kd.split() if t]
     if not toks:
         return '1=1', []
-    return ('(' + ' AND '.join(f"(' '||{col}) LIKE ?" for _ in toks) + ')',
-            [f'% {t}%' for t in toks])
+    return ('(' + ' AND '.join(f"(' '||{col}||' ') LIKE ?" for _ in toks) + ')',
+            [f'% {t} %' for t in toks])
 
 
 def _parse_list_params(request: Request):
