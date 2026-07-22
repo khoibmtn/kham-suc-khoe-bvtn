@@ -174,35 +174,6 @@ def danh_muc(user=Depends(auth.get_current_user)):
     return out
 
 
-def _global_search_rank(rows, q_stripped):
-    """Đợt 7 criterion 5: tìm TOÀN CỘT — dòng khớp bất kỳ cột hiển thị nào
-    (chuỗi con không dấu) thì lấy. Xếp hạng: khớp cột HỌ TÊN lên trước (theo
-    fuzzy.match_score giảm dần), rồi đến dòng khớp cột khác (giữ thứ tự tt).
-    Trả list[Row] đã sắp — KHÔNG cắt limit (khác fuzzy họ-tên-only 50 dòng)."""
-    group_a, group_b = [], []
-    for r in rows:
-        ho_ten_val = r['ho_ten'] or ''
-        if q_stripped in fuzzy.strip_diacritics(ho_ten_val):
-            group_a.append((fuzzy.match_score(q_stripped, ho_ten_val), r))
-            continue
-        other_vals = [
-            (r['ngay_sinh'] or '')[-4:],
-            r['gioi_tinh'],
-            r['so_cccd'],
-            r['maxa_cu_tru'],
-            r['ngay_vao'],
-            str(r['phan_loai_sk']) if r['phan_loai_sk'] is not None else '',
-            r['ket_luan_benh'],
-            qc.TEN_CQ.get(r['co_quan_benh_chinh'], r['co_quan_benh_chinh']),
-            r['ma_ho_so'],
-            TRANG_THAI_NHAN.get(r['trang_thai'], r['trang_thai']),
-        ]
-        if any(v and q_stripped in fuzzy.strip_diacritics(str(v)) for v in other_vals):
-            group_b.append(r)
-    group_a.sort(key=lambda x: -x[0])
-    return [r for _, r in group_a] + group_b
-
-
 @router.get('/ho-so')
 def list_ho_so(request: Request, page: int = Query(1, ge=1),
                 page_size: int = Query(20, ge=1, le=200),
@@ -213,33 +184,42 @@ def list_ho_so(request: Request, page: int = Query(1, ge=1),
         where_sql, args = build_where(params, user)
 
         # Đợt 7 criterion 4/5: `q` = từ khóa tìm kiếm; `q_hoten_only` = chỉ
-        # tìm cột họ tên (fuzzy hiện có). `ho_ten` (tên cũ) vẫn hoạt động như
-        # bí danh của chế độ q_hoten_only=true — tương thích ngược.
+        # tìm cột họ tên. `ho_ten` (tên cũ) vẫn hoạt động như bí danh của chế
+        # độ q_hoten_only=true — tương thích ngược.
         legacy_ho_ten = (params.get('ho_ten') or '').strip()
         q_raw = (params.get('q') or legacy_ho_ten or '').strip()
         hoten_only = bool(legacy_ho_ten) or (
             (params.get('q_hoten_only') or '').strip().lower() in ('1', 'true', 'yes'))
 
+        # PLAN_PERF.md §2 — SQL-paginated bằng cột ho_ten_kd/search_blob_kd
+        # (đã tính sẵn, bỏ dấu + lowercase — services/fuzzy.build_search_cols)
+        # thay cho quét TOÀN BỘ 13.326 dòng bằng Python (_global_search_rank
+        # cũ, đã bỏ).
         if q_raw and hoten_only:
-            # fuzzy: lấy ứng viên đã lọc bằng SQL trước, rồi sắp theo điểm ở Python
-            rows = conn.execute(
-                f'SELECT * FROM ho_so WHERE {where_sql} ORDER BY tt',
-                args).fetchall()
-            # SPEC §3.3: giới hạn 50 kết quả fuzzy, sắp theo điểm giảm dần
-            ranked = fuzzy.rank_by_name(rows, q_raw, limit=50)
-            total = len(ranked)
-            start = (page - 1) * page_size
-            page_rows = ranked[start:start + page_size]
+            q_kd = fuzzy.strip_diacritics(q_raw)
+            where_q = f'{where_sql} AND ho_ten_kd LIKE ?'
+            args_q = args + [f'%{q_kd}%']
+            total = conn.execute(
+                f'SELECT COUNT(*) FROM ho_so WHERE {where_q}', args_q).fetchone()[0]
+            offset = (page - 1) * page_size
+            page_rows = conn.execute(
+                f'SELECT * FROM ho_so WHERE {where_q} '
+                f'ORDER BY tt LIMIT ? OFFSET ?',
+                args_q + [page_size, offset]).fetchall()
         elif q_raw:
-            # tìm toàn cột (checkbox "Chỉ tìm họ tên" TẮT) — áp dụng SAU các
-            # filter SQL khác (xã, trạng thái, ngày...), KHÔNG giới hạn 50.
-            rows = conn.execute(
-                f'SELECT * FROM ho_so WHERE {where_sql} ORDER BY tt',
-                args).fetchall()
-            matched = _global_search_rank(rows, fuzzy.strip_diacritics(q_raw))
-            total = len(matched)
-            start = (page - 1) * page_size
-            page_rows = matched[start:start + page_size]
+            # tìm toàn cột (checkbox "Chỉ tìm họ tên" TẮT) — search_blob_kd
+            # đã gộp mọi cột hiển thị; xếp hạng khớp HỌ TÊN lên trước.
+            q_kd = fuzzy.strip_diacritics(q_raw)
+            where_q = f'{where_sql} AND search_blob_kd LIKE ?'
+            args_q = args + [f'%{q_kd}%']
+            total = conn.execute(
+                f'SELECT COUNT(*) FROM ho_so WHERE {where_q}', args_q).fetchone()[0]
+            offset = (page - 1) * page_size
+            page_rows = conn.execute(
+                f'SELECT * FROM ho_so WHERE {where_q} '
+                f'ORDER BY (CASE WHEN ho_ten_kd LIKE ? THEN 0 ELSE 1 END), tt '
+                f'LIMIT ? OFFSET ?',
+                args_q + [f'%{q_kd}%', page_size, offset]).fetchall()
         else:
             total = conn.execute(
                 f'SELECT COUNT(*) FROM ho_so WHERE {where_sql}', args).fetchone()[0]
@@ -326,12 +306,32 @@ def _recompute_bmi(fields):
     return None
 
 
+def _ten_nguoi_sua_gan_nhat(conn, ma_ho_so, field, exclude_user_id):
+    """PLAN_PERF.md §4 — trả họ tên người ĐĂNG NHẬP KHÁC gần nhất từng sửa
+    `field` của hồ sơ này (đọc nhat_ky), hoặc None nếu không tìm được (đã bị
+    xoá tài khoản, hoặc không rõ ai)."""
+    r = conn.execute(
+        'SELECT nd.ho_ten FROM nhat_ky nk '
+        'JOIN nguoi_dung nd ON nd.id = nk.nguoi_dung_id '
+        'WHERE nk.ma_ho_so=? AND nk.ten_truong=? AND nk.nguoi_dung_id != ? '
+        'ORDER BY nk.id DESC LIMIT 1',
+        (ma_ho_so, field, exclude_user_id)).fetchone()
+    return r['ho_ten'] if r else None
+
+
 @router.patch('/ho-so/{ma_ho_so}')
 def patch_ho_so(ma_ho_so: str, body: PatchBody,
                  user=Depends(auth.get_current_user)):
     changes = body.model_dump(exclude_unset=True)
+    # PLAN_PERF.md §4 — `_base` (TUỲ CHỌN): map {field: giá_trị_client_đang_
+    # thấy lúc mở/lưu gần nhất}, KHÔNG phải cột DB thật -> tách riêng trước
+    # khi validate/ghi, không gửi thì hành vi y nguyên như trước (không cảnh
+    # báo).
+    base = changes.pop('_base', None)
+    if not isinstance(base, dict):
+        base = {}
     if not changes:
-        return {'ok': True, 'updated': {}}
+        return {'ok': True, 'updated': {}, 'canh_bao_xung_dot': {}}
 
     conn = db.get_connection()
     try:
@@ -372,10 +372,29 @@ def patch_ho_so(ma_ho_so: str, body: PatchBody,
             changes['chi_so_bmi'] = _recompute_bmi(merged)
 
         updated = {}
+        canh_bao_xung_dot = {}
         set_clauses = []
         args = []
         for field, new_val in changes.items():
             old_val = row[field] if field in row.keys() else None
+
+            # PLAN_PERF.md §4 — phát hiện xung đột TRỄ: client gửi kèm `_base`
+            # (giá trị nó thấy lúc mở/lưu gần nhất) cho field này -> nếu giá
+            # trị HIỆN TẠI trong DB khác cả `_base` LẪN giá trị mới đang lưu,
+            # nghĩa là NGƯỜI KHÁC đã sửa field này sau khi client tải hồ sơ.
+            # Vẫn GHI (last-write-wins), chỉ báo cho UI biết qua response.
+            if field in base:
+                base_val = base[field]
+                old_cmp = '' if old_val is None else str(old_val)
+                base_cmp = '' if base_val is None else str(base_val)
+                new_cmp = '' if new_val is None else str(new_val)
+                if old_cmp != base_cmp and old_cmp != new_cmp:
+                    canh_bao_xung_dot[field] = {
+                        'nguoi_khac': _ten_nguoi_sua_gan_nhat(
+                            conn, ma_ho_so, field, user['id']),
+                        'gia_tri_db_truoc': old_val,
+                    }
+
             if old_val == new_val:
                 continue
             set_clauses.append(f'{field} = ?')
@@ -428,7 +447,8 @@ def patch_ho_so(ma_ho_so: str, body: PatchBody,
         conn.close()
 
     return {'ok': True, 'updated': updated, 'qd1613': qd1613,
-            'so_loi': new_row['so_loi'], 'co_qc': qc.flags_of(new_row['co_qc'])}
+            'so_loi': new_row['so_loi'], 'co_qc': qc.flags_of(new_row['co_qc']),
+            'canh_bao_xung_dot': canh_bao_xung_dot}
 
 
 @router.post('/ho-so/{ma_ho_so}/hoan-thanh')

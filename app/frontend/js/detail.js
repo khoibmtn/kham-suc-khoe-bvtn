@@ -87,13 +87,28 @@ const DetailView = (() => {
         renderFlagsSummary();
       },
       onSave: async (code, value) => {
-        const res = await Api.patchHoSo(current.ma_ho_so, { [code]: value });
+        // PLAN_PERF.md §4: gửi kèm `_base` = giá trị field này lúc mở/lưu
+        // gần nhất (client-side) — backend so sánh với DB hiện tại để phát
+        // hiện "người khác vừa sửa trễ" (last-write-wins, chỉ CẢNH BÁO,
+        // không chặn lưu).
+        const baseVal = current[code];
+        const res = await Api.patchHoSo(current.ma_ho_so, {
+          [code]: value, _base: { [code]: baseVal },
+        });
         Object.assign(current, res.updated);
         current.qd1613 = res.qd1613;
         current.so_loi = res.so_loi;
         current.co_qc = res.co_qc.join(';');
         current.co_qc_list = res.co_qc;
-        toast('Đã lưu');
+        const xungDot = res.canh_bao_xung_dot && res.canh_bao_xung_dot[code];
+        if (xungDot) {
+          const def = FIELD_BY_CODE[code];
+          const nhan = (def && def.label) || code;
+          const nguoi = xungDot.nguoi_khac || 'người khác';
+          toast(`Ô ${nhan} vừa được ${nguoi} sửa — giá trị của bạn đã ghi đè.`);
+        } else {
+          toast('Đã lưu');
+        }
         if ('chi_so_bmi' in res.updated) {
           const bmiInput = document.getElementById('f_chi_so_bmi');
           if (bmiInput) bmiInput.value = res.updated.chi_so_bmi == null ? '' : res.updated.chi_so_bmi;

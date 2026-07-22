@@ -63,6 +63,63 @@ def match_score(query_stripped, candidate_raw):
     return total + (50 if in_order else 0)
 
 
+# PLAN_PERF.md §2 — nhãn "Loại I".."Loại V" của phan_loai_sk, dùng để gộp
+# vào search_blob_kd (cho phép gõ "loai iv"/"loai 4" tìm ra hồ sơ — chỉ "iv"
+# thực sự phân biệt được nên gõ số ả rập KHÔNG khớp trực tiếp; giữ đơn giản
+# theo đúng nhãn hiển thị ở danh_muc/phan_loai_sk).
+_PHAN_LOAI_SK_NHAN = {1: 'loai i', 2: 'loai ii', 3: 'loai iii', 4: 'loai iv', 5: 'loai v'}
+
+
+def _get(rec, key):
+    """Đọc `rec[key]` an toàn cho cả Row (db.py/sqlite3.Row) lẫn dict thường
+    — trả None nếu thiếu cột/khoá thay vì raise."""
+    try:
+        return rec[key]
+    except (KeyError, IndexError, TypeError):
+        return None
+
+
+def build_search_cols(rec):
+    """rec: Row hoặc dict có đủ các cột nguồn của bảng ho_so. Trả
+    (ho_ten_kd, search_blob_kd) — cả 2 đã bỏ dấu + lowercase, dùng để ghi
+    vào 2 cột cùng tên trên bảng ho_so (PLAN_PERF.md §2), cho phép tìm kiếm
+    bằng `WHERE ho_ten_kd/search_blob_kd LIKE '%từ_khóa%'` — KHÔNG cần quét
+    toàn bộ dòng bằng Python.
+
+    search_blob_kd gộp: ho_ten, so_cccd, maxa_cu_tru, ma_ho_so, ket_luan_benh,
+    ngay_sinh, ngay_vao, gioi_tinh, tên cơ quan bệnh chính (qc.TEN_CQ) và
+    nhãn phân loại sức khỏe (vd 'loai iii')."""
+    # import trễ để tránh vòng lặp import lúc module-load (services/qc.py
+    # không import fuzzy nên an toàn, nhưng import trễ vẫn rẻ và tránh phụ
+    # thuộc thứ tự import giữa các module trong services/).
+    from services import qc  # noqa: E402
+
+    ho_ten = _get(rec, 'ho_ten') or ''
+    ho_ten_kd = strip_diacritics(ho_ten)
+
+    co_quan_ten = ''
+    cq_code = _get(rec, 'co_quan_benh_chinh')
+    if cq_code:
+        co_quan_ten = qc.TEN_CQ.get(cq_code, cq_code) or ''
+
+    pl_nhan = ''
+    pl = _get(rec, 'phan_loai_sk')
+    if pl is not None:
+        try:
+            pl_nhan = _PHAN_LOAI_SK_NHAN.get(int(pl), '')
+        except (TypeError, ValueError):
+            pl_nhan = ''
+
+    parts = [
+        ho_ten, _get(rec, 'so_cccd'), _get(rec, 'maxa_cu_tru'),
+        _get(rec, 'ma_ho_so'), _get(rec, 'ket_luan_benh'),
+        _get(rec, 'ngay_sinh'), _get(rec, 'ngay_vao'), _get(rec, 'gioi_tinh'),
+        co_quan_ten, pl_nhan,
+    ]
+    blob = ' '.join(strip_diacritics(str(p)) for p in parts if p not in (None, ''))
+    return ho_ten_kd, blob
+
+
 def rank_by_name(rows, query, name_key='ho_ten', threshold=None, limit=50):
     """rows: list[dict-like] có khoá `name_key`. Trả về list đã lọc + sắp
     theo điểm giảm dần (ổn định — giữ thứ tự gốc trong cùng mức điểm), tối đa

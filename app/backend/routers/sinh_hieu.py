@@ -161,13 +161,18 @@ def danh_sach(request: Request, page: int = Query(1, ge=1),
         ho_ten_q = (qp.get('ho_ten') or '').strip()
 
         if ho_ten_q:
-            # fuzzy: lấy ứng viên đã lọc bằng SQL trước, rồi sắp theo điểm ở Python
-            all_rows = conn.execute(
-                f'SELECT * FROM ho_so WHERE {where_sql} ORDER BY tt', args).fetchall()
-            ranked = fuzzy.rank_by_name(all_rows, ho_ten_q, limit=50)
-            total = len(ranked)
-            start = (page - 1) * page_size
-            rows = ranked[start:start + page_size]
+            # PLAN_PERF.md §2 — SQL-paginated bằng cột ho_ten_kd (đã tính
+            # sẵn, bỏ dấu + lowercase) thay cho quét Python
+            # (fuzzy.rank_by_name cũ, quét toàn bộ dòng đã lọc).
+            q_kd = fuzzy.strip_diacritics(ho_ten_q)
+            where_q = f'{where_sql} AND ho_ten_kd LIKE ?'
+            args_q = args + [f'%{q_kd}%']
+            total = conn.execute(
+                f'SELECT COUNT(*) FROM ho_so WHERE {where_q}', args_q).fetchone()[0]
+            offset = (page - 1) * page_size
+            rows = conn.execute(
+                f'SELECT * FROM ho_so WHERE {where_q} ORDER BY tt LIMIT ? OFFSET ?',
+                args_q + [page_size, offset]).fetchall()
         else:
             total = conn.execute(f'SELECT COUNT(*) FROM ho_so WHERE {where_sql}', args).fetchone()[0]
             offset = (page - 1) * page_size

@@ -33,6 +33,7 @@ import openpyxl
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import config  # noqa: E402
 import db  # noqa: E402
+from services import fuzzy  # noqa: E402
 
 config.ensure_build_on_path()
 from classify import ORGAN_COLS, ORGANS          # noqa: E402
@@ -352,6 +353,11 @@ def import_ho_so_benh(conn):
         ts = tien_su.suy_luan(findings, bc, ten_chinh_thuc)
         for k, v in ts.items():
             rec[k.lower()] = v
+
+        # PLAN_PERF.md §2 — cột hỗ trợ tìm kiếm SQL-paginated: tính ngay lúc
+        # nạp để hồ sơ MỚI có sẵn dữ liệu (không phải đợi
+        # scripts/build_search_cols.py chạy lại).
+        rec['ho_ten_kd'], rec['search_blob_kd'] = fuzzy.build_search_cols(rec)
 
         new_recs.append(rec)
         for r in benh_rows:

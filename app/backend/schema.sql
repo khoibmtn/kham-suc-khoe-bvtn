@@ -63,6 +63,11 @@ CREATE TABLE IF NOT EXISTS ho_so (
   ham_tren TEXT, ham_duoi TEXT, benh_khac_rang_ham_mat TEXT,
   kham_rang_ham_mat_pl INTEGER,
   phan_loai_sk INTEGER, ket_luan_benh TEXT, cac_benh_tat_neu_co TEXT,
+  -- ===== cột hỗ trợ tìm kiếm SQL-paginated (PLAN_PERF.md §2) =====
+  -- ho_ten_kd: ho_ten không dấu + lowercase. search_blob_kd: gộp không dấu
+  -- + lowercase của nhiều cột hiển thị (xem services/fuzzy.build_search_cols)
+  -- -> tìm kiếm bằng WHERE ...LIKE '%kw%' KHÔNG cần quét Python.
+  ho_ten_kd TEXT, search_blob_kd TEXT,
   -- ===== trường mở rộng (KHÔNG xuất ra file nộp Bộ) =====
   ma_benh_chinh TEXT, co_quan_benh_chinh TEXT,
   ma_benh_kem TEXT, ten_benh_kem TEXT,          -- ngăn bởi ';'

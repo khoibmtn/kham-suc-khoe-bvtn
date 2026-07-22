@@ -5,9 +5,11 @@ Hai chế độ (Giai đoạn 1 PLAN_VERCEL.md):
 - LOCAL (mặc định, không có biến môi trường TURSO_URL): sqlite3 + file
   data/ksk.db, HÀNH VI Y NGUYÊN như trước — không đổi gì cho local dev.
 - SERVERLESS (biến môi trường TURSO_URL có giá trị, dùng trên Vercel):
-  libsql_experimental (Turso) đồng bộ về /tmp/ksk.db. Trả về `ConnWrapper`
-  mô phỏng đúng bề mặt sqlite3.Connection mà toàn bộ router hiện có đang
-  dùng (`conn.execute(...).fetchone()/.fetchall()`, lặp qua kết quả,
+  libsql_experimental (Turso) kết nối REMOTE-ONLY thẳng tới Turso primary
+  (PLAN_PERF.md §1 — KHÔNG file /tmp, KHÔNG `.sync()`) — nhất quán mạnh,
+  không cold-start tải bản sao cục bộ. Trả về `ConnWrapper` mô phỏng đúng bề
+  mặt sqlite3.Connection mà toàn bộ router hiện có đang dùng
+  (`conn.execute(...).fetchone()/.fetchall()`, lặp qua kết quả,
   `row['col']`, `dict(row)`, `.lastrowid`, `.rowcount`, `.executemany()`,
   `.commit()`, `.close()`, `.cursor()`) — KHÔNG router nào phải sửa.
 """
@@ -215,17 +217,15 @@ class ConnWrapper:
 def _get_connection_serverless():
     import libsql_experimental as libsql  # import trễ — máy dev sqlite3
     # không cần cài gói này (chỉ Vercel Linux py3.12 mới có wheel).
+    # PLAN_PERF.md §1 — REMOTE-ONLY: KHÔNG file /tmp, KHÔNG .sync() (embedded
+    # replica trước đây .sync() qua mạng MỖI request -> ~3.7s/request kể cả
+    # warm, và mỗi instance giữ bản sao riêng có thể STALE giữa nhiều người
+    # dùng cùng lúc). Mỗi query đi thẳng Turso primary -> nhất quán mạnh
+    # (mọi người luôn thấy dữ liệu mới nhất) + không tải 33MB lúc cold-start.
     raw = libsql.connect(
-        '/tmp/ksk.db',
-        sync_url=os.environ['TURSO_URL'],
+        database=os.environ['TURSO_URL'],
         auth_token=os.environ.get('TURSO_AUTH_TOKEN'),
     )
-    try:
-        raw.sync()
-    except Exception:
-        # Cold-start hiccup / mạng chập chờn — vẫn dùng bản /tmp đã có (nếu
-        # có từ lần sync trước trong cùng container) thay vì chết cứng.
-        pass
     return ConnWrapper(raw)
 
 
@@ -248,8 +248,35 @@ def init_schema(conn=None):
     with open(config.SCHEMA_SQL, encoding='utf-8') as f:
         conn.executescript(f.read())
     conn.commit()
+    _migrate_search_cols(conn)
     if own:
         conn.close()
+
+
+def _migrate_search_cols(conn):
+    """PLAN_PERF.md §2 — DB đã tồn tại TRƯỚC KHI schema.sql có 2 cột
+    ho_ten_kd/search_blob_kd (CREATE TABLE IF NOT EXISTS không tự thêm cột
+    cho bảng đã có) -> tự ALTER TABLE thêm cột nếu còn thiếu. CHỈ thêm cột
+    (rỗng) — KHÔNG populate dữ liệu ở đây (13.326 dòng, quá chậm để chạy mỗi
+    lần khởi động serverless); populate bằng scripts/build_search_cols.py
+    chạy riêng 1 lần (rồi import_data.py tự điền cho hồ sơ nạp mới)."""
+    try:
+        cols = {r['name'] for r in conn.execute('PRAGMA table_info(ho_so)')}
+    except Exception:
+        return
+    changed = False
+    for col in ('ho_ten_kd', 'search_blob_kd'):
+        if col in cols:
+            continue
+        try:
+            conn.execute(f'ALTER TABLE ho_so ADD COLUMN {col} TEXT')
+            changed = True
+        except Exception:
+            # cột đã được instance khác thêm đồng thời (đua serverless), hoặc
+            # lỗi tạm — không chặn khởi động server vì việc này.
+            pass
+    if changed:
+        conn.commit()
 
 
 def table_counts(conn):
