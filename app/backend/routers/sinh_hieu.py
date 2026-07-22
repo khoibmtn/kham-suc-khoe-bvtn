@@ -165,8 +165,10 @@ def danh_sach(request: Request, page: int = Query(1, ge=1),
             # sẵn, bỏ dấu + lowercase) thay cho quét Python
             # (fuzzy.rank_by_name cũ, quét toàn bộ dòng đã lọc).
             q_kd = fuzzy.strip_diacritics(ho_ten_q)
-            where_q = f'{where_sql} AND ho_ten_kd LIKE ?'
-            args_q = args + [f'%{q_kd}%']
+            from routers.ho_so import _like_tokens
+            like_sql, like_args = _like_tokens('ho_ten_kd', q_kd)
+            where_q = f'{where_sql} AND {like_sql}'
+            args_q = args + like_args
             total = conn.execute(
                 f'SELECT COUNT(*) FROM ho_so WHERE {where_q}', args_q).fetchone()[0]
             offset = (page - 1) * page_size

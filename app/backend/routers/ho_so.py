@@ -123,6 +123,17 @@ def build_where(params, user):
     return ' AND '.join(where), args
 
 
+def _like_tokens(col, q_kd):
+    """Khớp TỪNG TỪ (phản hồi anh Khôi): mỗi từ trong q_kd phải xuất hiện trong
+    `col` — nối các LIKE bằng AND. vd 'hoang ha' -> col chứa 'hoang' VÀ 'ha'
+    (kiểu *hoang*ha*), khớp cả 'HOÀNG THỊ HÀ'. Trả (sql, args)."""
+    toks = [t for t in q_kd.split() if t]
+    if not toks:
+        return '1=1', []
+    return ('(' + ' AND '.join(f'{col} LIKE ?' for _ in toks) + ')',
+            [f'%{t}%' for t in toks])
+
+
 def _parse_list_params(request: Request):
     qp = request.query_params
     return {
@@ -197,8 +208,9 @@ def list_ho_so(request: Request, page: int = Query(1, ge=1),
         # cũ, đã bỏ).
         if q_raw and hoten_only:
             q_kd = fuzzy.strip_diacritics(q_raw)
-            where_q = f'{where_sql} AND ho_ten_kd LIKE ?'
-            args_q = args + [f'%{q_kd}%']
+            like_sql, like_args = _like_tokens('ho_ten_kd', q_kd)
+            where_q = f'{where_sql} AND {like_sql}'
+            args_q = args + like_args
             total = conn.execute(
                 f'SELECT COUNT(*) FROM ho_so WHERE {where_q}', args_q).fetchone()[0]
             offset = (page - 1) * page_size
@@ -208,18 +220,21 @@ def list_ho_so(request: Request, page: int = Query(1, ge=1),
                 args_q + [page_size, offset]).fetchall()
         elif q_raw:
             # tìm toàn cột (checkbox "Chỉ tìm họ tên" TẮT) — search_blob_kd
-            # đã gộp mọi cột hiển thị; xếp hạng khớp HỌ TÊN lên trước.
+            # đã gộp mọi cột hiển thị; khớp TỪNG TỪ; xếp hồ sơ khớp đủ từ ở
+            # HỌ TÊN lên trước.
             q_kd = fuzzy.strip_diacritics(q_raw)
-            where_q = f'{where_sql} AND search_blob_kd LIKE ?'
-            args_q = args + [f'%{q_kd}%']
+            like_sql, like_args = _like_tokens('search_blob_kd', q_kd)
+            rank_sql, rank_args = _like_tokens('ho_ten_kd', q_kd)
+            where_q = f'{where_sql} AND {like_sql}'
+            args_q = args + like_args
             total = conn.execute(
                 f'SELECT COUNT(*) FROM ho_so WHERE {where_q}', args_q).fetchone()[0]
             offset = (page - 1) * page_size
             page_rows = conn.execute(
                 f'SELECT * FROM ho_so WHERE {where_q} '
-                f'ORDER BY (CASE WHEN ho_ten_kd LIKE ? THEN 0 ELSE 1 END), tt '
+                f'ORDER BY (CASE WHEN {rank_sql} THEN 0 ELSE 1 END), tt '
                 f'LIMIT ? OFFSET ?',
-                args_q + [f'%{q_kd}%', page_size, offset]).fetchall()
+                args_q + rank_args + [page_size, offset]).fetchall()
         else:
             total = conn.execute(
                 f'SELECT COUNT(*) FROM ho_so WHERE {where_sql}', args).fetchone()[0]
