@@ -64,6 +64,15 @@ def _job_public(job):
 
 @router.post('/xuat-file')
 def start_export(body: StartBody, admin=Depends(auth.require_admin)):
+    # Giai đoạn 1 PLAN_VERCEL.md criterion 5: job xuất .xlsm chạy nền bằng
+    # subprocess + ghi file job.json ra đĩa (data/exports/) — không phù hợp
+    # serverless (mỗi lời gọi hàm là 1 container riêng, không có tiến trình
+    # nền/đĩa bền giữa các request). Đợt này CHỈ báo rõ, không cố chạy.
+    if os.getenv('TURSO_URL'):
+        raise HTTPException(
+            409, 'Xuất file .xlsm chưa hỗ trợ trên bản chạy đám mây — vui '
+                 'lòng thực hiện thao tác này trên máy cá nhân (chạy '
+                 './run.sh).')
     extended = body.extended.model_dump() if body.extended else {'enabled': False, 'columns': []}
     try:
         job = export_xlsm.create_job(body.pham_vi, body.gia_tri,

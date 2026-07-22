@@ -3,3 +3,9 @@ uvicorn[standard]
 openpyxl
 rapidfuzz
 python-multipart
+# Vercel serverless (Linux py3.12) — dùng khi biến môi trường TURSO_URL có
+# giá trị (backend/db.py). Marker `python_version >= "3.11"` để `pip
+# install -r requirements.txt` trên máy dev (Python 3.9, KHÔNG có wheel sẵn
+# cho gói này) TỰ BỎ QUA dòng này thay vì lỗi cài đặt — run.sh vẫn bootstrap
+# .venv được bình thường, local dev không đổi gì.
+libsql-experimental; python_version >= "3.11"

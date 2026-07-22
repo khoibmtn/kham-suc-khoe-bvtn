@@ -55,8 +55,14 @@ def search_icd(q: str = '', limit: int = 20,
                             'WHERE dm_icd_fts MATCH ? LIMIT ?',
                             (fts_q, remaining)):
                         results.setdefault(row['ma'], row['ten'])
-                except sqlite3.OperationalError:
-                    pass  # câu truy vấn FTS5 không hợp lệ (ký tự đặc biệt) -> bỏ qua
+                except (sqlite3.OperationalError, ValueError):
+                    # câu truy vấn FTS5 không hợp lệ (ký tự đặc biệt) -> bỏ qua.
+                    # sqlite3.OperationalError (local) / ValueError (đã kiểm
+                    # chứng bằng spike libsql-experimental: lỗi cú pháp SQL ở
+                    # chế độ serverless ném ValueError, KHÔNG phải
+                    # sqlite3.OperationalError — bắt cả 2 để hành vi giống
+                    # nhau ở 2 chế độ).
+                    pass
     finally:
         conn.close()
 

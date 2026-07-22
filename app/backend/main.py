@@ -74,14 +74,26 @@ def _sao_luu_hang_ngay():
 
 @asynccontextmanager
 async def lifespan(app_: FastAPI):
-    _sao_luu_hang_ngay()
-    conn = db.get_connection()
+    serverless = bool(os.getenv('TURSO_URL'))
+    # Giai đoạn 1 PLAN_VERCEL.md criterion 4: bỏ sao lưu file (Turso lo bền)
+    # khi chạy serverless; giữ nguyên hành vi local.
+    if not serverless:
+        _sao_luu_hang_ngay()
+    # Bọc toàn bộ thao tác DB lúc khởi động trong try/except để 1 cú hiccup
+    # cold-start (vd Turso sync chập chờn) không làm chết hẳn app — local
+    # vẫn giữ hành vi cũ (lỗi thật sẽ vẫn raise vì thao tác local hiếm khi
+    # lỗi và ta muốn thấy lỗi đó khi dev).
     try:
-        db.init_schema(conn)
-        if conn.execute('SELECT COUNT(*) FROM ho_so').fetchone()[0] > 0:
-            _snapshot_hom_nay(conn)
-    finally:
-        conn.close()
+        conn = db.get_connection()
+        try:
+            db.init_schema(conn)
+            if conn.execute('SELECT COUNT(*) FROM ho_so').fetchone()[0] > 0:
+                _snapshot_hom_nay(conn)
+        finally:
+            conn.close()
+    except Exception:
+        if not serverless:
+            raise
     yield
 
 
