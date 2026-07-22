@@ -172,18 +172,21 @@ const SinhHieuView = (() => {
     const rest = document.createElement('div');
     rest.innerHTML = `
       <div class="sh-excel-box">
-        <b>Import Excel:</b>
-        <button id="sh-template-btn" type="button">Tải file mẫu (.xlsx)</button>
-        <input type="file" id="sh-import-file" accept=".xlsx">
-        <button id="sh-import-btn" type="button">Nhập từ Excel</button>
-        <div id="sh-import-report"></div>
+        <button id="sh-excel-toggle" type="button" class="sh-excel-toggle">▸ Nhập từ Excel</button>
+        <div id="sh-excel-body" class="sh-excel-body" hidden>
+          <button id="sh-template-btn" type="button">Tải file mẫu (.xlsx)</button>
+          <input type="file" id="sh-import-file" accept=".xlsx">
+          <button id="sh-import-btn" type="button">Nhập từ Excel</button>
+          <div id="sh-import-report"></div>
+        </div>
       </div>
 
       <div class="table-wrap sh-table-wrap">
         <table class="sh-grid">
           <thead>
             <tr>
-              <th>Mã hồ sơ</th><th>Họ tên</th><th>Xã</th><th>Ngày khám</th>
+              <th>Mã hồ sơ</th><th>Họ tên</th><th>Năm sinh</th><th>Giới</th><th>CCCD</th>
+              <th>Xã</th><th>Ngày khám</th>
               <th>Chiều cao (cm)</th><th>Cân nặng (kg)</th><th>BMI</th>
               <th>Mạch</th><th>Huyết áp</th>
               <th>Phân loại thể lực</th><th></th>
@@ -203,6 +206,23 @@ const SinhHieuView = (() => {
     wire();
   }
 
+  const EXCEL_OPEN_KEY = 'ksk_sh_import_open';
+
+  // Đợt 9 criterion 7: hộp Import Excel mặc định ĐÓNG (tránh bấm nhầm) —
+  // nhớ trạng thái mở/đóng ở localStorage để không phải mở lại mỗi lần vào
+  // trang.
+  function wireExcelToggle() {
+    const toggleBtn = panel.querySelector('#sh-excel-toggle');
+    const body = panel.querySelector('#sh-excel-body');
+    const setOpen = (open) => {
+      body.hidden = !open;
+      toggleBtn.textContent = (open ? '▾' : '▸') + ' Nhập từ Excel';
+      localStorage.setItem(EXCEL_OPEN_KEY, open ? '1' : '0');
+    };
+    setOpen(localStorage.getItem(EXCEL_OPEN_KEY) === '1');
+    toggleBtn.addEventListener('click', () => setOpen(body.hidden));
+  }
+
   function wire() {
     panel.querySelector('#sh-prev').addEventListener('click', () => { if (page > 1) { page--; reload(); } });
     panel.querySelector('#sh-next').addEventListener('click', () => {
@@ -210,6 +230,7 @@ const SinhHieuView = (() => {
     });
     panel.querySelector('#sh-template-btn').addEventListener('click', downloadTemplate);
     panel.querySelector('#sh-import-btn').addEventListener('click', doImport);
+    wireExcelToggle();
   }
 
   function toast(msg) {
@@ -234,7 +255,7 @@ const SinhHieuView = (() => {
 
   async function reload() {
     const tbody = panel.querySelector('#sh-tbody');
-    tbody.innerHTML = '<tr><td colspan="10">Đang tải...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="14">Đang tải...</td></tr>';
     try {
       const res = await Api.sinhHieuList(Object.assign({ page, page_size: pageSize }, currentFilterParams()));
       items = res.items;
@@ -243,7 +264,7 @@ const SinhHieuView = (() => {
       panel.querySelector('#sh-page-info').textContent =
         `Trang ${page} / ${Math.max(1, Math.ceil(total / pageSize))} — tổng ${total}`;
     } catch (err) {
-      tbody.innerHTML = `<tr><td colspan="10" class="xf-error">${esc(err.message)}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="14" class="xf-error">${esc(err.message)}</td></tr>`;
     }
   }
 
@@ -257,13 +278,16 @@ const SinhHieuView = (() => {
   function renderRows() {
     const tbody = panel.querySelector('#sh-tbody');
     if (!items.length) {
-      tbody.innerHTML = '<tr><td colspan="11">Không có hồ sơ phù hợp bộ lọc</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="14">Không có hồ sơ phù hợp bộ lọc</td></tr>';
       return;
     }
     tbody.innerHTML = items.map((it) => `
       <tr data-ma="${esc(it.ma_ho_so)}" class="${it.thieu_sinh_hieu ? 'row-vang' : ''}">
         <td class="sh-ma">${esc(it.ma_ho_so)}</td>
         <td>${esc(it.ho_ten)}</td>
+        <td>${esc(it.nam_sinh)}</td>
+        <td>${esc(it.gioi_tinh)}</td>
+        <td>${esc(it.so_cccd)}</td>
         <td>${esc(it.maxa_cu_tru)}</td>
         <td>${esc(it.ngay_vao)}</td>
         <td><input class="sh-cell" data-field="chieu_cao" type="text" inputmode="decimal" value="${it.chieu_cao ?? ''}"></td>

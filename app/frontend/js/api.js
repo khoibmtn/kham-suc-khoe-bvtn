@@ -1,5 +1,12 @@
 // api.js — gọi API backend (credentials: cookie session).
 const Api = (() => {
+  // Đợt 9 criterion 2: callback do app.js đăng ký — gọi khi BẤT KỲ response
+  // 401 nào (trừ /api/login, vốn hiển thị lỗi ngay tại form) trả về, để
+  // frontend tự chuyển về màn đăng nhập thay vì kẹt "Chưa đăng nhập" ở giữa
+  // trang (vd sau khi server Render restart làm phiên cũ hết hiệu lực).
+  let onUnauthorized = null;
+  function setOnUnauthorized(fn) { onUnauthorized = fn; }
+
   async function req(method, path, body) {
     const opt = {
       method,
@@ -17,12 +24,19 @@ const Api = (() => {
       const err = new Error((data && data.detail) || `Lỗi ${res.status}`);
       err.status = res.status;
       err.data = data;
+      // /api/login trả 401 khi sai mật khẩu — đó là lỗi hiển thị NGAY TẠI
+      // form đăng nhập (inline), KHÔNG phải phiên hết hạn -> không gọi
+      // callback toàn cục (tránh vòng lặp về lại chính màn đăng nhập).
+      if (res.status === 401 && path !== '/api/login' && onUnauthorized) {
+        onUnauthorized();
+      }
       throw err;
     }
     return data;
   }
 
   return {
+    setOnUnauthorized,
     get: (path) => req('GET', path),
     post: (path, body) => req('POST', path, body || {}),
     patch: (path, body) => req('PATCH', path, body || {}),
@@ -51,6 +65,8 @@ const Api = (() => {
 
     phanCong: (body) => req('POST', '/api/phan-cong', body),
     listPhanCong: () => req('GET', '/api/phan-cong'),
+    patchPhanCong: (id, body) => req('PATCH', `/api/phan-cong/${id}`, body),
+    deletePhanCong: (id) => req('DELETE', `/api/phan-cong/${id}`),
     listNguoiDung: () => req('GET', '/api/nguoi-dung'),
     createNguoiDung: (body) => req('POST', '/api/nguoi-dung', body),
     patchNguoiDung: (id, body) => req('PATCH', `/api/nguoi-dung/${id}`, body),
@@ -77,7 +93,12 @@ const Api = (() => {
       fd.append('file', file);
       const res = await fetch('/api/sinh-hieu/import-excel', { method: 'POST', body: fd, credentials: 'same-origin' });
       const data = await res.json();
-      if (!res.ok) { const err = new Error((data && data.detail) || `Lỗi ${res.status}`); err.data = data; throw err; }
+      if (!res.ok) {
+        const err = new Error((data && data.detail) || `Lỗi ${res.status}`);
+        err.data = data;
+        if (res.status === 401 && onUnauthorized) onUnauthorized();
+        throw err;
+      }
       return data;
     },
     qs,

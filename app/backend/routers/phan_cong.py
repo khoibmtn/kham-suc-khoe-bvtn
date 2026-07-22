@@ -90,3 +90,82 @@ def list_phan_cong(admin=Depends(auth.require_admin)):
     finally:
         conn.close()
     return [dict(r) for r in rows]
+
+
+class PhanCongPatchBody(BaseModel):
+    nguoi_dung_id_moi: int
+
+
+def _affected_ho_so(conn, pc):
+    """Hồ sơ ĐANG thuộc phạm vi của dòng phan_cong này VÀ hiện vẫn được giao
+    cho đúng nguoi_dung_id của nó (loại trừ hồ sơ đã bị 1 phân công khác/thao
+    tác tay ghi đè nguoi_ra_soat_id sau đó — tránh gỡ/chuyển nhầm)."""
+    where_sql, args = _matching_where(pc['pham_vi_loai'], pc['pham_vi_gia_tri'])
+    full_where = f'{where_sql} AND nguoi_ra_soat_id=?'
+    full_args = args + [pc['nguoi_dung_id']]
+    rows = conn.execute(f'SELECT ma_ho_so FROM ho_so WHERE {full_where}',
+                         full_args).fetchall()
+    return rows, full_where, full_args
+
+
+@router.delete('/phan-cong/{id}')
+def delete_phan_cong(id: int, admin=Depends(auth.require_admin)):
+    """Xóa dòng phân công VÀ gỡ giao (nguoi_ra_soat_id -> NULL) cho các hồ sơ
+    đang thuộc đúng phạm vi + đúng người được giao của nó (criterion 3)."""
+    conn = db.get_connection()
+    try:
+        pc = conn.execute('SELECT * FROM phan_cong WHERE id=?', (id,)).fetchone()
+        if not pc:
+            raise HTTPException(404, 'Không tìm thấy phân công')
+
+        affected, full_where, full_args = _affected_ho_so(conn, pc)
+        if affected:
+            conn.executemany(
+                'INSERT INTO nhat_ky(ma_ho_so, nguoi_dung_id, ten_truong, '
+                'gia_tri_cu, gia_tri_moi) VALUES (?,?,?,?,?)',
+                [(r['ma_ho_so'], admin['id'], 'nguoi_ra_soat_id',
+                  str(pc['nguoi_dung_id']), '') for r in affected])
+            conn.execute(f'UPDATE ho_so SET nguoi_ra_soat_id=NULL WHERE {full_where}',
+                         full_args)
+
+        conn.execute('DELETE FROM phan_cong WHERE id=?', (id,))
+        conn.commit()
+    finally:
+        conn.close()
+    return {'ok': True, 'so_ho_so_go_giao': len(affected)}
+
+
+@router.patch('/phan-cong/{id}')
+def patch_phan_cong(id: int, body: PhanCongPatchBody, admin=Depends(auth.require_admin)):
+    """Đổi người được giao: chuyển nguoi_ra_soat_id của các hồ sơ trong phạm
+    vi từ người cũ sang người mới, cập nhật phan_cong.nguoi_dung_id
+    (criterion 3)."""
+    conn = db.get_connection()
+    try:
+        pc = conn.execute('SELECT * FROM phan_cong WHERE id=?', (id,)).fetchone()
+        if not pc:
+            raise HTTPException(404, 'Không tìm thấy phân công')
+        target = conn.execute(
+            'SELECT id FROM nguoi_dung WHERE id=? AND dang_hoat_dong=1',
+            (body.nguoi_dung_id_moi,)).fetchone()
+        if not target:
+            raise HTTPException(404, 'Không tìm thấy nhân viên')
+
+        affected, full_where, full_args = _affected_ho_so(conn, pc)
+        if affected:
+            conn.executemany(
+                'INSERT INTO nhat_ky(ma_ho_so, nguoi_dung_id, ten_truong, '
+                'gia_tri_cu, gia_tri_moi) VALUES (?,?,?,?,?)',
+                [(r['ma_ho_so'], admin['id'], 'nguoi_ra_soat_id',
+                  str(pc['nguoi_dung_id']), str(body.nguoi_dung_id_moi))
+                 for r in affected])
+            conn.execute(
+                f'UPDATE ho_so SET nguoi_ra_soat_id=? WHERE {full_where}',
+                [body.nguoi_dung_id_moi] + full_args)
+
+        conn.execute('UPDATE phan_cong SET nguoi_dung_id=? WHERE id=?',
+                     (body.nguoi_dung_id_moi, id))
+        conn.commit()
+    finally:
+        conn.close()
+    return {'ok': True, 'so_ho_so_chuyen': len(affected)}

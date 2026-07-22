@@ -6,6 +6,10 @@ const AppShell = (() => {
   let danhMuc = null;
 
   async function boot() {
+    // Đợt 9 criterion 2: đăng ký callback 401 toàn cục TRƯỚC lệnh gọi API
+    // đầu tiên (Api.me()) — mọi trang (danh sách, sinh hiệu, dashboard...)
+    // dùng chung 1 luồng xử lý "phiên hết hạn -> về màn đăng nhập".
+    Api.setOnUnauthorized(handleUnauthorized);
     try {
       user = await Api.me();
       await afterLogin();
@@ -15,9 +19,22 @@ const AppShell = (() => {
     wireLoginForm();
   }
 
-  function showLogin() {
+  function showLogin(message) {
     document.getElementById('login-screen').hidden = false;
     document.getElementById('app-shell').hidden = true;
+    const errBox = document.getElementById('login-error');
+    if (errBox) errBox.textContent = message || '';
+  }
+
+  // Đợt 9 criterion 2: gọi bởi api.js khi bất kỳ response nào (trừ
+  // /api/login) trả 401 — vd sau khi Render restart làm token cũ hết hiệu
+  // lực. Chỉ hiện thông báo "phiên đã hết" khi TRƯỚC ĐÓ đã đăng nhập thành
+  // công (user khác null); lần 401 đầu tiên lúc boot() (chưa từng đăng
+  // nhập, chỉ là chưa có cookie) không hiện thông báo gây hiểu lầm.
+  function handleUnauthorized() {
+    const wasLoggedIn = user !== null;
+    user = null;
+    showLogin(wasLoggedIn ? 'Phiên đăng nhập đã hết, mời đăng nhập lại.' : '');
   }
 
   function wireLoginForm() {
@@ -297,6 +314,16 @@ const AppShell = (() => {
   }
 
   // ---------------- Phân công (admin) ----------------
+  // Đợt 9 criterion 3/4: cache danh sách nhân viên rà soát để dựng dropdown
+  // "Sửa" (đổi người được giao) ở mỗi dòng bảng "Đã giao" mà không phải gọi
+  // lại API mỗi lần render.
+  let pcRaSoatUsers = null;
+
+  function pcEsc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
   function wirePhanCongPanel() {
     const panel = document.getElementById('phan-cong-panel');
     panel.innerHTML = `
@@ -320,13 +347,14 @@ const AppShell = (() => {
       <div id="pc-result"></div>
       <h3>Đã giao</h3>
       <table class="phan-cong-table">
-        <thead><tr><th>Nhân viên</th><th>Loại</th><th>Giá trị</th><th>Ngày giao</th></tr></thead>
+        <thead><tr><th>Nhân viên</th><th>Loại</th><th>Giá trị</th><th>Ngày giao</th><th>Thao tác</th></tr></thead>
         <tbody id="pc-list-body"></tbody>
       </table>
     `;
     Api.listNguoiDung().then((users) => {
+      pcRaSoatUsers = users.filter((u) => u.vai_tro === 'ra_soat');
       const sel = document.getElementById('pc-nguoi-dung');
-      users.filter((u) => u.vai_tro === 'ra_soat').forEach((u) => {
+      pcRaSoatUsers.forEach((u) => {
         const o = document.createElement('option'); o.value = u.id; o.textContent = u.ho_ten;
         sel.appendChild(o);
       });
@@ -365,13 +393,68 @@ const AppShell = (() => {
     const rows = await Api.listPhanCong();
     const tbody = document.getElementById('pc-list-body');
     if (!tbody) return;
+    if (!pcRaSoatUsers) {
+      const users = await Api.listNguoiDung();
+      pcRaSoatUsers = users.filter((u) => u.vai_tro === 'ra_soat');
+    }
     tbody.innerHTML = '';
     rows.forEach((r) => {
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${r.ten_can_bo}</td><td>${r.pham_vi_loai}</td>
-        <td>${r.pham_vi_gia_tri}</td><td>${r.ngay_giao}</td>`;
+      const options = pcRaSoatUsers.map((u) => (
+        `<option value="${u.id}" ${u.id === r.nguoi_dung_id ? 'selected' : ''}>${pcEsc(u.ho_ten)}</option>`
+      )).join('');
+      tr.innerHTML = `
+        <td><select class="pc-assignee-select" data-id="${r.id}" data-old="${r.nguoi_dung_id}">${options}</select></td>
+        <td>${pcEsc(r.pham_vi_loai)}</td>
+        <td>${pcEsc(r.pham_vi_gia_tri)}</td>
+        <td>${pcEsc(r.ngay_giao)}</td>
+        <td><button type="button" class="pc-del-btn" data-id="${r.id}">Xóa</button></td>`;
       tbody.appendChild(tr);
     });
+
+    tbody.querySelectorAll('.pc-assignee-select').forEach((sel) => {
+      sel.addEventListener('change', onPcAssigneeChange);
+    });
+    tbody.querySelectorAll('.pc-del-btn').forEach((btn) => {
+      btn.addEventListener('click', onPcDeleteClick);
+    });
+  }
+
+  // Đợt 9 criterion 4: "Sửa" — đổi nhân viên được giao qua dropdown; xác
+  // nhận trước khi PATCH vì đây là thao tác chuyển hàng loạt hồ sơ.
+  async function onPcAssigneeChange(e) {
+    const sel = e.target;
+    const id = sel.dataset.id;
+    const oldId = sel.dataset.old;
+    const newId = sel.value;
+    if (newId === oldId) return;
+    const tenMoi = sel.options[sel.selectedIndex].textContent;
+    if (!confirm(`Chuyển toàn bộ hồ sơ của phân công #${id} sang "${tenMoi}"?`)) {
+      sel.value = oldId;
+      return;
+    }
+    try {
+      const res = await Api.patchPhanCong(id, { nguoi_dung_id_moi: Number(newId) });
+      alert(`Đã chuyển ${res.so_ho_so_chuyen} hồ sơ sang "${tenMoi}".`);
+      await refreshPhanCongList();
+    } catch (err) {
+      alert('Lỗi: ' + err.message);
+      sel.value = oldId;
+    }
+  }
+
+  // Đợt 9 criterion 4: "Xóa" — xác nhận rồi gọi DELETE, làm mới bảng + báo
+  // số hồ sơ được gỡ giao (nguoi_ra_soat_id -> NULL, xem phan_cong.py).
+  async function onPcDeleteClick(e) {
+    const id = e.target.dataset.id;
+    if (!confirm(`Xóa phân công #${id}? Các hồ sơ trong phạm vi sẽ được gỡ giao (về "chưa giao").`)) return;
+    try {
+      const res = await Api.deletePhanCong(id);
+      alert(`Đã xóa phân công. ${res.so_ho_so_go_giao} hồ sơ được gỡ giao.`);
+      await refreshPhanCongList();
+    } catch (err) {
+      alert('Lỗi: ' + err.message);
+    }
   }
 
   return {
