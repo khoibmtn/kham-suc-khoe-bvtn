@@ -1,0 +1,11 @@
+app/.venv
+app/data
+output
+*.xlsx
+~$*
+tong-hop.xlsx
+__pycache__
+*.pyc
+.DS_Store
+.git
+.env.r2
