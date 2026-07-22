@@ -47,8 +47,34 @@ def _snapshot_hom_nay(conn):
     conn.commit()
 
 
+def _sao_luu_hang_ngay():
+    """Sao lưu DB sang data/backups/YYYY-MM-DD.db mỗi ngày (bỏ qua nếu đã có
+    bản của hôm nay), giữ 30 bản gần nhất. Quan trọng khi chạy 1 máy LAN —
+    phòng hỏng đĩa / lỡ tay. Chạy lúc khởi động server."""
+    import shutil
+    import datetime
+    import glob
+    if not os.path.isfile(config.DB_PATH):
+        return
+    bdir = os.path.join(config.DATA_DIR, 'backups')
+    os.makedirs(bdir, exist_ok=True)
+    dest = os.path.join(bdir, datetime.date.today().isoformat() + '.db')
+    if not os.path.exists(dest):
+        try:
+            shutil.copy2(config.DB_PATH, dest)
+        except OSError:
+            return
+    cu = sorted(glob.glob(os.path.join(bdir, '*.db')))
+    for old in cu[:-30]:            # giữ 30 bản mới nhất
+        try:
+            os.remove(old)
+        except OSError:
+            pass
+
+
 @asynccontextmanager
 async def lifespan(app_: FastAPI):
+    _sao_luu_hang_ngay()
     conn = db.get_connection()
     try:
         db.init_schema(conn)
