@@ -36,7 +36,7 @@ const ExportView = (() => {
         <div class="xf-scope-radios">
           <label><input type="radio" name="xf-pham-vi" value="toan_bo" checked> Toàn bộ</label>
           <label><input type="radio" name="xf-pham-vi" value="xa"> Theo xã/phường</label>
-          <label><input type="radio" name="xf-pham-vi" value="can_bo"> Theo cán bộ</label>
+          <label><input type="radio" name="xf-pham-vi" value="can_bo"> Theo nhân viên</label>
           <label><input type="radio" name="xf-pham-vi" value="trang_thai"> Theo trạng thái</label>
           <label><input type="radio" name="xf-pham-vi" value="chon_tay"> Chọn tay (danh sách mã hồ sơ)</label>
         </div>

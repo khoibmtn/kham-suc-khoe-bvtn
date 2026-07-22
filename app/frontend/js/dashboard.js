@@ -113,7 +113,7 @@ const DashboardView = (() => {
       </section>`;
   }
 
-  // ---------------- 8.3 Tiến độ theo cán bộ ----------------
+  // ---------------- 8.3 Tiến độ theo nhân viên ----------------
   function sparklineSvg(series, w = 140, h = 32) {
     const vals = series.map((s) => s.so_luot);
     const max = Math.max(1, ...vals);
@@ -131,7 +131,7 @@ const DashboardView = (() => {
   function renderTheoCanBo(rows) {
     const trs = rows.map((r) => `
       <tr>
-        <td>${esc(r.ho_ten)} <span class="dash-role">(${r.vai_tro === 'admin' ? 'Quản trị' : 'Cán bộ'})</span></td>
+        <td>${esc(r.ho_ten)} <span class="dash-role">(${r.vai_tro === 'admin' ? 'Quản trị' : 'Nhân viên'})</span></td>
         <td>${r.giao}</td><td>${r.hoan_thanh}</td><td>${r.ty_le}%</td>
         <td>${r.so_luot_sua}</td>
         <td>${r.hoat_dong_gan_nhat ? esc(r.hoat_dong_gan_nhat) : '—'}</td>
@@ -139,11 +139,11 @@ const DashboardView = (() => {
       </tr>`).join('');
     return `
       <section class="dash-section">
-        <h3>Tiến độ theo cán bộ</h3>
+        <h3>Tiến độ theo nhân viên</h3>
         <table class="dash-table">
-          <thead><tr><th>Cán bộ</th><th>Giao</th><th>Hoàn thành</th><th>%</th>
+          <thead><tr><th>Nhân viên</th><th>Giao</th><th>Hoàn thành</th><th>%</th>
             <th>Lượt sửa</th><th>Hoạt động gần nhất</th><th>Năng suất 7 ngày</th></tr></thead>
-          <tbody>${trs || '<tr><td colspan="7">Chưa có cán bộ</td></tr>'}</tbody>
+          <tbody>${trs || '<tr><td colspan="7">Chưa có nhân viên</td></tr>'}</tbody>
         </table>
       </section>`;
   }

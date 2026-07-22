@@ -43,7 +43,7 @@ const AppShell = (() => {
     document.getElementById('login-screen').hidden = true;
     document.getElementById('app-shell').hidden = false;
     document.getElementById('user-info').textContent =
-      `${user.ho_ten} (${user.vai_tro === 'admin' ? 'Quản trị' : 'Cán bộ rà soát'})`;
+      `${user.ho_ten} (${user.vai_tro === 'admin' ? 'Quản trị' : 'Nhân viên rà soát'})`;
 
     // Đợt 3 criterion 8: nạp ngưỡng sinh hiệu 1 lần sau đăng nhập (mọi vai
     // trò được đọc GET /api/cai-dat) — cache trong NguongCheck để widgets.js
@@ -221,7 +221,7 @@ const AppShell = (() => {
       try {
         user = await Api.updateMe(body);
         document.getElementById('user-info').textContent =
-          `${user.ho_ten} (${user.vai_tro === 'admin' ? 'Quản trị' : 'Cán bộ rà soát'})`;
+          `${user.ho_ten} (${user.vai_tro === 'admin' ? 'Quản trị' : 'Nhân viên rà soát'})`;
         resultBox.textContent = 'Đã lưu.';
         resultBox.className = 'ok';
         document.getElementById('tk-mat-khau-cu').value = '';
@@ -300,9 +300,9 @@ const AppShell = (() => {
   function wirePhanCongPanel() {
     const panel = document.getElementById('phan-cong-panel');
     panel.innerHTML = `
-      <h2>Phân công hồ sơ cho cán bộ</h2>
+      <h2>Phân công hồ sơ cho nhân viên</h2>
       <form id="phan-cong-form" class="phan-cong-form">
-        <label>Cán bộ
+        <label>Nhân viên
           <select id="pc-nguoi-dung"></select>
         </label>
         <label>Loại phạm vi
@@ -320,7 +320,7 @@ const AppShell = (() => {
       <div id="pc-result"></div>
       <h3>Đã giao</h3>
       <table class="phan-cong-table">
-        <thead><tr><th>Cán bộ</th><th>Loại</th><th>Giá trị</th><th>Ngày giao</th></tr></thead>
+        <thead><tr><th>Nhân viên</th><th>Loại</th><th>Giá trị</th><th>Ngày giao</th></tr></thead>
         <tbody id="pc-list-body"></tbody>
       </table>
     `;

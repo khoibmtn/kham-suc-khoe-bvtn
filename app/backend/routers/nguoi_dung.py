@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""nguoi_dung.py — admin quản lý tài khoản cán bộ rà soát (Đợt 2 §1-3)."""
+"""nguoi_dung.py — admin quản lý tài khoản nhân viên rà soát (Đợt 2 §1-3)."""
 import os
 import sys
 from typing import Optional
@@ -89,7 +89,7 @@ def update_nguoi_dung(nguoi_dung_id: int, body: UpdateHoTenBody,
 @router.post('/nguoi-dung/{nguoi_dung_id}/reset-mat-khau')
 def reset_mat_khau(nguoi_dung_id: int, admin=Depends(auth.require_admin)):
     """Đặt lại mật khẩu mặc định (criterion 1) — trả lại mật khẩu mới rõ ràng
-    để admin đọc cho cán bộ (không gửi email/SMS trong phạm vi app này)."""
+    để admin đọc cho nhân viên (không gửi email/SMS trong phạm vi app này)."""
     conn = db.get_connection()
     try:
         row = conn.execute('SELECT id FROM nguoi_dung WHERE id=?',

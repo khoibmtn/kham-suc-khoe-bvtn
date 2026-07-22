@@ -14,7 +14,7 @@ gọi build/build_import.py (CFG, ten_chinh_thuc) cho các trường hằng số
 tên bệnh chính thức.
 
 IDEMPOTENT: chạy lại nhiều lần không đổi kết quả. Lựa chọn — bỏ qua
-(INSERT OR IGNORE / skip) các `ma_ho_so` ĐÃ có trong bảng ho_so. Vì cán bộ
+(INSERT OR IGNORE / skip) các `ma_ho_so` ĐÃ có trong bảng ho_so. Vì nhân viên
 có thể đã sửa các trường rà soát (trang_thai, co_qc đã gỡ cờ, ghi_chu...),
 KHÔNG ghi đè các hồ sơ đã tồn tại — chỉ nạp bản ghi MỚI (theo khóa
 ma_ho_so). Danh mục (dm_icd, danh_muc) không phải dữ liệu người dùng sửa
@@ -172,7 +172,7 @@ def _pbkdf2(password, salt=None, iterations=200_000):
 def seed_users(conn):
     users = [
         ('admin', 'Quản trị viên', 'admin', 'admin123'),
-        ('raso1', 'Cán bộ rà soát 1', 'ra_soat', 'raso123'),
+        ('raso1', 'Nhân viên rà soát 1', 'ra_soat', 'raso123'),
     ]
     for ten_dn, ho_ten, vai_tro, pw in users:
         conn.execute(

@@ -38,8 +38,14 @@ body {
 .user-box { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 .user-box button { background: #475569; color: #fff; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; }
 
-#main-area { display: flex; gap: 0; padding: 12px; align-items: stretch; }
-#list-view { flex: 0 0 45%; min-width: 0; }
+/* Đợt 8 tiêu chí 1: #main-area có chiều cao cố định = viewport - header (~48px)
+   để #list-view bên trong có thể chia 3 vùng (frame lọc cố định / bảng cuộn /
+   footer cố định) bằng flex column + min-height:0. */
+#main-area { display: flex; gap: 0; padding: 12px; align-items: stretch; height: calc(100vh - 48px); box-sizing: border-box; }
+#list-view {
+  flex: 0 0 45%; min-width: 0; height: 100%;
+  display: flex; flex-direction: column; min-height: 0;
+}
 #detail-panel {
   flex: 1 1 0; min-width: 0; background: #fff; border-radius: 6px;
   box-shadow: 0 1px 4px rgba(0,0,0,.08); padding: 12px; max-height: calc(100vh - 90px);
@@ -101,6 +107,21 @@ body {
 .list-empty { text-align: center; color: #64748b; padding: 16px !important; white-space: normal !important; }
 mark { background: #fef08a; color: inherit; border-radius: 2px; padding: 0 1px; }
 
+/* Đợt 8 — vùng TRÊN (frame lọc, cố định) và vùng DƯỚI (footer summary+pager,
+   cố định) không co giãn (flex: 0 0 auto); chỉ .table-wrap (vùng GIỮA) cuộn —
+   xem tiêu chí 1. KHÔNG đặt overflow:hidden/auto trên .filter-frame để dropdown
+   Multiselect (position:absolute) trong section nâng cao không bị cắt. */
+.filter-frame { flex: 0 0 auto; }
+.list-footer { flex: 0 0 auto; border-top: 1px solid #e2e8f0; padding-top: 6px; margin-top: 2px; }
+
+/* Đợt 8 tiêu chí 3 — thanh bấm mở/đóng "Bộ lọc nâng cao". */
+.filter-adv-toggle {
+  display: flex; align-items: center; gap: 6px; width: 100%; text-align: left;
+  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px;
+  padding: 6px 10px; font-size: 12px; font-weight: 600; color: #334155; cursor: pointer;
+}
+.filter-adv-toggle:hover { background: #eff6ff; border-color: #93c5fd; }
+
 /* ---------- Multiselect (checkbox-dropdown, tiêu chí 8) ---------- */
 .ms-wrap { position: relative; width: 100%; outline: none; }
 .ms-btn {
@@ -124,7 +145,14 @@ mark { background: #fef08a; color: inherit; border-radius: 2px; padding: 0 1px; 
 .ms-item-all { border-bottom: 1px solid #e5e7eb; margin-bottom: 3px; padding-bottom: 6px; font-weight: 600; }
 
 /* ---------- Bảng kết quả ---------- */
-.table-wrap { background: #fff; border-radius: 6px; overflow-x: auto; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+/* Đợt 8 tiêu chí 1 — vùng GIỮA: CHỈ vùng này cuộn dọc (flex:1 + overflow-y:
+   auto + min-height:0 để co lại thay vì tràn khỏi #list-view); vẫn giữ cuộn
+   ngang cho bảng rộng. thead có position:sticky (bên dưới) vẫn dính trong
+   scroll container này. */
+.table-wrap {
+  background: #fff; border-radius: 6px; overflow-x: auto; overflow-y: auto;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06); flex: 1 1 auto; min-height: 0;
+}
 table { border-collapse: collapse; width: 100%; font-size: 13px; }
 th, td { padding: 6px 8px; border-bottom: 1px solid #e5e7eb; text-align: left; white-space: nowrap; }
 th { background: #f8fafc; position: sticky; top: 0; }

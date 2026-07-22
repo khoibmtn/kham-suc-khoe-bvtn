@@ -77,9 +77,9 @@ def resolve_scope_where(pham_vi, gia_tri):
         try:
             vals = [int(v) for v in gia_tri]
         except (TypeError, ValueError):
-            raise ValueError('Mã cán bộ không hợp lệ')
+            raise ValueError('Mã nhân viên không hợp lệ')
         if not vals:
-            raise ValueError('Thiếu danh sách cán bộ')
+            raise ValueError('Thiếu danh sách nhân viên')
         return f"nguoi_ra_soat_id IN ({','.join('?' * len(vals))})", vals
     if pham_vi == 'trang_thai':
         vals = [v for v in gia_tri if v]

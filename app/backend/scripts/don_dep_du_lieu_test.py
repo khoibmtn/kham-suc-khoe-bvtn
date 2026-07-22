@@ -5,7 +5,7 @@ don_dep_du_lieu_test.py — script MỘT LẦN dọn dữ liệu test về basel
 (2026-07-22 — tạo bởi phiên kiểm thử API tự động lên các hồ sơ mẫu
 00001..00004, 00614, 00700, 01236 + đợt xuất thử xã Nam Triệu).
 
-KHÔNG chạy lại sau khi cán bộ đã bắt đầu rà soát thật — script này hoàn
+KHÔNG chạy lại sau khi nhân viên đã bắt đầu rà soát thật — script này hoàn
 nguyên MỌI trường ho_so theo gia_tri_cu SỚM NHẤT ghi trong nhat_ky, nên nếu
 chạy lại sau khi có sửa đổi thật, nó sẽ xóa nhầm các sửa đổi đó.
 

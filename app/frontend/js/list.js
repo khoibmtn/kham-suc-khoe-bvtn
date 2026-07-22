@@ -69,8 +69,16 @@ const ListView = (() => {
       : 'Tìm mọi cột: tên, CCCD, xã, mã, bệnh...';
   }
 
+  const ADV_FILTERS_KEY = 'ksk_adv_filters';
+
   function buildLayout() {
     root.innerHTML = '';
+
+    // Đợt 8 tiêu chí 1: #list-view chia 3 vùng — filterFrame (TRÊN, cố định),
+    // tableWrap (GIỮA, cuộn), footer (DƯỚI, cố định: summary + pager).
+    const filterFrame = document.createElement('div');
+    filterFrame.className = 'filter-frame';
+
     const bar = document.createElement('div');
     bar.className = 'filter-bar';
 
@@ -114,11 +122,11 @@ const ListView = (() => {
 
     bar.appendChild(rowText);
 
-    // ---- Hàng 2: dropdown đa chọn ----
-    const rowSelect = document.createElement('div');
-    rowSelect.className = 'filter-row filter-row-select';
+    // ---- Hàng 2 (mặc định hiện, tiêu chí 2): Xã/phường + Cờ cảnh báo ----
+    const rowBasic = document.createElement('div');
+    rowBasic.className = 'filter-row filter-row-select';
 
-    rowSelect.appendChild(fieldBox('Xã/phường', () => {
+    rowBasic.appendChild(fieldBox('Xã/phường', () => {
       const ms = Multiselect.create({
         options: danhMuc.xa.map((x) => ({ ma: x.ma, ten: x.ten })),
         selected: filters.xa,
@@ -128,7 +136,7 @@ const ListView = (() => {
       return ms.el;
     }));
 
-    rowSelect.appendChild(fieldBox('Cờ cảnh báo', () => {
+    rowBasic.appendChild(fieldBox('Cờ cảnh báo', () => {
       const ms = Multiselect.create({
         options: danhMuc.co_qc.map((f) => ({
           ma: f.ma, ten: f.ten, title: f.y_nghia,
@@ -141,54 +149,9 @@ const ListView = (() => {
       return ms.el;
     }));
 
-    rowSelect.appendChild(fieldBox('Phân loại SK', () => {
-      const ms = Multiselect.create({
-        options: danhMuc.phan_loai_sk.map((p) => ({ ma: p.ma, ten: p.ten })),
-        selected: filters.phan_loai_sk,
-        onChange: (vals) => { filters.phan_loai_sk = vals; page = 1; reload(); },
-      });
-      msRefs.pl = ms;
-      return ms.el;
-    }));
+    bar.appendChild(rowBasic);
 
-    rowSelect.appendChild(fieldBox('Trạng thái', () => {
-      const ms = Multiselect.create({
-        options: danhMuc.trang_thai.map((t) => ({ ma: t.ma, ten: t.ten })),
-        selected: filters.trang_thai,
-        onChange: (vals) => { filters.trang_thai = vals; page = 1; reload(); },
-      });
-      msRefs.trangThai = ms;
-      return ms.el;
-    }));
-
-    rowSelect.appendChild(fieldBox('Cơ quan bệnh chính', () => {
-      const ms = Multiselect.create({
-        options: danhMuc.co_quan_benh_chinh.map((c) => ({ ma: c.ma, ten: c.ten })),
-        selected: filters.co_quan_benh_chinh,
-        onChange: (vals) => { filters.co_quan_benh_chinh = vals; page = 1; reload(); },
-      });
-      msRefs.coQuan = ms;
-      return ms.el;
-    }));
-
-    if (user.vai_tro === 'admin') {
-      rowSelect.appendChild(fieldBox('Cán bộ rà soát', () => {
-        const sel = document.createElement('select');
-        sel.className = 'filter-select';
-        const optAll = document.createElement('option'); optAll.value = ''; optAll.textContent = '(Tất cả)';
-        sel.appendChild(optAll);
-        (danhMuc.nguoi_dung || []).forEach((n) => {
-          const o = document.createElement('option'); o.value = n.ma; o.textContent = n.ten; sel.appendChild(o);
-        });
-        msRefs.nguoiRaSoatSel = sel;
-        sel.addEventListener('change', () => { filters.nguoi_ra_soat_id = sel.value; page = 1; reload(); });
-        return sel;
-      }));
-    }
-
-    bar.appendChild(rowSelect);
-
-    // ---- Hàng 3: ngày khám ----
+    // ---- Hàng 3: ngày khám (mặc định hiện) ----
     const rowDate = document.createElement('div');
     rowDate.className = 'filter-row filter-row-date';
 
@@ -234,7 +197,77 @@ const ListView = (() => {
 
     bar.appendChild(rowDate);
 
-    // ---- Hàng 4: hành động ----
+    // ---- Section "Bộ lọc nâng cao" (tiêu chí 3): thu gọn được, mặc định
+    // ĐÓNG, chứa Phân loại SK / Trạng thái / Cơ quan bệnh chính / Nhân viên
+    // rà soát (chỉ admin). Trạng thái mở/đóng nhớ ở localStorage. ----
+    const advPanel = document.createElement('div');
+    advPanel.className = 'filter-row filter-row-select';
+    advPanel.id = 'filter-adv-panel';
+
+    advPanel.appendChild(fieldBox('Phân loại SK', () => {
+      const ms = Multiselect.create({
+        options: danhMuc.phan_loai_sk.map((p) => ({ ma: p.ma, ten: p.ten })),
+        selected: filters.phan_loai_sk,
+        onChange: (vals) => { filters.phan_loai_sk = vals; page = 1; reload(); },
+      });
+      msRefs.pl = ms;
+      return ms.el;
+    }));
+
+    advPanel.appendChild(fieldBox('Trạng thái', () => {
+      const ms = Multiselect.create({
+        options: danhMuc.trang_thai.map((t) => ({ ma: t.ma, ten: t.ten })),
+        selected: filters.trang_thai,
+        onChange: (vals) => { filters.trang_thai = vals; page = 1; reload(); },
+      });
+      msRefs.trangThai = ms;
+      return ms.el;
+    }));
+
+    advPanel.appendChild(fieldBox('Cơ quan bệnh chính', () => {
+      const ms = Multiselect.create({
+        options: danhMuc.co_quan_benh_chinh.map((c) => ({ ma: c.ma, ten: c.ten })),
+        selected: filters.co_quan_benh_chinh,
+        onChange: (vals) => { filters.co_quan_benh_chinh = vals; page = 1; reload(); },
+      });
+      msRefs.coQuan = ms;
+      return ms.el;
+    }));
+
+    if (user.vai_tro === 'admin') {
+      advPanel.appendChild(fieldBox('Nhân viên rà soát', () => {
+        const sel = document.createElement('select');
+        sel.className = 'filter-select';
+        const optAll = document.createElement('option'); optAll.value = ''; optAll.textContent = '(Tất cả)';
+        sel.appendChild(optAll);
+        (danhMuc.nguoi_dung || []).forEach((n) => {
+          const o = document.createElement('option'); o.value = n.ma; o.textContent = n.ten; sel.appendChild(o);
+        });
+        msRefs.nguoiRaSoatSel = sel;
+        sel.addEventListener('change', () => { filters.nguoi_ra_soat_id = sel.value; page = 1; reload(); });
+        return sel;
+      }));
+    }
+
+    const advOpen = localStorage.getItem(ADV_FILTERS_KEY) === '1';
+    advPanel.hidden = !advOpen;
+
+    const advToggleBtn = document.createElement('button');
+    advToggleBtn.type = 'button'; advToggleBtn.id = 'btn-adv-toggle';
+    advToggleBtn.className = 'filter-adv-toggle';
+    advToggleBtn.textContent = (advOpen ? '▾ ' : '▸ ') + 'Bộ lọc nâng cao';
+    advToggleBtn.addEventListener('click', () => {
+      const willOpen = advPanel.hidden; // đang ẩn -> sắp mở
+      advPanel.hidden = !willOpen;
+      advToggleBtn.textContent = (willOpen ? '▾ ' : '▸ ') + 'Bộ lọc nâng cao';
+      localStorage.setItem(ADV_FILTERS_KEY, willOpen ? '1' : '0');
+    });
+
+    bar.appendChild(advToggleBtn);
+    bar.appendChild(advPanel);
+
+    // ---- Hàng hành động: Xóa hết bộ lọc — LUÔN ở frame cố định, KHÔNG nằm
+    // trong section nâng cao ẩn (tiêu chí 3) ----
     const rowActions = document.createElement('div');
     rowActions.className = 'filter-row filter-row-actions';
     const clearAllBtn = document.createElement('button');
@@ -244,9 +277,27 @@ const ListView = (() => {
     rowActions.appendChild(clearAllBtn);
     bar.appendChild(rowActions);
 
-    root.appendChild(bar);
+    filterFrame.appendChild(bar);
+    root.appendChild(filterFrame);
 
-    // ---- Đếm kết quả + chọn số dòng/trang (tiêu chí 6, Đợt 7 criterion 1) ----
+    // ---- Vùng GIỮA: bảng danh sách (cuộn dọc — tiêu chí 1) ----
+    const tableWrap = document.createElement('div');
+    tableWrap.className = 'table-wrap';
+    const table = document.createElement('table');
+    table.id = 'ho-so-table';
+    // Đợt 7 criterion 2/3: STT liên tục ở ĐẦU bảng, "Mã hồ sơ" trở lại CUỐI.
+    table.innerHTML = `<thead><tr>
+        <th>STT</th><th>Họ tên</th><th>Năm sinh</th><th>Giới</th><th>CCCD</th>
+        <th>Xã</th><th>Ngày khám</th><th>Phân loại SK</th><th>Bệnh chính</th>
+        <th>Số cờ</th><th>Trạng thái</th><th>Mã hồ sơ</th></tr></thead><tbody></tbody>`;
+    tableWrap.appendChild(table);
+    root.appendChild(tableWrap);
+
+    // ---- Vùng DƯỚI: footer cố định — đếm kết quả + số dòng/trang + pager
+    // (tiêu chí 1, tiêu chí 6 Đợt 7 criterion 1) ----
+    const footer = document.createElement('div');
+    footer.className = 'list-footer';
+
     const summaryRow = document.createElement('div');
     summaryRow.className = 'list-summary-row';
 
@@ -277,24 +328,14 @@ const ListView = (() => {
     pageSizeBox.appendChild(pageSizeLbl);
     summaryRow.appendChild(pageSizeBox);
 
-    root.appendChild(summaryRow);
-
-    const tableWrap = document.createElement('div');
-    tableWrap.className = 'table-wrap';
-    const table = document.createElement('table');
-    table.id = 'ho-so-table';
-    // Đợt 7 criterion 2/3: STT liên tục ở ĐẦU bảng, "Mã hồ sơ" trở lại CUỐI.
-    table.innerHTML = `<thead><tr>
-        <th>STT</th><th>Họ tên</th><th>Năm sinh</th><th>Giới</th><th>CCCD</th>
-        <th>Xã</th><th>Ngày khám</th><th>Phân loại SK</th><th>Bệnh chính</th>
-        <th>Số cờ</th><th>Trạng thái</th><th>Mã hồ sơ</th></tr></thead><tbody></tbody>`;
-    tableWrap.appendChild(table);
-    root.appendChild(tableWrap);
+    footer.appendChild(summaryRow);
 
     const pager = document.createElement('div');
     pager.className = 'pager';
     pager.id = 'pager';
-    root.appendChild(pager);
+    footer.appendChild(pager);
+
+    root.appendChild(footer);
   }
 
   const TABLE_COLSPAN = 12;

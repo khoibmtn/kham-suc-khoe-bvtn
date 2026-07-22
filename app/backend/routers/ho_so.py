@@ -269,12 +269,12 @@ def _load_ho_so_or_404(conn, ma_ho_so, user):
                         (ma_ho_so,)).fetchone()
     if not row:
         raise HTTPException(404, 'Không tìm thấy hồ sơ')
-    # Đợt 2 criterion 4: hồ sơ CHƯA giao (nguoi_ra_soat_id IS NULL) mọi cán bộ
+    # Đợt 2 criterion 4: hồ sơ CHƯA giao (nguoi_ra_soat_id IS NULL) mọi nhân viên
     # đều truy cập được; hồ sơ ĐÃ giao chỉ người được giao + admin.
     if (user['vai_tro'] != 'admin' and row['nguoi_ra_soat_id'] is not None
             and row['nguoi_ra_soat_id'] != user['id']):
         raise HTTPException(
-            403, 'Hồ sơ đã được giao cho cán bộ khác — không thuộc phạm vi rà '
+            403, 'Hồ sơ đã được giao cho nhân viên khác — không thuộc phạm vi rà '
                  'soát của bạn')
     return row
 
@@ -403,7 +403,7 @@ def patch_ho_so(ma_ho_so: str, body: PatchBody,
                 conn.commit()
 
         # Đợt 5 criterion 1/3: chiều cao/cân nặng vừa đổi + đủ dữ liệu -> tự
-        # tính lại và GHI ĐÈ kham_the_luc_pl (kể cả đè giá trị cán bộ đã chỉnh
+        # tính lại và GHI ĐÈ kham_the_luc_pl (kể cả đè giá trị nhân viên đã chỉnh
         # tay trước đó). Chỉ đưa vào `updated` (để UI nhảy radio) khi giá trị
         # THỰC SỰ khác với trước lúc PATCH này — tránh nhảy/chớp radio vô ích.
         if pl_can_tinh_lai:

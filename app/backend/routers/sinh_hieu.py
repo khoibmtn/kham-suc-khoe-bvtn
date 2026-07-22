@@ -65,11 +65,11 @@ def _load_row(conn, ma_ho_so, user):
     row = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?', (ma_ho_so,)).fetchone()
     if not row:
         return None, 'Không tìm thấy hồ sơ'
-    # Đợt 2 criterion 4: hồ sơ CHƯA giao (nguoi_ra_soat_id IS NULL) mọi cán bộ
+    # Đợt 2 criterion 4: hồ sơ CHƯA giao (nguoi_ra_soat_id IS NULL) mọi nhân viên
     # đều truy cập được; hồ sơ ĐÃ giao chỉ người được giao + admin.
     if (user['vai_tro'] != 'admin' and row['nguoi_ra_soat_id'] is not None
             and row['nguoi_ra_soat_id'] != user['id']):
-        return None, 'Hồ sơ đã được giao cho cán bộ khác — không thuộc phạm vi rà soát của bạn'
+        return None, 'Hồ sơ đã được giao cho nhân viên khác — không thuộc phạm vi rà soát của bạn'
     return row, None
 
 
@@ -463,7 +463,7 @@ async def import_excel(file: UploadFile = File(...), user=Depends(auth.get_curre
                 khong_khop.append({
                     'dong': dong_so,
                     'ly_do': (f"Khớp hồ sơ {matched_row['ma_ho_so']} nhưng đã được giao "
-                              'cho cán bộ khác — ngoài phạm vi rà soát của bạn'),
+                              'cho nhân viên khác — ngoài phạm vi rà soát của bạn'),
                 })
                 continue
 

@@ -116,7 +116,7 @@ def theo_xa(user=Depends(auth.get_current_user)):
 @router.get('/theo-can-bo')
 def theo_can_bo(user=Depends(auth.get_current_user)):
     """§8.3: giao/hoàn thành/%/lượt sửa/hoạt động gần nhất/năng suất 7
-    ngày. Chỉ tính cán bộ đang hoạt động (dang_hoat_dong=1)."""
+    ngày. Chỉ tính nhân viên đang hoạt động (dang_hoat_dong=1)."""
     conn = db.get_connection()
     try:
         users = conn.execute(

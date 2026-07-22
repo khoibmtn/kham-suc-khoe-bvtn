@@ -133,7 +133,7 @@ const FIELD_DEFS = [
   { code: 'ma_benh_kem', label: 'Mã bệnh kèm', widget: 'readonly', group: 'F', nguon: 'trong' },
   { code: 'ten_benh_kem', label: 'Tên bệnh kèm', widget: 'readonly', group: 'F', nguon: 'trong' },
   { code: 'ghi_chu_ra_soat', label: 'Ghi chú rà soát (hệ thống)', widget: 'textarea', group: 'F', nguon: 'trong' },
-  { code: 'ghi_chu_can_bo', label: 'Ghi chú cán bộ', widget: 'textarea', group: 'F', nguon: 'trong' },
+  { code: 'ghi_chu_can_bo', label: 'Ghi chú nhân viên', widget: 'textarea', group: 'F', nguon: 'trong' },
 ];
 
 const FIELD_BY_CODE = Object.fromEntries(FIELD_DEFS.map((f) => [f.code, f]));

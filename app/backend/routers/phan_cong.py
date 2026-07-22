@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-phan_cong.py — admin giao hồ sơ cho cán bộ theo xã / khoảng mã / danh sách
+phan_cong.py — admin giao hồ sơ cho nhân viên theo xã / khoảng mã / danh sách
 chọn tay (§3.1). Ghi vào `phan_cong` VÀ cập nhật `ho_so.nguoi_ra_soat_id`
 cho các bản ghi khớp phạm vi.
 
@@ -60,7 +60,7 @@ def phan_cong(body: PhanCongBody, admin=Depends(auth.require_admin)):
         target = conn.execute('SELECT id FROM nguoi_dung WHERE id=? AND '
                                'dang_hoat_dong=1', (body.nguoi_dung_id,)).fetchone()
         if not target:
-            raise HTTPException(404, 'Không tìm thấy cán bộ')
+            raise HTTPException(404, 'Không tìm thấy nhân viên')
 
         where_sql, args = _matching_where(body.pham_vi_loai, body.pham_vi_gia_tri)
 

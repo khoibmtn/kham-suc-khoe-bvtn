@@ -97,7 +97,7 @@ def goi_y_the_luc(chieu_cao_cm, can_nang_kg, gioi_tinh):
             f'cân nặng {w:g}kg → loại {ten_loai[loai_cn]}; '
             f'lấy loại xấu nhất → gợi ý loại {ten_loai[pl]}. '
             'Thiếu số đo vòng ngực nên đây chỉ là GỢI Ý SƠ BỘ — '
-            'cán bộ phải xác nhận trước khi ghi kết luận.'
+            'nhân viên phải xác nhận trước khi ghi kết luận.'
         ),
     }
 
@@ -110,7 +110,7 @@ def tinh_va_ap_pl(conn, ma_ho_so, user_id):
     (thiếu chiều cao hoặc cân nặng) -> KHÔNG đụng tới `kham_the_luc_pl` đã có
     (criterion 3: xóa sinh hiệu không tự xóa PL) -> trả None. Nếu đủ dữ liệu,
     so với giá trị đang lưu — KHÁC thì UPDATE + ghi nhat_ky (ghi đè cả khi
-    trước đó là giá trị cán bộ tự chỉnh tay — đúng criterion 3), rồi trả về
+    trước đó là giá trị nhân viên tự chỉnh tay — đúng criterion 3), rồi trả về
     phân loại (int, có thể là giá trị KHÔNG đổi nếu đã đúng từ trước).
 
     Caller tự so sánh với giá trị cũ (đọc trước khi gọi hàm này) để biết có

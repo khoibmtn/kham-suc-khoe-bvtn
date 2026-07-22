@@ -1,5 +1,5 @@
 // nguoidung.js — Đợt 2 criteria 1+2: màn "Người dùng" (admin quản lý tài
-// khoản cán bộ rà soát) — tạo, sửa họ tên, đặt lại mật khẩu mặc định,
+// khoản nhân viên rà soát) — tạo, sửa họ tên, đặt lại mật khẩu mặc định,
 // vô hiệu hóa/kích hoạt, xóa (chỉ khi chưa có dấu vết).
 
 const NguoiDungView = (() => {
@@ -59,7 +59,7 @@ const NguoiDungView = (() => {
     tbody.innerHTML = '';
     users.forEach((u) => {
       const tr = document.createElement('tr');
-      const vaiTroNhan = u.vai_tro === 'admin' ? 'Quản trị' : 'Cán bộ rà soát';
+      const vaiTroNhan = u.vai_tro === 'admin' ? 'Quản trị' : 'Nhân viên rà soát';
       const trangThaiNhan = u.dang_hoat_dong ? 'Đang hoạt động' : 'Đã vô hiệu hóa';
       tr.innerHTML = `
         <td>${esc(u.ho_ten)}</td>

@@ -84,7 +84,7 @@ FLAG_META = {
 }
 RED_FLAGS = {k for k, v in FLAG_META.items() if v['muc'] == 'do'}
 
-# Trường "suy" (§5) -> cờ liên quan sẽ được gỡ khi cán bộ xác nhận (§3.4.5)
+# Trường "suy" (§5) -> cờ liên quan sẽ được gỡ khi nhân viên xác nhận (§3.4.5)
 FIELD_TO_FLAGS = {
     'ngay_sinh': ['NGAY_SINH_UOC_LUONG', 'NAM_SINH_SAI_NGUON'],
     'so_cccd': ['THIEU_CCCD'],
