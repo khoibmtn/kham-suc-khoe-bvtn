@@ -1,66 +1,65 @@
-# Nghiên cứu: chuyển KSK NCT sang chạy trên Vercel
+# Plan chuyển KSK NCT sang chạy trên Vercel (nghiên cứu 2026-07)
 
-> Kết luận ngắn: **CÓ THỂ, nhưng là một cuộc viết lại lớn tầng dữ liệu + mất
-> vĩnh viễn chức năng Xuất .xlsm trên máy chủ.** Vercel là nền tảng ÍT phù hợp
-> nhất với app này. Dưới đây là phân tích trung thực + con đường cụ thể nếu anh
-> vẫn muốn làm.
+> Cập nhật sau khi tra cứu: **khả thi & MIỄN PHÍ**, công sức vừa phải (khoảng
+> 1–2 đợt làm việc). Hai thay đổi 2026 làm điều này dễ hơn hẳn:
+> - Vercel **Fluid Compute** (mặc định): Hobby free = **300 giây/hàm, 2GB RAM**
+>   (trước 60s/512MB) → hết OOM, xuất .xlsm chạy được.
+> - **libSQL/Turso** driver Python `libsql_experimental` **tương thích sqlite3**
+>   → đổi DB gần như drop-in, KHÔNG phải viết lại async.
 
-## 1. Vì sao app hiện tại KHÔNG chạy thẳng trên Vercel
-
-Vercel = **serverless functions**: mỗi request bật một hàm ngắn rồi tắt.
-Hệ quả với app của mình:
-
-| Đặc điểm app hiện tại | Vercel | Xử lý |
-|---|---|---|
-| SQLite ghi ra **file trên đĩa** | Đĩa serverless **tạm thời, mất sau mỗi request** | PHẢI đổi sang DB đám mây |
-| **Xuất .xlsm** (mở template 1,3MB + subprocess mỗi xã, chạy vài phút, ghi file) | Timeout 10–60s, **không có subprocess, không đĩa bền** | Không chạy được — phải xuất ở nơi khác |
-| Backup/snapshot theo ngày, litestream | Không có tiến trình chạy nền | Bỏ / thay bằng Vercel Cron |
-| Import `build/` (275 rule ICD, concepts.json 316KB) lúc khởi động | Nạp lại mỗi lần "cold start" → chậm, dễ vượt giới hạn | Chỉ nạp khi cần (lazy) |
-| Phiên đăng nhập cookie ký số | ✅ Hợp serverless (không cần trạng thái) | Giữ nguyên |
-
-## 2. Kiến trúc Vercel khả thi
+## 1. Kiến trúc đích
 
 ```
-Trình duyệt ─► Vercel (FastAPI chạy serverless qua ASGI handler)
-                   │
-                   └─► Turso (libSQL) — DB đám mây TƯƠNG THÍCH SQLite
+Trình duyệt ─► Vercel (FastAPI chạy zero-config, 300s/2GB, Fluid Compute)
+                   │  (đọc: replica cục bộ ở /tmp — nhanh; ghi: đẩy về primary)
+                   └─► Turso (libSQL) — DB đám mây, tương thích 100% file SQLite
 ```
 
-- **DB: dùng Turso (libSQL).** Đây là lựa chọn tốt nhất vì **libSQL = SQLite**,
-  nên phần lớn câu SQL (kể cả FTS5 tra ICD) giữ được, không phải chuyển sang
-  Postgres. Free tier rộng (9GB, ~1 tỉ lượt đọc/tháng). Truy cập qua HTTP nên
-  hợp serverless.
-  - Thay `sqlite3.connect(file)` bằng client libSQL (`libsql-client`), đổi cách
-    lấy kết nối trong `backend/db.py` và MỌI chỗ `conn.execute(...)` ở các
-    router (đây là phần nặng nhất — chạm gần như toàn bộ backend).
-- **FastAPI trên Vercel:** thêm `api/index.py` xuất `app` (ASGI) + `vercel.json`
-  định tuyến mọi request về đó. Frontend tĩnh phục vụ qua Vercel luôn.
-- **Xuất .xlsm:** KHÔNG chạy trên Vercel. Vẫn xuất **trên máy cá nhân** như hiện
-  tại (kéo DB từ Turso về rồi `run.sh` → màn Xuất file). Đây là mất mát cố hữu.
+- **DB: Turso (libSQL).** File `ksk.db` hiện tại đưa lên Turso **không cần
+  migrate** (cùng định dạng SQLite; FTS5 tra ICD giữ nguyên). Trên serverless
+  dùng **embedded replica**: `libsql.connect("/tmp/ksk.db", sync_url=..., auth_token=...)`
+  → mỗi cold start `con.sync()` kéo dữ liệu về `/tmp`, đọc cục bộ (nhanh), ghi
+  đẩy thẳng về primary (bền, nhất quán giữa nhiều nhân viên).
+- **FastAPI: zero-config.** Vercel tự nhận `app` (ASGI), không cần vercel.json
+  cho phần cơ bản. Frontend tĩnh phục vụ luôn qua chính app (mount StaticFiles
+  no-cache đã có).
+- **Auth cookie ký số:** đã stateless → chạy tốt trên serverless, không đổi.
 
-## 3. Khối lượng công việc (ước lượng thật)
+## 2. Việc cần làm (theo module)
 
-| Việc | Mức độ |
-|---|---|
-| Đổi tầng dữ liệu `db.py` + toàn bộ `conn.execute` sang libSQL (có thể phải async) | **Lớn** — chạm mọi router |
-| Viết `api/index.py` + `vercel.json` + đóng gói frontend | Vừa |
-| Chuyển 13.326 hồ sơ + danh mục vào Turso (script migrate 1 lần) | Vừa |
-| Tách chức năng Xuất .xlsm ra khỏi luồng serverless | Vừa |
-| Xử lý cold-start nặng (lazy import `build/`) | Vừa |
-| Kiểm thử lại toàn bộ trên môi trường serverless | Lớn |
+| # | Việc | Mức | Ghi chú |
+|---|---|---|---|
+| 1 | `backend/db.py`: `get_connection()` trả về **libsql** khi có biến `TURSO_URL` (serverless), ngược lại vẫn dùng `sqlite3` (chạy local) | Vừa | Rủi ro chính: cách truy cập `row['ten_cot']`. sqlite3 dùng `row_factory=Row`; phải xác minh libsql trả tên cột được không — nếu không, viết 1 lớp bọc Row nhỏ (dùng chung, không phải sửa từng router) |
+| 2 | Điểm vào Vercel: thêm `api/index.py` (hoặc `pyproject.toml [tool.vercel] entrypoint`) trỏ tới app; sửa `config.py` cho đúng đường dẫn khi chạy trên Vercel (build/, doc/ có sẵn trong git; output/ không cần lúc chạy) | Vừa | |
+| 3 | `requirements.txt`: thêm `libsql-experimental`, bỏ `uvicorn` (chỉ dùng local) | Nhỏ | |
+| 4 | **Migrate dữ liệu:** `turso db create ksk --from-file app/data/ksk.db` (đưa nguyên file 33MB lên). Lấy URL + auth token → đặt vào Vercel env `TURSO_URL`, `TURSO_AUTH_TOKEN` | Nhỏ | 1 lệnh |
+| 5 | **Xuất .xlsm:** bỏ subprocess (vốn chỉ để tiết kiệm RAM trên Render 512MB) → chạy in-process từng xã, ghi ra `/tmp`, stream tải về. Đặt `maxDuration: 300` cho route này | Vừa | HOẶC giữ xuất file **ở máy cá nhân** như hiện tại → công sức = 0 |
+| 6 | Bỏ backup-ra-file lúc khởi động (serverless không giữ file); Turso lo bền + có point-in-time. Giữ `_snapshot_hom_nay` (ghi vào Turso) | Nhỏ | |
+| 7 | Lazy-import `build/` (mapper, icd_map, concepts.json) chỉ trong route xuất file → cold start các route thường nhẹ | Nhỏ | |
+| 8 | Kiểm thử trên Vercel Preview (đăng nhập, tìm kiếm, autosave, sinh hiệu, dashboard) | Vừa | |
 
-→ Tương đương **vài đợt làm việc lớn**, và kết quả vẫn **thiếu chức năng xuất
-file** trên máy chủ.
+## 3. Rủi ro cần thử trước (spike 30 phút)
+1. **`row['ten_cot']` với libsql**: viết thử 1 script `libsql.connect + execute + fetchone`, kiểm tra truy cập cột theo tên. Đây là điểm quyết định "drop-in" hay phải bọc Row. → làm ĐẦU TIÊN.
+2. **Cold-start sync 33MB** về `/tmp` mất bao lâu (ảnh hưởng độ trễ request đầu). Partial-sync giảm nhẹ; Fluid giữ instance ấm.
+3. **FTS5 dm_icd_fts** hoạt động qua Turso (bảng ảo + trigger có sẵn trong file upload — cần xác nhận sau migrate).
 
-## 4. Khuyến nghị thẳng thắn
+## 4. Bảo mật (dữ liệu y tế)
+Turso lưu dữ liệu trên đám mây (nước ngoài). Có tùy chọn **mã hóa**
+(`encryption_key`) để dữ liệu trên Turso ở dạng mã hóa. Repo giữ **Private**.
+Anh đã xác nhận tự chịu trách nhiệm bảo mật.
 
-1. **Trước mắt dùng LAN** (đã dựng xong — xem `DEPLOY_LAN.md`): ổn định, nhanh,
-   đủ chức năng kể cả xuất file, dữ liệu không rời cơ quan. Phù hợp nhất cho một
-   đợt khám đang diễn ra.
-2. **Nếu bắt buộc cần truy cập từ xa qua internet:** con đường tốn ít công và ổn
-   hơn Vercel là một **VPS nhỏ** (hoặc Render trả phí ~$7) chạy y nguyên app này
-   (SQLite + đĩa bền) — không phải viết lại gì. Vercel chỉ nên chọn nếu anh thực
-   sự muốn hệ serverless và chấp nhận viết lại + mất chức năng xuất trên máy chủ.
-3. Khi anh quyết theo Vercel, báo tôi — tôi sẽ lập plan chi tiết theo mục 2–3 ở
-   trên rồi giao subagent thực hiện từng phần, migrate dữ liệu sang Turso, và
-   giữ chức năng xuất file chạy ở máy cá nhân.
+## 5. Chi phí & so sánh
+- **Vercel Hobby + Turso free = 0đ.** Không ngủ như Render free? Vercel functions
+  vẫn cold-start nhưng không "ngủ 15 phút" kiểu Render; Fluid giữ ấm tốt hơn.
+- Khác thảm họa Render+B2+Litestream: Turso là DB được quản lý (không tự dựng
+  sao lưu bằng Litestream → không đụng trần tải B2). **Không lặp lại sự cố cũ.**
+
+## 6. Đề xuất trình tự khi anh muốn làm
+1. Tôi làm **spike** mục 3.1 (xác minh row-access) — quyết định độ lớn thật.
+2. Anh tạo tài khoản **Turso** + **Vercel** (như các app khác của anh), chạy
+   `turso db create --from-file` để đưa dữ liệu lên (tôi hướng dẫn từng lệnh).
+3. Tôi lập plan chi tiết theo bảng mục 2 → giao subagent thực hiện từng phần →
+   deploy Preview → kiểm thử → chuyển Production.
+
+Tài liệu tham khảo: Vercel FastAPI (zero-config, Fluid 300s/2GB), Turso
+`libsql-experimental` (embedded replica, sqlite3-compat, FTS5).
