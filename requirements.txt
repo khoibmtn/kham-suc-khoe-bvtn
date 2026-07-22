@@ -1,0 +1,7 @@
+# requirements.txt ở GỐC repo — Vercel cài từ file này cho hàm api/index.py.
+# (uvicorn KHÔNG cần trên Vercel; chỉ dùng local qua app/requirements.txt.)
+fastapi
+openpyxl
+rapidfuzz
+python-multipart
+libsql-experimental
