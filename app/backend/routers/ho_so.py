@@ -138,6 +138,15 @@ def _like_tokens(col, q_kd):
             [f'% {t} %' for t in toks])
 
 
+def _order_by(params):
+    """Sắp xếp danh sách (phản hồi anh Khôi): khi lọc cờ CCCD_TRUNG -> theo cột
+    CCCD (các CCCD trùng nằm cạnh nhau để đối chiếu); các trường hợp khác ->
+    theo Họ tên. tt làm khoá phụ cho ổn định."""
+    if 'CCCD_TRUNG' in (params.get('co_qc') or []):
+        return 'so_cccd, ho_ten, tt'
+    return 'ho_ten, tt'
+
+
 def _parse_list_params(request: Request):
     qp = request.query_params
     return {
@@ -205,6 +214,7 @@ def list_ho_so(request: Request, page: int = Query(1, ge=1),
         q_raw = (params.get('q') or legacy_ho_ten or '').strip()
         hoten_only = bool(legacy_ho_ten) or (
             (params.get('q_hoten_only') or '').strip().lower() in ('1', 'true', 'yes'))
+        order = _order_by(params)
 
         # PLAN_PERF.md §2 — SQL-paginated bằng cột ho_ten_kd/search_blob_kd
         # (đã tính sẵn, bỏ dấu + lowercase — services/fuzzy.build_search_cols)
@@ -220,7 +230,7 @@ def list_ho_so(request: Request, page: int = Query(1, ge=1),
             offset = (page - 1) * page_size
             page_rows = conn.execute(
                 f'SELECT * FROM ho_so WHERE {where_q} '
-                f'ORDER BY tt LIMIT ? OFFSET ?',
+                f'ORDER BY {order} LIMIT ? OFFSET ?',
                 args_q + [page_size, offset]).fetchall()
         elif q_raw:
             # tìm toàn cột (checkbox "Chỉ tìm họ tên" TẮT) — search_blob_kd
@@ -236,7 +246,7 @@ def list_ho_so(request: Request, page: int = Query(1, ge=1),
             offset = (page - 1) * page_size
             page_rows = conn.execute(
                 f'SELECT * FROM ho_so WHERE {where_q} '
-                f'ORDER BY (CASE WHEN {rank_sql} THEN 0 ELSE 1 END), tt '
+                f'ORDER BY (CASE WHEN {rank_sql} THEN 0 ELSE 1 END), {order} '
                 f'LIMIT ? OFFSET ?',
                 args_q + rank_args + [page_size, offset]).fetchall()
         else:
@@ -245,7 +255,7 @@ def list_ho_so(request: Request, page: int = Query(1, ge=1),
             offset = (page - 1) * page_size
             page_rows = conn.execute(
                 f'SELECT * FROM ho_so WHERE {where_sql} '
-                f'ORDER BY tt LIMIT ? OFFSET ?',
+                f'ORDER BY {order} LIMIT ? OFFSET ?',
                 args + [page_size, offset]).fetchall()
 
         items = []
