@@ -63,8 +63,16 @@ def build_where(params, user):
     args = []
 
     if user['vai_tro'] != 'admin':
-        where.append('(nguoi_ra_soat_id IS NULL OR nguoi_ra_soat_id = ?)')
-        args.append(user['id'])
+        # Đợt 10 criterion 2: user thường CÓ THỂ lọc "chỉ hồ sơ của tôi" bằng
+        # cách truyền chính id của mình; truyền id NGƯỜI KHÁC bị bỏ qua (coi
+        # như "Tất cả") để chống dò dữ liệu người khác qua tham số URL.
+        raso_param = params.get('nguoi_ra_soat_id')
+        if raso_param and str(raso_param) == str(user['id']):
+            where.append('nguoi_ra_soat_id = ?')
+            args.append(user['id'])
+        else:
+            where.append('(nguoi_ra_soat_id IS NULL OR nguoi_ra_soat_id = ?)')
+            args.append(user['id'])
     elif params.get('nguoi_ra_soat_id'):
         where.append('nguoi_ra_soat_id = ?')
         args.append(int(params['nguoi_ra_soat_id']))

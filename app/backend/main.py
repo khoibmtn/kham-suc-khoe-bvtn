@@ -17,6 +17,7 @@ from services import qc  # noqa: E402
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
+from starlette.types import Scope
 
 from routers import (ho_so, benh, icd, phan_cong, nguoi_dung, xuat_file,  # noqa: E402
                       dashboard, sinh_hieu, cai_dat)
@@ -86,7 +87,20 @@ def health():
     })
 
 
+class NoCacheStaticFiles(StaticFiles):
+    """Đợt 10 criterion 1: gắn Cache-Control: no-cache cho MỌI tài sản tĩnh
+    (index.html, /js/*.js, /app.css...) để mỗi lần deploy trình duyệt luôn
+    revalidate thay vì dùng bản cache cũ (gốc rễ "lỗi ma" sau deploy). Chỉ
+    ảnh hưởng mount tĩnh này — /api/* dùng router riêng, không đi qua đây."""
+
+    async def get_response(self, path: str, scope: Scope):
+        resp = await super().get_response(path, scope)
+        resp.headers['Cache-Control'] = 'no-cache, must-revalidate'
+        resp.headers['Pragma'] = 'no-cache'
+        return resp
+
+
 # Stub tĩnh cho frontend — sẽ có index.html/app.js/app.css thật ở Phase 1.
 if os.path.isdir(config.FRONTEND_DIR):
-    app.mount('/', StaticFiles(directory=config.FRONTEND_DIR, html=True),
+    app.mount('/', NoCacheStaticFiles(directory=config.FRONTEND_DIR, html=True),
               name='frontend')

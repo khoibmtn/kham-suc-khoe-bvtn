@@ -106,6 +106,15 @@ const Combobox = (() => {
       closeMenu();
     }
 
+    // Đợt 10 criterion 3: ô để TRỐNG lúc blur/Enter/Tab/Esc là XÓA CÓ CHỦ Ý
+    // — lưu null (gỡ giá trị khỏi hồ sơ), KHÔNG revert về giá trị cũ. save('')
+    // đi qua autosaveTracker (widgets.js): '' -> null trước khi PATCH.
+    function commitClear() {
+      el.value = '';
+      closeMenu();
+      save('');
+    }
+
     el.addEventListener('focus', openMenu);
 
     el.addEventListener('input', applyFilter);
@@ -126,7 +135,10 @@ const Combobox = (() => {
         scrollActiveIntoView();
       } else if (e.key === 'Enter') {
         e.preventDefault(); e.stopPropagation();
-        if (open && filtered.length) {
+        if (el.value.trim() === '') {
+          // Đợt 10 criterion 3: Enter trên ô TRỐNG = xóa có chủ ý.
+          commitClear();
+        } else if (open && filtered.length) {
           // Enter chọn mục highlight; nếu chưa highlight gì (activeIdx=-1,
           // vd vừa mở menu chưa gõ gì và giá trị cũ không khớp mục nào) thì
           // chọn KẾT QUẢ ĐẦU TIÊN của danh sách đã lọc (§4).
@@ -136,16 +148,15 @@ const Combobox = (() => {
         }
         FocusFlow.advance(el);
       } else if (e.key === 'Escape') {
-        // Đợt 4B criterion 7: Esc khi menu ĐANG MỞ chỉ đóng MENU (không chọn,
-        // khôi phục hiển thị) — stopPropagation CHỈ khi thực sự xử lý ở đây,
-        // để không nuốt mất phím Esc khi menu đã đóng sẵn (trường hợp đó cần
-        // nổi bọt lên đóng panel chi tiết như bình thường — không được gọi
-        // stopPropagation vô điều kiện, nếu không Esc sẽ bị "nuốt" câm lặng).
-        if (open) {
+        // Đợt 10 criterion 3: ưu tiên XÓA — nếu ô đang có giá trị (đang gõ
+        // dở HOẶC đã có giá trị lưu), Esc xóa trắng + lưu null + đóng menu.
+        // Chỉ khi KHÔNG có gì để xóa mới để Esc nổi bọt lên đóng panel chi
+        // tiết như bình thường (không stopPropagation).
+        const hasValue = el.value.trim() !== '' || !!save.getLast();
+        if (hasValue) {
           e.preventDefault();
           e.stopPropagation();
-          el.value = save.getLast();
-          closeMenu();
+          commitClear();
         }
       }
     });
@@ -156,6 +167,7 @@ const Combobox = (() => {
       setTimeout(() => {
         if (!open) return;
         const q = el.value.trim();
+        if (q === '') { commitClear(); return; } // Đợt 10 criterion 3: trống -> xóa có chủ ý
         const matched = allOptions.find((o) => o.ten === q);
         if (!matched) revertNoMatch(); // Tab/click ra ngoài không khớp -> khôi phục, không lưu rác
         else closeMenu();

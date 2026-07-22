@@ -234,20 +234,27 @@ const ListView = (() => {
       return ms.el;
     }));
 
-    if (user.vai_tro === 'admin') {
-      advPanel.appendChild(fieldBox('Nhân viên rà soát', () => {
-        const sel = document.createElement('select');
-        sel.className = 'filter-select';
-        const optAll = document.createElement('option'); optAll.value = ''; optAll.textContent = '(Tất cả)';
-        sel.appendChild(optAll);
+    // Đợt 10 criterion 2: LUÔN hiện dropdown "Nhân viên rà soát" — user
+    // thường chỉ thấy 2 lựa chọn (Tất cả / chính mình) để tự lọc "chỉ hồ sơ
+    // của tôi" vs "tất cả (của tôi + chưa giao)"; admin giữ danh sách đầy đủ.
+    advPanel.appendChild(fieldBox('Nhân viên rà soát', () => {
+      const sel = document.createElement('select');
+      sel.className = 'filter-select';
+      const optAll = document.createElement('option'); optAll.value = ''; optAll.textContent = '(Tất cả)';
+      sel.appendChild(optAll);
+      if (user.vai_tro === 'admin') {
         (danhMuc.nguoi_dung || []).forEach((n) => {
           const o = document.createElement('option'); o.value = n.ma; o.textContent = n.ten; sel.appendChild(o);
         });
-        msRefs.nguoiRaSoatSel = sel;
-        sel.addEventListener('change', () => { filters.nguoi_ra_soat_id = sel.value; page = 1; reload(); });
-        return sel;
-      }));
-    }
+      } else {
+        const o = document.createElement('option');
+        o.value = String(user.id); o.textContent = user.ho_ten;
+        sel.appendChild(o);
+      }
+      msRefs.nguoiRaSoatSel = sel;
+      sel.addEventListener('change', () => { filters.nguoi_ra_soat_id = sel.value; page = 1; reload(); });
+      return sel;
+    }));
 
     const advOpen = localStorage.getItem(ADV_FILTERS_KEY) === '1';
     advPanel.hidden = !advOpen;
