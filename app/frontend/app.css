@@ -512,3 +512,10 @@ details summary {
 
 /* Chỉ báo đang tải trong bảng danh sách (Vercel↔Turso ~1s) */
 .list-loading { text-align: center; color: #64748b; padding: 14px; font-style: italic; }
+
+/* Tiền sử & mọi trường checkbox: hiện [✓] Nhãn trên CÙNG MỘT DÒNG (checkbox
+   đứng trước nhãn) thay vì nhãn nằm trên, ô nằm dưới. (Phản hồi anh Khôi.) */
+.field.field-checkbox { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.field.field-checkbox > label { order: 2; display: inline; margin: 0; cursor: pointer; }
+.field.field-checkbox > input[type="checkbox"] { order: 1; width: auto; margin: 0; flex: 0 0 auto; }
+.field.field-checkbox .suy-warn, .field.field-checkbox .suy-confirm { order: 3; }
