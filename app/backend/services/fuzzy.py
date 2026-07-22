@@ -26,18 +26,41 @@ def strip_diacritics(s):
     return stripped.lower()
 
 
+def _token_score(token, words, cand):
+    """Điểm 1 từ khóa với 1 tên: nguyên từ > đầu từ > chuỗi con; 0 = trượt."""
+    if token in words:
+        return 300                      # khớp nguyên từ: "lợi" == từ "lợi"
+    if any(w.startswith(token) for w in words):
+        return 200                      # khớp đầu từ: "than" -> "thanh"
+    if token in cand:
+        return 100                      # chuỗi con bất kỳ (giữa từ)
+    return 0
+
+
 def match_score(query_stripped, candidate_raw):
-    """Điểm khớp: 0 = loại. Chỉ nhận khi query là CHUỖI CON nguyên văn của
-    tên đã bỏ dấu; điểm cao hơn khi khớp trọn từ / đầu từ."""
+    """Điểm khớp: 0 = loại. Query nhiều từ = TỪNG TỪ đều phải khớp đâu đó
+    trong tên (kiểu *phạm*hợp* — "phạm hợp" ra "PHẠM THỊ HỢP"), cộng dồn
+    điểm; thưởng nhẹ khi các từ xuất hiện đúng thứ tự."""
     cand = strip_diacritics(candidate_raw)
-    if not query_stripped or query_stripped not in cand:
+    tokens = query_stripped.split()
+    if not tokens or not cand:
         return 0
     words = cand.split()
-    if query_stripped in words:
-        return 300                      # khớp nguyên từ: "lợi" == từ "lợi"
-    if any(w.startswith(query_stripped) for w in words):
-        return 200                      # khớp đầu từ: "than" -> "thanh"
-    return 100                          # chuỗi con bất kỳ (giữa từ / nhiều từ)
+    total = 0
+    for t in tokens:
+        s = _token_score(t, words, cand)
+        if s == 0:
+            return 0                    # thiếu 1 từ là loại
+        total += s
+    # thưởng khi các từ khóa xuất hiện theo đúng thứ tự trong tên
+    pos, in_order = 0, True
+    for t in tokens:
+        i = cand.find(t, pos)
+        if i < 0:
+            in_order = False
+            break
+        pos = i + len(t)
+    return total + (50 if in_order else 0)
 
 
 def rank_by_name(rows, query, name_key='ho_ten', threshold=None, limit=50):
