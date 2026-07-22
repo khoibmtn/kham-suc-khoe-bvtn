@@ -151,7 +151,7 @@ const SinhHieuView = (() => {
               <th>Mã hồ sơ</th><th>Họ tên</th><th>Xã</th><th>Ngày khám</th>
               <th>Chiều cao (cm)</th><th>Cân nặng (kg)</th><th>BMI</th>
               <th>Mạch</th><th>Huyết áp</th>
-              <th>Phân loại thể lực</th>
+              <th>Phân loại thể lực</th><th></th>
             </tr>
           </thead>
           <tbody id="sh-tbody"></tbody>
@@ -220,7 +220,7 @@ const SinhHieuView = (() => {
   function renderRows() {
     const tbody = panel.querySelector('#sh-tbody');
     if (!items.length) {
-      tbody.innerHTML = '<tr><td colspan="10">Không có hồ sơ phù hợp bộ lọc</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="11">Không có hồ sơ phù hợp bộ lọc</td></tr>';
       return;
     }
     tbody.innerHTML = items.map((it) => `
@@ -235,12 +235,48 @@ const SinhHieuView = (() => {
         <td><input class="sh-cell" data-field="mach" type="text" value="${esc(it.mach ?? '')}"></td>
         <td><input class="sh-cell" data-field="huyet_ap" type="text" value="${esc(it.huyet_ap ?? '')}"></td>
         <td class="sh-pl-cell">${plCellHtml(it.kham_the_luc_pl)}</td>
+        <td class="sh-clear-td"><button class="sh-clear-btn" tabindex="-1"
+            title="Xóa toàn bộ sinh hiệu của dòng này">✕</button></td>
       </tr>`).join('');
 
     tbody.querySelectorAll('.sh-cell').forEach((input) => {
       input.addEventListener('blur', onCellBlur);
       input.addEventListener('keydown', onCellKeydown);
     });
+    // tabindex=-1 để Tab/Enter giữ nguyên luồng cao->cân->mạch->HA->hàng kế
+    tbody.querySelectorAll('.sh-clear-btn').forEach((btn) => {
+      btn.addEventListener('click', onClearRow);
+    });
+  }
+
+  // Xóa cả dòng: 1 PATCH duy nhất set 4 trường về null — backend tự xóa BMI +
+  // PL thể lực (hết đủ dữ liệu) + gắn lại cờ THIEU_SINH_HIEU + ghi nhat_ky.
+  async function onClearRow(e) {
+    const tr = e.target.closest('tr');
+    const ma = tr.dataset.ma;
+    const item = items.find((it) => it.ma_ho_so === ma);
+    if (!item) return;
+    try {
+      const res = await Api.sinhHieuPatch(ma, {
+        chieu_cao: null, can_nang: null, mach: null, huyet_ap: null,
+      });
+      ['chieu_cao', 'can_nang', 'mach', 'huyet_ap'].forEach((f) => { item[f] = null; });
+      item.chi_so_bmi = res.chi_so_bmi;
+      item.thieu_sinh_hieu = res.thieu_sinh_hieu;
+      item.kham_the_luc_pl = res.kham_the_luc_pl;
+      rowCells(tr).forEach((inp) => {
+        inp.value = '';
+        inp.classList.remove('invalid');
+        inp.removeAttribute('title');
+      });
+      tr.querySelector('.sh-bmi').textContent = res.chi_so_bmi ?? '—';
+      tr.querySelector('.sh-bmi').className = `sh-bmi ${bmiClass(res.chi_so_bmi)}`;
+      tr.querySelector('.sh-pl-cell').innerHTML = plCellHtml(res.kham_the_luc_pl);
+      tr.classList.toggle('row-vang', res.thieu_sinh_hieu);
+      toast('Đã xóa sinh hiệu dòng ' + ma);
+    } catch (err) {
+      toast('Lỗi: ' + err.message);
+    }
   }
 
   // Đợt 5 criterion 4: cột PL không còn nút "Gợi ý PL"/popover xác nhận —

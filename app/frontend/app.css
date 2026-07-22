@@ -456,3 +456,12 @@ details summary {
   align-self: flex-start; padding: 8px 18px; background: #2563eb; color: #fff;
   border: none; border-radius: 4px; cursor: pointer; font-size: 13px;
 }
+
+/* Nút xóa sinh hiệu cả dòng (page Sinh hiệu) */
+.sh-clear-td { text-align: center; width: 34px; }
+.sh-clear-btn {
+  border: 1px solid #e2e8f0; background: #fff; color: #94a3b8;
+  border-radius: 4px; width: 24px; height: 24px; cursor: pointer;
+  font-size: 12px; line-height: 1;
+}
+.sh-clear-btn:hover { background: #fee2e2; color: #c0392b; border-color: #fca5a5; }
