@@ -373,9 +373,25 @@ const ListView = (() => {
     };
   }
 
+  let _reloadSeq = 0;
   async function reload() {
+    const seq = ++_reloadSeq;
+    // Chỉ báo "Đang tải…" để không tưởng nhầm là không có kết quả trong lúc
+    // chờ mạng (Vercel↔Turso ~1s). + chống race: gõ nhanh -> chỉ hiện kết quả
+    // của request MỚI NHẤT.
+    const tbodyL = document.querySelector('#ho-so-table tbody');
+    if (tbodyL) tbodyL.innerHTML = `<tr><td colspan="${TABLE_COLSPAN}" class="list-loading">Đang tải…</td></tr>`;
+    const sumL = document.getElementById('list-summary');
+    if (sumL) sumL.textContent = 'Đang tải…';
     const params = Object.assign({ page, page_size: pageSize }, currentFilterParams());
-    const data = await Api.listHoSo(params);
+    let data;
+    try {
+      data = await Api.listHoSo(params);
+    } catch (e) {
+      if (seq === _reloadSeq && tbodyL) tbodyL.innerHTML = `<tr><td colspan="${TABLE_COLSPAN}" class="list-empty">Lỗi tải dữ liệu — thử lại</td></tr>`;
+      return;
+    }
+    if (seq !== _reloadSeq) return; // đã có request mới hơn -> bỏ kết quả cũ
     items = data.items;
     total = data.total;
     page = data.page;

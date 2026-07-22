@@ -509,3 +509,6 @@ details summary {
   font-size: 12px; line-height: 1;
 }
 .sh-clear-btn:hover { background: #fee2e2; color: #c0392b; border-color: #fca5a5; }
+
+/* Chỉ báo đang tải trong bảng danh sách (Vercel↔Turso ~1s) */
+.list-loading { text-align: center; color: #64748b; padding: 14px; font-style: italic; }
