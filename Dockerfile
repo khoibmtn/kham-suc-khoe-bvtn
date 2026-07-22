@@ -4,8 +4,10 @@ FROM python:3.12-slim
 
 WORKDIR /srv
 
-# Litestream — sao lưu/khôi phục SQLite sang object storage (R2)
-ADD https://github.com/benbjohnson/litestream/releases/download/v0.3.13/litestream-v0.3.13-linux-amd64.tar.gz /tmp/ls.tar.gz
+# Litestream — sao lưu/khôi phục SQLite sang object storage (Backblaze B2).
+# Ghim ĐÚNG bản 0.5.15 khớp bản seed trên máy dev; 0.3.x và 0.5.x KHÔNG đọc
+# được dữ liệu của nhau (0.5 đổi sang định dạng LTX).
+ADD https://github.com/benbjohnson/litestream/releases/download/v0.5.15/litestream-0.5.15-linux-x86_64.tar.gz /tmp/ls.tar.gz
 RUN tar -xzf /tmp/ls.tar.gz -C /usr/local/bin litestream && rm /tmp/ls.tar.gz
 
 COPY app/requirements.txt app/requirements.txt

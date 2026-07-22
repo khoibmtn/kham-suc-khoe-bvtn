@@ -30,7 +30,7 @@ brew install benbjohnson/litestream/litestream   # 1 lần
 cd ~/Documents/Antigravity/kham-suc-khoe
 cat > .env.s3 <<'EOF'                            # file này đã được gitignore
 export S3_BUCKET=ksk-nct-bvtn
-export S3_ENDPOINT=https://s3.us-west-004.backblazeb2.com
+export S3_ENDPOINT=https://s3.us-east-005.backblazeb2.com
 export S3_ACCESS_KEY_ID=<keyID>
 export S3_SECRET_ACCESS_KEY=<applicationKey>
 EOF
