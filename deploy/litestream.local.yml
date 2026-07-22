@@ -1,13 +1,13 @@
-# Chạy TRÊN MÁY CÁ NHÂN (Mac) để: (1) seed DB lên R2 lần đầu,
+# Chạy TRÊN MÁY CÁ NHÂN (Mac) để: (1) seed DB lên B2 lần đầu,
 # (2) hoặc vừa dùng app local vừa sao lưu liên tục.
-# Cần file .env.r2 ở gốc dự án (đã gitignore) chứa 4 biến R2_*.
+# Cần file .env.s3 ở gốc dự án (đã gitignore) chứa 4 biến S3_*.
 dbs:
   - path: app/data/ksk.db
     replicas:
       - type: s3
-        bucket: ${R2_BUCKET}
+        bucket: ${S3_BUCKET}
         path: ksk
-        endpoint: ${R2_ENDPOINT}
-        access-key-id: ${R2_ACCESS_KEY_ID}
-        secret-access-key: ${R2_SECRET_ACCESS_KEY}
+        endpoint: ${S3_ENDPOINT}
+        access-key-id: ${S3_ACCESS_KEY_ID}
+        secret-access-key: ${S3_SECRET_ACCESS_KEY}
         force-path-style: true

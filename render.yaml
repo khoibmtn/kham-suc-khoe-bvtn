@@ -1,5 +1,5 @@
 # Render.com Blueprint — "New +" -> "Blueprint" -> chọn repo này là xong.
-# Push lên GitHub = tự deploy (giống Vercel).
+# Push lên GitHub = tự deploy (giống Vercel). Kho lưu dữ liệu: Backblaze B2.
 services:
   - type: web
     name: ksk-nct
@@ -8,11 +8,11 @@ services:
     healthCheckPath: /api/health
     autoDeploy: true
     envVars:
-      - key: R2_BUCKET
+      - key: S3_BUCKET
         sync: false
-      - key: R2_ENDPOINT
+      - key: S3_ENDPOINT
         sync: false
-      - key: R2_ACCESS_KEY_ID
+      - key: S3_ACCESS_KEY_ID
         sync: false
-      - key: R2_SECRET_ACCESS_KEY
+      - key: S3_SECRET_ACCESS_KEY
         sync: false

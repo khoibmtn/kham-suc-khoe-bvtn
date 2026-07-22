@@ -16,4 +16,4 @@ __pycache__/
 .DS_Store
 nohup.out
 *.log
-.env.r2
+.env.s3

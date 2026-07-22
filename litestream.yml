@@ -1,13 +1,15 @@
-# Cấu hình Litestream trên server (Render/HF Spaces).
-# 4 biến môi trường R2_* đặt trong dashboard của host — KHÔNG commit giá trị thật.
+# Cấu hình Litestream trên server (Render / HF Spaces).
+# Kho lưu: Backblaze B2 (chuẩn S3). 4 biến S3_* đặt trong dashboard của host
+# — KHÔNG commit giá trị thật. endpoint B2 dạng:
+#   https://s3.<region>.backblazeb2.com   (vd s3.us-west-004.backblazeb2.com)
 dbs:
   - path: /srv/app/data/ksk.db
     replicas:
       - type: s3
-        bucket: ${R2_BUCKET}
+        bucket: ${S3_BUCKET}
         path: ksk
-        endpoint: ${R2_ENDPOINT}
-        access-key-id: ${R2_ACCESS_KEY_ID}
-        secret-access-key: ${R2_SECRET_ACCESS_KEY}
+        endpoint: ${S3_ENDPOINT}
+        access-key-id: ${S3_ACCESS_KEY_ID}
+        secret-access-key: ${S3_SECRET_ACCESS_KEY}
         force-path-style: true
         sync-interval: 10s
