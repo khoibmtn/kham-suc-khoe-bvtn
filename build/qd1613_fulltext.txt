@@ -1,0 +1,944 @@
+﻿TIÊU CHUẨN NGÀNH
+CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM
+BỘ Y TẾ	TIÊU CHUẨN SỨC KHOẺ - PHÂN LOẠI ĐỂ KHÁM TUYỂN, KHÁM ĐỊNH KỲ	Quyết định Số: 1613/BYT-QĐ
+		Có hiệu lực từ 15/08/1997
+
+I - QUY ĐỊNH CHUNG:
+1. Tiêu chuẩn này áp dụng cho việc phân loại sức khoẻ để khám tuyển, khám định kỳ, khám đổi nghề vì sức khoẻ của các công dân Việt Nam vào học ở các trường Đại học, Trung học Chuyên nghiệp trường Dạy nghề và vào làm việc ở các tổ chức sản xuất kinh doanh của nhà nước, của tư nhân, các tổ chức liên kết liên doanh với nước ngoài trên lãnh thổ Việt Nam.
+2. Đối với các nghề, công việc đặc biệt nặng nhọc, độc hại, nguy hiểm và nặng nhọc, độc hại, nguy hiểm thì tiêu chuẩn này là tiêu chuẩn sơ tuyển. Việc khám tuyển chính thức sẽ dựa vào tiêu chủân khám tuyển của từng nghề, công việc đó.
+3. Công dân Việt Nam từ 15 tuổi trở lên không bị các bệnh cấp tính là đối tượng của tiêu chuẩn này.
+4. Tiêu chuẩn quy định có 5 loại sức khoẻ:
+-Loại I    : Rất khoẻ
+-Loại II   : Khoẻ 
+-Loại III  : Trung bình 
+-Loại IV  : Yếu 
+-Loại V   : Rất yếu 
+II- TIÊU CHUẨN PHÂN LOẠI SỨC KHỎE
+    1. Thể lực:
+        1.1. Học sinh các trường đại học, trung học chuyên nghiệp, dạy nghề:
+Loại sức khỏe	NAM	NỮ
+	Chiều cao (cm)	Cân nặng (kg)	Vòng ngực (cm)	Chiều cao (cm)	Cân nặng (kg)	Vòng ngực (cm)
+1	160 trở lên	48 trở lên	80 trở lên	152 trở lên	44 trở lên	75 trở lên
+2	156-159	46-47	77-79	149-151	42-43	73-74
+3	152-155	42-45	74-76	145-148	40-41	71-72
+4	149-151	39-41	71-73	142-144	37-39	69-70
+5	Dưới 149	Dưới 39	Dưới 71	Dưới 142	Dưới 37	Dưới 69
+        1.2. Lao động ở các nghề, công việc:
+Loại sức khỏe	NAM	NỮ
+	Chiều cao (cm)	Cân nặng (kg)	Vòng ngực (cm)	Chiều cao (cm)	Cân nặng (kg)	Vòng ngực (cm)
+1	1603 trở lên	50 trở lên	82 trở lên	155 trở lên	45 trở lên	76 trở lên
+2	158-162	47-49	79-81	151-154	43-44	74-75
+3	154-157	45-46	76-78	147-150	40-42	72-73
+4	150-153	41-44	74-75	143-146	38-39	70-71
+5	Dưới 150	Dưới 40	Dưới 74	Dưới 143	Dưới 38	Dưới 70
+    2. Bệnh tật:
+TT	Bệnh tật	Phân loại
+	MẮT					
+1	Thị lực:            Một mắt          Tổng thị lực 2 mắt					
+			    10/10	19-20/10	x				
+			9-10/10		16-18/10		x			
+			7 - 9/10		14-15/10			x		
+			6 - 7/10		11-13/10				x	
+		      Dưới 6/10		Dưới 11/10					x
+2	Mộng thịt:					
+	2.1. Không có	x				
+	2.2. Mộng thịt độ I,II,III xếp loại theo thị lực chuẩn của 2 mắt					
+	2.3. Mộng thịt độ III, một mắt có thị lực dưới 6/10			x		
+	2.4. Mộng thịt đã mổ, tái phát gây dính			x		
+3	Sẹo giác mạc:					
+	3.1. Không có sẹo giác mạc	x				
+	3.2. Sẹo đơn thuần, mỏng, nhỏ, ngoài vùng trung tâm (dựa vào thị lực chuẩn hạ xuống 1 loại)					
+	3.3. Sẹo giác mạc có dính mống mắt:
+- Tổng thị lực cả 2 mắt từ 16/10 trở lên.
+- Thị lực 1 mắt 6/10 trở xuống		
+x	
+
+x	x	
+4	Mắt hột					
+	4.1. Không có mắt hột	x				
+	4.2. Mắt hột chưa có biến chứng		x			
+	4.3. Mắt hột có biến chứng lông quặm:
+- Không ảnh hưởng tới thị lực (dựa vào thị lực chuẩn hạ xuống một loại)
+- Có ảnh hưởng tới thị lực (dựa vào thị lực chuẩn hạ xuống một loại)					
+5	Viêm tắc lệ đạo mạn tính hoặc đã điều trị nhiều lần không khỏi:					
+	5.1. Không có	x				
+	5.2. Có			x		
+6	Lác mắt					
+	6.1.Không lác mắt	x				
+	6.2.Lác mắt:
+- Không ảnh hưởng tới chức năng thị giác (Xếp loại theo thị lực chuẩn sau đó hạ xuống một loại)
+- Có ảnh hưởng tới chức năng thị lực			
+
+
+x	
+
+
+x	
+7	Hỏng một mắt					
+	7.1.Mắt kia thị lực 10/10				x	
+	7.2.Mắt kia thị lực dưới 10/10					x
+8	Cận thị					
+	8.1.Không có	x				
+	8.2.Có cận thị: Căn cứ vào thị lực khi có kính để xếp lọai theo thị lực chuẩn, sau đó hạ xuống một lọai					
+9	Viễn thị					
+	9.1.Không có	x				
+	9.2.Có viễn thị: Căn cứ vào thị lực khi có kính để xếp lọai theo thị lực chuẩn, sau đó hạ xuống một lọai					
+10	Các lọai lọan thị đơn thuần hoặc phối hợp: Xếp lọai theo thị lực chuẩn, sau đó hạ xuống một lọai					
+11	Rối lọan sắc giác					
+	11.1.Không có rối lọan sắc giác	x				
+	11.2.Có rối lọan sắc giác			x		
+12	Các bệnh về đáy mắt					
+	Viêm võng mạc do bệnh thận, do tăng huyết áp, viêm võng mạc sắc tố.					x
+13	Các bệnh khác về mắt					
+	13.1.Không có	x				
+	13.2.Bệnh bong võng mạc, teo gai thị					x
+	13.3.Các bệnh sau đây đã được điều trị ổn định: Tăng nhãn áp, đục thủy tinh thể, lệch thủy tinh thể, viêm màng bồ đào dính bít đồng tử, các bệnh ở mi mắt, thì xếp lọai theo thị lực chuẩn, sau đó hạ xuống một lọai					
+	TAI MŨI HỌNG					
+14	Tai ngòai:					
+	14.1.Bình thường	x				
+	14.2.Rách hoặc viêm teo sụn vành tai		x			
+	14.3.Viêm ống tai ngòai mạn tính hoặc hẹp, dị dạng ống tai.			x		
+15	Tai giữa					
+	15.1.Bình thường	x				
+	15.2.Viêm tai giữa mạn tính có mủ nhầy hoặc có thủng màng nhĩ:
+- Thủng nhĩ trước dưới, sau dưới.
+- Thủng nhĩ trên và sau trên			
+x	
+
+x	
+	15.3.Viêm tai giữa mạn tính, tai khô hòan tòan (Xếp lọai theo sức nghe ở điểm 16.1 và 16.2.)					
+16	Tai trong					
+	16.1. Đo bằng tiếng nói thì thầm (nói gió					
+	- Một bên tai 5cm, tai bên kia 5 cm	x				
+	- Một bên tai 4cm, tai bên kia 2 cm		x			
+	- Một bên tai 3cm, tai bên kia 1 cm			x		
+	- Một bên tai 2cm, tai bên kia 0,5 cm				x	
+	- Một bên tai 1cm, tai bên kia 0,1 cm					x
+	16.2. Đo bằng thính lực kế					
+	- Không giảm thính lực hoặc giảm dưới 15 dBA	x				
+	- Giảm thính lực cả 2 tai từ 15-35 dBA		x			
+	- Giảm thính lực cả 2 tai từ 36-45 dBA			x		
+	- Giảm thính lực cả 2 tai từ 46-65 dBA				x	
+	- Giảm thính lực cả 2 tai ttên 65 dBA					x
+17	Xương chũm					
+	17.1. Bình thường	x				
+	17.2. Viêm xương chũm mạn tính		x			
+	17.3. Viêm xương chũm đã được phẩu thuật:					
+	- Tai khô, sức nghe giảm nhẹ			x		
+	- Tai vẫn chảy mũ, sức nghe giảm vừa				x	
+	- Tai chảy mủ liên tục, sức nghe giảm nặng					x
+18	Mũi					
+	18.1. Bình thường					
+	18.2. Hốc mũi, tháp mũi, vách ngăn mũi bị lệch vẹo, dị dạng.					
+	- Không có rối lọan hô hấp					
+	- Có rối lọan hô hấp nhẹ					
+	- Có rối lọan hô hấp rõ rệt					
+	- Có rối lọan hô hấp mạn tính, ảnh hưởng tới cấu tạo lồng ngực					
+	18.3. Viêm mũi vận mạch, viêm mũi dị ứng, viêm mũi mạn tính đơn thuần (tiết dịch, ngạt, tắc mũi, tái phát)					
+	- Không có rối lọan chức năng hô hấp đáng kể		x			
+	- Có rối lọan chức năng hô hấp rõ, thể trạng khỏe			x		
+	- Có rối lọan chức năng hô hấp rõ, thể trạng không khỏe				x	
+	18.4. Viêm mũi teo, trĩ mũi, chảy máu mũi thường xuyên					x
+19	Họng					
+	19.1. Bình thường	x				
+	19.2. Viêm họng mạn tính đơn thuần, thể trạng tốt		x			
+	19.3. Viêm họng mạn tính niêm mạc dày, quá phát, họng hạt… thường hay sốt, ho, ảnh hưởng đến thể trạng			x		
+20 	Amidan:					
+	20.1. Amidan trung bình, không gây ảnh hưởng gì đến chức năng, thể trạng tốt	x				
+	20.2. Amidan hơi to hay trung bình, thỉnh thỏang mới bị viêm, không ảnh hưởng đến thể trạng		x			
+	20.3. Amidan bị viêm mạn tính, có hốc mủ hay viêm nhiễm tái phát ảnh hưởng đến thể trạng			x		
+	20.4. Amidan đã được phẩu thuật, kết quá tốt		x			
+21	Thanh quản					
+	21.1.Bình thường	x				
+	21.2.Viêm thanh quản mạn tính					
+	-Không có rối lọan nhiều đến phát âm, tiếng nói còn phân biệt được, thể trạng tốt		x			
+	- Có rối lọan phát âm rõ, khó phân biệt tiếng nói, thể trạng kém				x	
+	21.3. Liệt cơ khép mở thanh quản					x
+	21.4. Khản tiếng đơn thuần (do hạt dây thanh hoặc pôlip dây thanh) không liệt dây thanh (dây hồi quy			x		
+	21.5. Nói lắp:					
+	- Nói 1 câu, 4-5 từ lắp một lần			x		
+	- Nói 1 câu, 4-5 từ lắp hai lần trở lên				x	
+	21.6. Biến dạng thanh quản do di chứng chấn thương, viêm dính, sẹo rúm ró thanh quản, hẹp thanh môn, u thanh quản... có ảnh hưởng đến chức năng					x
+	21.7. Thanh quản sau khi phẩu thuật, chức năng được hồi phục, thể trạng tốt			x		
+22	Xoang mặt					
+	22.1. Bình thường	x				
+	22.2. Viêm xoang hàm hoặc viêm liên xoang (sàng-hàm) mạn tính không ảnh hưởng chức năng thở		x			
+	22.3. Viêm đa xoang mạn tính 1 bên + pôlip mũi			x		
+	22.4. Viêm đa xoang mạn tính 2 bên + pôlip mũi 1 bên				x	
+	22.5. Viêm đa xoang mạn tính 2 bên + pôlip mũi 2 bên					x
+	22.6. Đã phẩu thuật xoang, cắt polip, ổn định tốt			x		
+	RĂNG HÀM MẶT					
+23	Răng sâu					
+	23.1. Không có răng sâu	x				
+	23.2. Răng sâu men, ngà từ 1-3 cái, không đau hoặc đã trám		x			
+	23.3. Răng sâu men, ngà từ 4-5 cái, không đau hoặc đã trám			x		
+	23.4- Răng sâu men, ngà từ 6 cái trở lên				x	
+24	Mất răng:					
+	(Xem phụ lục 3: Mất sức nhai)					
+	24.1- Đủ răng không kể rằng khôn	x				
+	24.2- Mất 1 - 2 răng, sức nhai còn trên 90 %		x			
+	24.3- Mất răng sức nhai còn từ 81 - 90 %			x		
+	24.4- Mất răng sức nhai còn từ 61 - 80 %				x	
+	24.5- Mất răng sức nhai còn dưới 61 %					x
+25	Viêm quanh răng:
+(Xem tiêu chuẩn phân loại viêm và túi lợi bệnh lý: Phụ lục 4)					
+	25.1- Không viêm	x				
+	25.2- Viêm quanh răng, ở 4 -5 răng, túi lợi sâu độ 3 trở lên		x			
+	25.3- Viêm quanh răng ở 6 - 11 răng, túi lợi sâu độ 3 trở lên			x		
+	25.4- Viêm quanh răng từ 12 răng trở lên, túi lợi sâu độ 3 trở lên				x	
+	Nếu viêm quanh răng nặng, răng lung lay nhiều không còn tác dụng nhai, có chỉ định nhổ thì coi như răng đó bị mất và tính theo tỷ lệ mất sức nhai.					
+26	Răng viêm tuỷ, tuỷ hoại tử, viêm quanh cuống:					
+	26.1- Không có	x				
+	26.2- Có 1 - 2 răng bị viêm tuỷ, viêm quanh cuống đã chữa khỏi		x			
+	26.3- Có 1- 2 răng bị viêm tuỷ, viêm quanh cuống, răng không được điều trị (hàn ống tuỷ)			x		
+27	Răng khôn:					
+	27.1- Bình thường	x				
+	27.2- Có biến chứng đã điều trị tốt		x			
+	27.3- Răng khôn đang biến chứng			x		
+28	Xương hàm:					
+	28.1- Bình thường	x				
+	28.2- Gãy đã liền, khớp cắn không di lệch, sức nhai tốt			x		
+	28.3- Khớp cắn di lệch ít, còn nhai được				x	
+	28.4- Khớp cắn di lệch nhiều, ảnh hưởng tới sức nhai					x
+29	Viêm lợi:					
+	29.1- Không viêm	x				
+	29.2- Viêm lợi không quá ½ số răng		x			
+	29.3- Viêm lợi trên ½ số răng			x		
+30	Viêm tuyến mang tai:					
+	30.1- Không viêm	x				
+	30.2- Viêm đã chữa khỏi, không tái phát từ 1 năm trở lên		x			
+	30.3- Viêm tuyến mang tai mạn tính đã ổn định			x		
+31	Sứt môi, khe hở vòm miệng:					
+	31.1- Không có	x				
+	31.2- Khe hở môi đơn, không hở vòm miệng		x			
+	31.3- Khe hở môi đã vá lành, ít ảnh hưởng tới phát âm và thẩm mỹ		x			
+	31.4- Lưỡi gà tách đôi, khe hở nhỏ đã vá ở vòm miệng mềm, nói không ngọng			x		
+	31.5- Khe hở vòm miệng đã vá lành và có ảnh hưởng tới phát âm				x	
+	31.6- Khe hở môi kèm khe hở vòm miệng					x
+	TÂM THẦN - THẦN KINH					
+32	Bệnh tâm thần phân liệt các thể:					
+	32.1- Không có bệnh tâm thần phân liệt	x				
+	32.2- Bệnh tâm thần phân liệt các thể					x
+33	Loạn thần về triệu chứng và thực tổn:					
+	33.1- Không có	x				
+	33.2- Có các loạn thần do bị chấn thương sọ não, sau nhiễm khuẩn hoặc tâm thần, hoặc là để lại di chứng sau điều trị					x
+	- Hoạt động tâm thần khôi phục được nhưng còn rối loạn tim mạch, thực vật nhẹ				x	
+	33.3- Loạn thần thể trầm uất, hội chứng nghi bệnh:					
+	- Cấp, bán cấp, mạn tính					x
+	- Được bù trừ lâu dài và ổn định, hoạt động tâm thần được khôi phục tốt				x	
+34	Bệnh thái nhân cách ở tất cả các thể và mức độ					x
+35	Động kinh:					
+	35.1- Không có động kinh	x				
+	35.2- Cơn động kinh hiếm, thưa (đã được điều trị nhưng vẫn còn dưới 3 cơn/năm)				x	
+	35.3- Cơn động kinh lớn hoặc nhỏ, có biến đổi tính tình, hành vi, nhân cách					x
+36	Hội chứng suy nhược thần kinh của bệnh thần kinh thực tổn:					
+	36.1- Không có	x				
+	36.2- đau đầu mất ngủ ít		x			
+	36.3- Giảm trí nhớ, giảm khả năng lao động, thể trạng kém				x	
+37	Ra mồ hôi tay, chân:					
+	37.1- Không có	x				
+	37.2- Nhẹ		x			
+	37.3- Vừa và nặng			x		
+38	Phản xạ gân xương:					
+	38.1- Bình thường	x				
+	38.2- Tăng hoặc không tăng có đều cả hai bên, không có rối loạn vận động cảm giác (xếp theo nguyên nhân)		x			
+	38.3- Giảm đều cả hai bên, có rối loạn vận động cảm giác (xếp theo nguyên nhân)			x		
+39	Chóng mặt có hệ thống, rối loạn Tiền đình - Tiểu não:					
+	39.1- Không có	x				
+	39.2- Nhẹ (Mỗi năm xuất hiện 1 - 2 lần)		x			
+	39.3- Vừa và nặng, điều trị đã ổn định trên 1 năm			x		
+40	Liệt mặt ngoaị vi:					
+	40.1 - Không liệt	x				
+	40.2 - Có liệt:					
+	- Có di chứng, méo mồm nhẹ khi cười, không ảnh hưởng tới nhắm mắt, phát âm.			x		
+	- Còn di chứng méo mồm thường xuyên, có ảnh hưởng tới nhắm mắt, phát âm.				x	
+41	Liệt dây thần kinh:					
+	41.1 - Không liệt.	x				
+	41.2 - Liệt dây thần kinh quay, trụ, hông khoeo ngoài.					x
+	41.3 - Liệt dây thần kinh ngoại vi khác:					
+	- Mất hoặc giảm khả năng lao động một phần chi.				x	
+	- Mất khả năng lao động hoàn toàn một chi					x
+42	Di chứng tổn thương thần kinh trung ương:					
+	41.1 Không có	x				
+	42.2 - Liệt dây thần kinh sọ não hoặc tuỷ sống gây hạn chế khả năng lao động của chân tay.					x
+43	Đau rễ thần kinh và các đám rối thần kinh:					
+	43.1 - Không đau	x				
+	43.2 - Đau, ảnh hưởng rõ rệt đến khả năng lao động				x	
+44	Bệnh thần kinh - Cơ:					
+	44.1 - Không có	x				
+	44.2 - Teo cơ nhẹ, ảnh hưởng ít đến vận động.		x	x		
+	44.3 - Teo cơ nặng ảnh hưỏng rõ rệt đến khả năng lao động.				x	
+	44.4 - Bệnh nhược cơ					x
+	TUẦN HOÀN					
+45	Huyết áp động mạch:					
+	45.1 - Dưới 30 tuỏi:					
+	          Tối đa                                         Tối thiểu					
+	 - 110 - 125 mmHg                        65 - 85 mmHg	x				
+	 - 126 - 135 mmHg                        60 - dưới 90 mmHg		x			
+	 - 136 - 140 mmHg                        90 - 95 mmHg			x		
+	 - Trên 140 mmHg                        Trên 95 mmHg				x	
+	 - Dưới 100 mmHg                        Dưới 60 mmHg				x	
+	45.2 - Từ 30 - 50 tuổi:					
+	           Tối đa                                   Tối thiểu					
+	 - Dưới 140 mmHg                      Dưới 90 mmHg	x				
+	 - 140 - 145 mmHg                     90 - 95 mmHg			x		
+	 - Trên 150 mmHg                      96 - 100 mmHg				x	
+46	Mạch:					
+	46.1 - Tần số mạch: (lần/Phút)					
+	 - 60 -75 lần/phút	x				
+	- 76 -85 lần/phút		x			
+	- 86 -95 lần/phút hoặc từ 55 - 60 lần/phút			x		
+	- Trên 95 hoặc từ 55lần/phút				x	
+	46.2 - Viêm tắc động, tĩnh mạch:					
+	- Không viêm tắc.	x				
+	- Viêm tắc: + Chưa gây hoại tử đầu chi.				x	
+	                  + Hoại tử đầu chi phải can thiệp ngoại khoa.					x
+47	Giãn tĩnh mạch:					
+	47.1 - Giãn tĩnh  mạch ở khoeo chân, cẳng chân.					
+	- Không có.	x				
+	- Chưa thành búi.		x			
+	- Đã thành búi, đi lại, chạy nhảy gây căng nhức.				x	
+	 - Đã phải phẫu thuật, kết quả tốt.				x	
+	47.2 - Giãn tĩnh mạch thừng tinh:					
+	- Không có	x				
+	- Nhẹ (Sờ thấy tĩnh mạch to thẳng chưa quấn vào nhau)		x			
+	- Nặng (quấn vào nhau thành búi)			x		
+48	Nhịp tim:					
+	48.1 - Không có rối loại nhịp tim	x				
+	48.2 - Ngoại tâm thu:					
+	- Thưa dưới 6 nhịp/phút:					
+	 + Mất hoặc giảm sau vận động gắng sức.		x			
+	 + Không mất hoặc không giảm sau vận động gắng sức.			x		
+	- Mau trên 7-12 nhịp/phút, tăng lên sau vận động gắng sức.				x	
+	- Loạn nhịp hoàn toàn:					
+	+ Từng cơn ngắn.				x	
+	+ Liên tục					x
+	48.3 - Rối loạn hoàn toàn dẫn truyền trong cơ tim				x	
+49	Bệnh tim:					
+	49.1 - Không có bệnh tim.	x				
+	49.2 - Có tiếng thổi tâm thu chức năng.		x			
+	49.3 - Tiếng tim đập mạnh đơn thuần			x		
+	49.4 - Tiếng tim tách đôi sinh lý		x			
+	49.5 - Bệnh tim bẩm sinh:					
+	- Chưa gây tím tái, chưa có suy tim.				x	
+	- Gây tím tái, có suy tim.					x
+	- Tim sang phải (dextrocardie)			x		
+	49.6 - Bệnh tim mắc phải:					
+	- Bệnh van tim (trừ hẹp hai lá) chưa suy tim.				x	
+	- Xơ hoá cơ tim, hẹp van hai lá, các bệnh tim khác:					
+	+ Chưa có suy tim.				x	
+	+ Đã có suy tim.					x
+	- Đã có phẫu thuật về tim và van tim.					x
+	- Các bệnh thực thể ở cơ tim, màng tim, động mạch chủ, động mạch vành					x
+50	Máu - bạch huyết:					
+	50.1 - Bình thường (Theo hằng số sinh lý người VN)	x				
+	50.2 - Bệnh các cơ quan tạo máu.				x	x
+	50.3 -Hậu quả của máu về bệnh phóng xạ.				x	x
+	50.4 - Bệnh giun chỉ.				x	
+	50.5 - Thiếu máu nặng thường xuyên do các nguyên nhân.			x	x	
+	50.6 - Thiếu máu do các nguyên nhân bẩm sinh (Bệnh hồng  cầu, bạch cầu, rối loạn đông máu)				x	x
+	HÔ HẤP					
+51	Màng phổi:					
+	51.1- Bình thường	x				
+	51.2- Viêm màng phổi, viêm màng phổi tràng dịch thanh tơ, tràn mủ màng phổi đã điều trị khỏi:					
+	- Không có dày dính hoặc dày dính ít			x		
+	- Dày dính ít toàn bộ một bên phổi				x	
+	51.3- Tràn khí màng phổi				x	
+52	Phế quản:					
+	52.1-Bình thường	x				
+	52.2- Giãn phế quản nhẹ, viêm phế quãn mạng tính tắc nghẽn			x		
+	52.3- Viêm phế quản mạng tính chưa có tắc nghẽn		x			
+	52.4- Hen phế quản :                 *  Nhẹ và vừa			x		
+	*  Nặng				x	
+	52.5- Ung thư phế quản					x
+53	Phổi:					
+	53.1- Bình thường	x				
+	53.2- Khí phế thũng, xẹp phổi, cắt thuỳ phổi					x
+	53.3- Các bệnh buị phổi				x	x
+	- Đã điều trị và ổn định trên 3 năm			x		
+	- Lao phổi xơ mới				x	
+	53.5- Ung thư phổi					x
+	TIÊU HOÁ					
+54	Thực quản:					
+	54.1- Bình thường	x				
+	54.2- Viêm thực quản mạng tính, giãn, loét			x		
+	54.3- Hẹp thực quản				x	
+	54.4- Giãn tĩnh mạch thực quản				x	
+	54.5- Ung thư thực quản					x
+55	Dạ dày tá tràng:					
+	55.1- Bình thường	x				
+	55.2- Viêm dạ dày - tá tràng mạng tính			x		
+	55.3- Loét dạ dày:					
+	- Chưa có biến chứng				x	
+	- Có biến chứng: chảy máu, hẹp môn vị					x
+	55.4- Sa dạ dày:   * Độ I			x		
+	                             * Độ II, III				x	
+	55.5- Loét hành tá tràng:					
+	- Chưa có biến chứng			x		
+	- Có biến chứng				x	
+	55.6- Loét dạ dày tá tràngđã phải mổ:					
+	- Kết quả tốt			x		
+	- Kết quả không tốt				x	x
+	55.7- Ung thư dạ dày					x
+56	Đại tràng, trực tràng:					
+	56.1- Bình thường	x				
+	56.2- Rối loạn chức năng đại tràng mạn tính:					
+	- Nhẹ		x			
+	- Vừa			x		
+	- Nặng				x	
+	56.3- Viêm loét đại tràng xuất huyết:					
+	- Nhẹ			x		
+	- Vừa				x	
+	- Nặng					x
+	56.4- Các bệnh lành tính của đại tràng phải can thiệp bằng phẫu thuật			x		
+	56.5- Pôlíp trực tràng:					
+	 - Cuống nhỏ điều trị khỏi			x		
+	- Chảy máu				x	
+	56.6- Ung thư trực tràng, đại tràng					x
+57	Hậu môn trực tràng:					
+	57.1- Bình thường	x				
+	57.2- Rò hậu môn:					
+	- Đơn giản đã điều trị tốt			x		
+	- Phức tạp đã điều trị nhiều lần				x	
+	57.3- Sa trực tràng				x	
+	57.4 - Nứt hậu môn:					
+	 - Đã điều trị, kết quả tốt			x		
+	- Nhiễm trùng đã phải điều trị nhiều lần				x	
+	57.5- Trĩ:					
+	- Không có	x				
+	- Trĩ ngoại: + Độ I		x			
+	                  + Độ II			x		
+	                  + Đô III				x	
+	- Trĩ nội hoặc trĩ kết hợp, có búi nhỏ( dưới 0,5cm) không có hoặc có ít biến chứng			x		
+	- Trĩ nội ngoại kết hợp có triệu chứng ít				x	
+	- Trĩ đã thắt nay có búi trĩ tái phát				x	
+58	Tiểu tràng:					
+	58.1- Bình thường	x				
+	58.2- Thủng tiểu tràng do các nguyên nhân phải mổ:					
+	- Kết quả tốt, không có ảnh hưởng tới tiêu hoá			x		
+	- Có ảnh hưởng tiêu hoá và sinh hoạt, có hội chứng bán tắc				x	
+	58.3- Tắc ruột cơ giới phải mổ:					
+	- Kết quả tốt			x		
+	- Vẫn còn rối loạn tiêu hoá				x	
+	- Thoát vị bẹnL + Chưa phẫu thuật				x	
+	+ Đã phẫu thuật kết quả tốt		x			
+	+ Đã phẫu thuật kết quả không tốt				x	
+	58.4- Ký sinh trùng đường ruột:					
+	- Chưa gây biến đổi chức năng	x				
+	- Gây biến đổi chức năng			x	x	
+59	Ruột thừa:					
+	59.1- Bình thường hoặc mổ từ bé, kết quả tốt	x				
+	59.2- Đã mổ kết quả tốt( người lớn)		x			
+	59.3- Có di chứng, biến chứng sau mổ				x	
+60	Gan:					
+	60.1- Bình thường	x				
+	60.2- Viêm gan đã chữa khỏi trên 12 tháng, sức khoẻ bình thường		x			
+	60.3- Viêm gan mạn tính thể tồn tại, thể tấn công					x
+	60.4- Xơ gan, gan to chưa rõ nguyên nhân					x
+	60.5- Đụng dập gan đã xử trí kết quả tốt			x		
+	60.6- Áp xe gan đã phải can thiệp ngoại khoa, nay ổn định			x		
+	60.7- Áp xe gan đã vỡ gây biến chứng, tuy đã điều trị khỏi					x
+	60.8- Ung thư gan					x
+61	Mật, tuỵ:					
+	61.1- Bình thường	x				
+	61.2- Viêm túi mật, ống dẫn mật mạn tính			x		
+	61.3- Sỏi túi mật đã cắt bỏ túi mật			x		
+	61.4- Sỏi ống chủ mật					x
+	61.5- Viêm tuỵ mạn tính					x
+	61.6- Viêm tuỵ cấp đã điều trị khỏi		x			
+	61.7- Viêm tuỵ chảy máu đã điều trị ngoại khoa				x	
+	61.8- Ung thư tuỵ					x
+62	Lách:					
+	62.1- Bình thường	x				
+	62.2- Lách to mạn tính xơ cứng				x	
+	62.3- Cắt lách kết quả tốt			x		
+	62.4- Đụng dập lách đã xử trí ngoại khoa tốt			x		
+	TIẾT NIỆU - SINH DỤC					
+63	Tiết niệu:					
+	63.1- Bình thường	x				
+	63.2- Cắt 1 thận				x	
+	63.3- U thận đã mổ không có biến chứng			x		
+	63.4- Bệnh thận mạn tính: viêm cầu thận do các lọai nguyên nhân, hư thận, các loại u...					
+	- Chưa suy thận				x	
+	- Đã suy thận					x
+	63.5- Bệnh thận bẩm sinh( lạc chỗ, đa nang, dị dạng)					
+	- Chưa suy thận			x		
+	- Đã suy thận					x
+	63.6- Sỏi thận * Đã mổ kết quả tốt			x		
+	                      * Chưa mổ				x	
+	63.7- Sỏi niệu quản				x	
+	63.8- Sỏi bàng quang:					
+	- Đã mổ kết quả tốt			x		
+	- Đã mổ lại nhiều lần				x	
+64	Sinh dục nam:					
+	64.1- Bình thường	x				
+	64.2- Hẹp bao qui đầu:				x	
+	- Chưa phẫu thuật				x	
+	- Đã phẫu thuật kết quả tốt	x				
+	- Sau phẫu thuật có ảnh hưởng tiết niệu				x	
+	64.3- Thiếu tinh hoàn					
+	- Thiếu 1 tinh hoàn hoặc 1 tinh hoàn ẩn		x			
+	- Thiếu 2 tinh hoàn hoặc 2 tinh hoàn ẩn			x		
+	64.4- Bao tinh hoàn có nước( hydrocèle)					
+	- Đã điều trị tốt		x			
+	- Chưa điều trị				x	
+	64.5- Cắt cụt dương vật			x		
+	64.6- Ung thư dương vật					x
+65	Sinh dục nữ:					
+	65.1- Bình thường kinh nguyệt đều	x				
+	65.2- Rối loạn kinh nguyệt( kinh nguyệt không đều, kinh thất thường, kinh kéo dài 6-7 ngày)			x		
+	65.3- Rong kinh, đa kinh, băng kinh				x	
+	65.4- Bế kinh, vô kinh( tuỳ nguyên nhân mà xếp loại)					
+	65.5- Sinh dục ngoài dị dạng bẩm sinh		x	x		
+	65.6- U nang buồng trứng, u xơ tử cung: 					
+	- Chưa mổ				x	
+	- Đã mổ kết quả tốt			x		
+	65.7- Viêm phần phụ: - Đã mổ kết quả tốt			x		
+	                                   - Chưa mổ				x	
+	65.8- Mổ lấy thai:					
+	- Mổ 1 lần không có biến chứng		x			
+	- Mổ 2 lần không có biến chứng			x		
+	- Mổ 3 lần không có biến chứng				x	
+	65.9- Rò bàng quang - âm đạo:					
+	- Chưa mổ				x	
+	- Đã mổ kết quả tốt			x		
+	65.10- Ung thư sinh dục nữ					x
+	HỆ VẬN ĐỘNG					
+66	Khớp xương:					
+	66.1- Bình thường	x				
+	66.2- Sai các khớp:					
+	- Đã nắn chỉnh không để lại di chứng		x			
+	- Sai khớp lớn, không nắn chỉnh, thành cố tật có ảnh hưởng tới lao động học tập				x	
+	- Sai khớp lớn đã được phẫu thuật:					
+	+ Ổn định sau 1 năm, lao động sinh hoạt bình thường			x		
+	+ Để lại di chứng: Hạn chế vận động, thoái hoá biến dạng hoặc cứng khớp					x
+	+ Sai khớp bệnh lý các khớp lớn					x
+	66.3- Khớp giả:					
+	- Kèm theo mất đoạn xương lớn, chi ngắn trên 5 cm					x
+	- Không ngắn chi				x	
+	66.4- Cứng, dính các khớp:					
+	- Các khớp vai, khuỷu, gối, háng, cột sống					x
+	- Các khớp cổ tay, cổ chân				x	
+	66.5- Dị dạng bẩm sinh ( Khớp lớn, mất đoạn đầu xương )					x
+67	Xương:					
+	67.1- Không bị gẫy xương	x				
+	67.2- Gẫy xương lớn:					
+	- Đã liền tốt, trục thẳng, ổn định sau 1 năm, không hạn chế vận động			x		
+	 - Đã liền xương, can xấu, lệch trục, có ảnh hưởng đến vận động, có thoái hoá biến chứng				x	
+	67.3- Gẫy xương sườn:					
+	- Gẫy 1 xương sườn can tốt		x			
+	- Gẫy 2-3 xương sườn can tốt			x		
+	- Gãy trên 3 xương sườn can tốt 				x	
+	67.4- Gù vẹo, quá ưỡn:					
+	- Do bẩm sinh			x		
+	- Do mắc phải				x	
+	67.5- Cứng dính cột sống do các nguyên nhân có ảnh hưởng tới lao động, vận động:					
+	- Nhẹ			x		
+	- Vừa				x	
+	- Nặng					x
+68	Chiều dài các chi:					
+	68.1- Không có chênh lệch chiều dài các chi	x				
+	68.2- Có chênh lêch chiều dài các chi:					
+	- Từ 1-2 cm			x		
+	- Từ 3-4 cm				x	
+	- Từ trên 4 cm					x
+69	Hai chân vòng kiềng hình chữ 0 hoặc chữ X:					
+	69.1- Bình thường	x				
+	69.2- Hai chân vòng kiềng:					
+	- Không ảnh hưởng tới đi lại, chạy nhảy		x			
+	- Có ảnh hưởng tới đi lại chạy nhảy			x		
+70	Bàn chân bẹt:					
+	70.1- Không có bàn chân bẹt	x				
+	70.1- Bàn chân bẹt					
+	- Độ I	x				
+	- Độ II		x			
+	- Độ III			x		
+71	Chai chân, mắt cá lòng bàn chân, rỗ chân					
+	71.1- Không có	x				
+	71.2- Chai chân (durillon):					
+	 - Dày sừng không nắn còn mềm, không ảnh hưởng tới đi lại 		x			
+	 - Dày sừng gây cộm cứng ảnh hưởng tới đi lại			x		
+	71.3- Mắt cá lòng bàn chân (corp-plantaire)					
+	 - Đường kính dưới 1cm nhưng dưới 2 cái, không ảnh hưởng tới đi lại		x			
+	 - Đường kính dưới 1cm nhưng dưới 3 cái, không ảnh hưởng tới đi lại			x		
+	 - Đường kính trên 1cm, trên 3 cái, ảnh hưởng tới đi lại				x	
+	71.4- Rỗ chân: ( porokeratose)					
+	 - Đường kính điểm lõm dưới 2cm, trong 1cm2 chỉ có 1-2 điểm, không ảnh hưởng tới đi lại		x			
+	 - Đường kính điểm lõm dưới 2cm, trong 1cm2 chỉ có trên 2 điểm, không ảnh hưởng tới đi lại			x		
+	 - Đường kính điểm lõm trên 2cm, trong 1cm2 có 2 điểm, có ảnh hưởng tới đi lại				x	
+	- Gãy trên 3 xương sườn can tốt 				x	
+	67.4- Gù vẹo, quá ưỡn:					
+	- Do bẩm sinh			x		
+	- Do mắc phải				x	
+	67.5- Cứng dính cột sống do các nguyên nhân có ảnh hưởng tới lao động, vận động:					
+	- Nhẹ			x		
+	- Vừa				x	
+	- Nặng					x
+68	Chiều dài các chi:					
+	68.1- Không có chênh lệch chiều dài các chi	x				
+	68.2- Có chênh lêch chiều dài các chi:					
+	- Từ 1-2 cm			x		
+	- Từ 3-4 cm				x	
+	- Từ trên 4 cm					x
+69	Hai chân vòng kiềng hình chữ 0 hoặc chữ X:					
+	69.1- Bình thường	x				
+	69.2- Hai chân vòng kiềng:					
+	- Không ảnh hưởng tới đi lại, chạy nhảy		x			
+	- Có ảnh hưởng tới đi lại chạy nhảy			x		
+70	Bàn chân bẹt:					
+	70.1- Không có bàn chân bẹt	x				
+	70.1- Bàn chân bẹt					
+	- Độ I	x				
+	- Độ II		x			
+	- Độ III			x		
+71	Chai chân, mắt cá lòng bàn chân, rỗ chân					
+	71.1- Không có	x				
+	71.2- Chai chân (durillon):					
+	 - Dày sừng không nắn còn mềm, không ảnh hưởng tới đi lại 		x			
+	 - Dày sừng gây cộm cứng ảnh hưởng tới đi lại			x		
+	71.3- Mắt cá lòng bàn chân (corp-plantaire)					
+	 - Đường kính dưới 1cm nhưng dưới 2 cái, không ảnh hưởng tới đi lại		x			
+	 - Đường kính dưới 1cm nhưng dưới 3 cái, không ảnh hưởng tới đi lại			x		
+	 - Đường kính trên 1cm, trên 3 cái, ảnh hưởng tới đi lại				x	
+	71.4- Rỗ chân: ( porokeratose)					
+	 - Đường kính điểm lõm dưới 2cm, trong 1cm2 chỉ có 1-2 điểm, không ảnh hưởng tới đi lại		x			
+	 - Đường kính điểm lõm dưới 2cm, trong 1cm2 chỉ có trên 2 điểm, không ảnh hưởng tới đi lại			x		
+	 - Đường kính điểm lõm trên 2cm, trong 1cm2 có 2 điểm, có ảnh hưởng tới đi lại				x	
+72	Mất ngón tay, ngón chân:					
+	72.1- Không ngón tay, ngón chân	x				
+	72.2- Mất 1-2 đốt:					
+	- Ngón tay cái, ngón chân cái, ngón tay trỏ bàn tay thuận, từ 2 ngón khác của bàn tay, bàn chân			x		
+	- Ngón khác của bàn tay bàn chân		x			
+	72.3- Mất 1 ngón:					
+	- Ngón cái của bàn tay hoặc bàn chân				x	
+	- Ngón trỏ bàn tay thuận			x		
+	- Ngón khác của bàn tay hoặc bàn chân		x			
+	72.4- Mất 2 ngón trong đó không mất ngón tay cái, không mất ngón trỏ bàn tay thuận, không mất ngón chân cái				x	
+	72.5- Mất 3 ngón tay trở lên trong đó không mất ngón cái và ngón trỏ				x	
+73	Dính kẽ ngón tay, ngón chân:					
+	73.1- Không dính kẽ ngón tay, ngón chân	x				
+	73.2- Có dính kẽ ngón tay, ngón chân:				x	
+	- Chưa xử trí phẫu thuật:					
+	- Đã xử trí phẫu thuật:					
+	 + Ảnh hưởng ít đến hoạt động bàn tay, bàn chân		x			
+	 + Ảnh hưởng nhiều đến hoạt động bàn tay, bàn chân			x		
+74	Thừa ngón tay, ngón chân:					
+	74.1- Không thừa ngón tay, ngón chân	x				
+	74.2- Thừa ngón tay, ngón chân chưa cắt bỏ, không ảnh hưởng tới bàn tay, bàn chân hoặc đã cắt bỏ mà có ảnh hưởng tới bàn tay, bàn chân 			x		
+	Co rút ngón tay, ngón chân:					
+	75.1- Không co rút ngón tay, ngón chân	x				
+	75.2- Có co rút:					
+75	- Từ 1-2 ngón tay hoặc ngón chân, ảnh hưởng tới lao động, sinh hoạt			x		
+	- Từ 3-4 ngón tay hoặc ngón chân, ảnh hưởng tới lao động, sinh hoạt				x	
+	- Từ 5 ngón tay hoặc ngón chân, ảnh hưởng tới lao động, sinh hoạt					x
+76	Lệch vẹo ngón chân cái:					
+	76.1- Không lệch	x				
+	76.2- Lệch vẹo:					
+	- Không ảnh hưởng tới dày dép, mang vác, chạy nhảy		x			
+	- Có ảnh hưởng tới dày dép, mang vác, chạy nhảy			x		
+77	Lao xương:					
+	77.1- Không có	x				
+	77.2- Có lao xương đã điều trị khỏi, ổn định				x	
+78	Ung thư xương khớp					x
+	NGOÀI DA – HOA LIỄU					
+79	Nấm da:					
+	(hắc lào, nấm bẹn)					
+	79.1- Không có	x				
+	79.2- Thể giản đơn chưa có biến chứng viêm da nhiễm khuẩn, diện tích không quá diện tích lòng bàn tay của đối tượng.		x			
+	79.3- Có biến chứng nhiễm khuẩn, diện tích lớn hơn diện tích lòng bàn tay của đối tượng.			x		
+80	Nấm kẻ:					
+	80.1- Không có	x				
+	80.2- Bột trắng 1-2 kẽ		x			
+	80.3- Kèm theo nấm móng hoặc nấm da			x		
+81	Lang ben:					
+	81.1- Không có	x				
+	81.2- Thể giản đơn không quá 1/3 cơ thể		x			
+	81.3- Thể lan tỏa			x		
+82	Ghẻ:					
+	82.1- Không có	x				
+	82.2- Thể đơn giản chưa có biến chứng		x			
+	82.3- Thể rải rác:					
+	 - Có biến chứng nhiễm trùng			x		
+	 - Có biến chứng viêm thận				x	
+83	Eczéma:					
+	83.1- Không có	x				
+	83.2- Mạn tính		x			
+	83.3- cấp tính bội nhiễm			x		
+84	Bệnh Durhing, Pemphigus:					
+	84.1- Bệnh Durhing					
+	- Không có	x				
+	- Thể nhẹ khu trú một chỗ			x		
+	- Thể rải rác				x	
+	84.2 - Bệnh Pemphigus:					
+	- Không có	x				
+	- Thể da mỡ, vảy lá				x	
+	- Thể Vulgaris - Thể sùi					x
+85	Bệnh Lupus ban đỏ, vảy nến:					
+	85.1- Bệnh Lupus ban đỏ:					
+	-Không có	x				
+	- Lupus đỏ kinh			x		
+	- Lupus đỏ hệ thống					x
+	85.2- Bệnh vảy nến:					
+	- Không có	x				
+	- Thể thông thường khu trú			x		
+	- Thể lan tỏa, da đỏ toàn thân				x	
+	-Thể khớp					x
+86	Tổ đỉa, viêm da thần kinh:					
+	86.1- Không có	x				
+	86.2- Có tổ đỉa, viêm da thần kinh			x		
+87	Lậu:					
+	87.1- Không có	x				
+	87.2- Lậu cấp đã điều trị khỏi		x			
+	87.3- Lậu mạn chưa khỏi			x		
+88	Giang mai:					
+	88.1- Không có	x				
+	88.2- Giang mai I đã điều trị khỏi		x			
+	88.3- Giang mai II đã điều trị khỏi lâm sàng và xét nghiệm		x			
+	88.4- Giang mai I và II chưa điều trị thì không xếp loại					
+	88.5- Giang mai thần kinh, tim mạch					x
+89	HIV/AIDS:					
+	89.1- Không có	x				
+	89.2- HIV dương tính				x	
+	89.3- AIDS					x
+90	Bệnh phong:					
+	90.1- Không có	x				
+	90.2- Có bệnh phong					
+	- Không tàn phế			x		
+	- Tàn phế độ I				x	
+	-Tàn phế độ II					x
+91	Hạ cam mềm:					
+	91.1- Không có	x				
+	91.2- Có hạ cam mềm					
+	- Chưa điều trị khỏi			x		
+	- Đã điều trị khỏi		x			
+92	Sùi mào gà:					
+	92.1- Không có	x				
+	92.2- Có sùi mào gà:					
+	  - Chưa điều trị khỏi				x	
+	  - Đã điều trị khỏi		x			
+93	Nicolas Favres:					
+	93.1- Không có	x				
+	93.2- Có Nicolas Favres:					
+	  - Chưa điều trị khỏi				x	
+	  - Đã điều trị khỏi		x			
+94	Viêm móng, xung quanh móng:					
+	94.1- Không có	x				
+	94.2- Có viêm móng, xung quanh móng:					
+	  - Chưa điều trị khỏi			x		
+	  - Đã điều trị khỏi		x			
+	NỘI TIẾT - CHUYỂN HÓA					
+95	Bệnh tuyến giáp:					
+	95.1- Không có	x				
+	95.2- Bướu lành tình nhỏ		x			
+	95.3- Bướu lành tính to, ảnh hưởng tới hô hấp				x	
+	95.4- Basedow: - Chưa có biến chứng tim				x	
+	                          - Có biến chứng tim					x
+	95.5- Ung thư					x
+96	Bệnh tuyến yến:					
+	96.1- Không có	x				
+	96.2- Suy hoặc cường tuyến yên					x
+97	Đái tháo đường:					
+	97.1- Không có	x				
+	97.2- Có đái tháo đường:					
+	  - Chưa có biến chứng:					
+	    + Type I (Phụ thuộc Insuline)					x
+	    + Type II(Không phụ thuộc Insuline)			x		
+	  - Có biến chứng mắt, thận, tắc mạch máu lớn				x	x
+98	Đái tháo nhạt:					
+	98.1- Không có	x				
+	98.2- Có đái tháo nhạt: - Nhẹ		x			
+	                                      - Vừa			x		
+	                                      - Nặng					x
+99	Cường vỏ thượng thận:					
+	99.1- Không có	x				
+	99.2- Cường vỏ thượng thận chưa mổ					x
+	99.3- Cường vỏ thượng thận đã mổ kết quả tốt			x	x	
+100	Bệnh béo phệ:					
+	100.1- Không có	x				
+	100.2- Có bệnh béo phệ:(xem phụ lục 6)					
+	  - Chỉ số BMI = 25		x			
+	  - Chỉ số BMI = từ 26-27			x		
+	  - Chỉ số BMI = từ 28 trở lên				x	
+	 U CÁC LOẠI					
+101	U lành tính:					
+	101.1- Không có	x				
+	101.2- U không gây ảnh hưởng tới lao động, học tập		x			
+	101.3-U gây cản trở vận động đã mổ kết quả tốt		x			
+102	U ác tính:					
+	102.1- Không có	x				
+	102.2- Có u ác tính					x
+III- CÁCH PHÂN LỌAI
+    1. Nguyên tắc chung:
+1.1. Trước tiên phân lọai theo từng cơ quan bộ máy theo phần II (tiêu chuẩn phân lọai sức khỏe
+1.2. Sau đó phân lọai sức khỏe theo từng đối tượng (lọai I, II, III, V) trên cơ sở sự phân lọai của các cơ quan bộ máy.
+2. Cách phân lọai thể lực và các cơ quan bộ máy: (phụ lục số 2)
+3. Cách phân lọai sức khỏe
+3.1. Các chỉ số để phân lọai:
+3.1.1. Thể lực chung	ký hiệu (viết tắt) TLC
+3.1.2. Mắt	ký hiệu (viết tắt) M
+3.1.3. Tai mũi họng	ký hiệu (viết tắt) TMH
+3.1.4. Răng hàm mặt	ký hiệu (viết tắt) RHM
+3.1.5. Tâm thần - Thần kinh	ký hiệu (viết tắt) TT-TK
+3.1.6. Tuần hòan	ký hiệu (viết tắt) TH
+3.1.7. Hô hấp	ký hiệu (viết tắt) HH
+3.1.8. Tiêu hóa	ký hiệu (viết tắt) T.hóa
+3.1.9. Tiết niệu – Sinh dục	ký hiệu (viết tắt) TN-SD
+3.1.10. Hệ vận động	ký hiệu (viết tắt) HVĐ
+3.1.11. Ngòai da – Da liễu	ký hiệu (viết tắt) ND-DL
+3.1.12. Nội tiết - Chuyển hóa	ký hiệu (viết tắt) NT-CH
+3.1.13. U các lọai	ký hiệu (viết tắt) U
+3.2. Sau khi khám xong Bác sĩ xếp các chỉ số đó từ lọai I – V (xem phụ lục 2)
+3.3. Cách phân lọai sức khỏe: Căn cứ vào sự phân lọai các chỉ số, bác sĩ tiến hành phân lọai sức khỏe:
+Lọai I: Cả 13 chỉ số đều đạt lọai I
+Lọai II: Chỉ cần có 1 chỉ số thấp nhất là lọai II, xếp lọai II.
+Lọai III: Chỉ cần có 1 chỉ số thấp nhất là lọai III, xếp lọai III.
+Lọai IV: Chỉ cần có 1 chỉ số thấp nhất là lọai IV, xếp lọai IV.
+Lọai V: Chỉ cần có 1 chỉ số thấp nhất là lọai V, xếp lọai V.
+IV-  KHÁM TUYỂN VÀO HỌC CÁC TRƯỜNG, CÁC NGHỀ VÀ CÁC CÔNG VIỆC.
+1. Khám tuyển vào học các trường Đại học, Trung học chuyên nghiệp, trường Dạy nghề:
+Các công dân Việt Nam đủ điều kiện sức khoẻ của từng ngành học, nghề và công việc do Bộ Y tế quy định đều là đối tượng được vào học.
+- Riêng học các nghề, công việc trực tiếp điều hành các phương tiện vận tải và thi công cơ giới đường bộ, đường sắt, đường sông, đường biển, đường hàng không, các nghề, công việc đặc biệt nặng nhọc, độc hại, nguy hiểm và nặng nhọc, độc hại, nguy hiểm phải đủ điều kiện sức khoẻ từ loại II trở lên (sơ tuyển) và được khám tuyển theo tiêu chuẩn sức khoẻ riêng của nghề và công việc đó do Bộ Y tế quy định.
+- Công dân Việt Nam có khuyết tật và sức khoẻ loại IV, loại V củng là đối tượng được khám tuyển vào học các trường lao động ở các nghề,công việc nhưng học trường nào, nghề và công việc nào phải do Hội đồng khám tuyển căn cứ vào khuyết tật và bệnh tật của đối tượng để quyết định cho người đó được học nghề nào, công việc nào.
+2- Khám tuyển dụng,hợp đồng lao động:
+2.1- Tiêu chuẩn sức khoẻ là một trong những điều kiện để tuyển dụng và ký kết các hợp đồng lao động.Khi tuyển dụng và thực hiện các hợp đồng phải tuân theo các tiêu chuẩn sức khoẻ riêng của từng nghề, từng công việc do Bộ Y tế quy định.
+Riêng các nghề, các công việc trực tiếp điều hành các phương tiện vận tải và thi công cơ giới đường bộ, đường sắt, đường sông, đường biển, đường hàng không, các nghề, công việc đặc biệt nặng nhọc,độc hại, nguy hiểm và nặng nhọc,độc hại, nguy hiểm, thì các đối tượng phải có đủ điều kiện sức khoẻ loại I và loại II.
+Đối với lao động chủ yếu là lao động thể lực thì phải đảm bảo sức khoẻ từ loại III trở lên.
+2.2-Những người có khuyết tật và sức khoẻ loại IV , loại V củng là đối tượng khám tuyển dụng và khám để thực hiện hợp đồng lao động, nhưng tuyển dụng và thực hiện hợp đồng lao động với nghề nào, công việc nào phải do Hội đồng khám tuyển căn cứ vào khuyết tật, bệnh tật của đối tượng đó để quyết định.
+V- PHỤ LỤC
+Phụ lục 1- MỘT SỐ ĐIỀU LƯU Ý KHI KHÁM LÂM SÀNG
+1. Quy tròn số liệu:
+Khi các số đo về chỉ tiêu thể lực từ 0,5 trở lên thì tính đúng là một đơn vị.Từ dưới 0,5 trở xuống thì bỏ phần số lẻ.
+	Ví dụ: chiều cao: 	165,50cm		thì ghi 166cm
+159,49cm		thì ghi 159cm
+		Cân nặng : 	44,5kg			thì ghi  45kg
+48,47cm		thì ghi 48cm
+		Vòng ngực:	77,5cm			thì ghi 78cm 
+80,48cm		thì ghi 80cm
+2. Vòng ngực trung bình:
+Có thể tính theo 1 trong 2 cách sau đây:
+- Đo vòng ngực ở thì thở vào gắng sức và thở ra gắng sức, sau đó cộng lại rồi chia cho 2.
+- Lấy chiều cao đứng của đối tượng chia cho 2.
+3. Thị lực:
+- Nếu có một mắt thị lực cao hơn 10/10 thì vẫn chỉ tính 10/10.
+Ví dụ: Mắt phải thị lực 11/10, mắt trái thị lực 6/10 thì tổng thị lực cả hai mắt là 16/10.
+Khi tính tổng thị lực hai mắt thì mắt phía bên tay thuận bắt buộc phải giữ đúng như chỉ số quy định theo phân loại.
+4. Mộng thịt (chỉ tiêu 2):
+- Mộng thịt độ I: Mộng thịt chớm vào phần rìa của giác mạc. 
+- Mộng thịt độ II: Mộng thịt bò vào giác mạc độ 2-3mm.
+- Mộng thịt độ III: Mộng thịt chạm tới rìa đồng tử.
+- Mộng thịt dính: Mộng thịt dính vào cùng đồ hoặc dính vào bờ mi. Nó thương làm hạn chế vận động nhãn cầu.
+5. Sẹo giác mạc (chỉ tiêu 3):
+- Sẹo giác mạc mỏng là một màng đục mỏng ở trên giác mạc (màng khói).
+- Sẹo dính là sẹo kèm theo dính mống mắt làm méo đồng tử.
+6. Đo tiếng nói thì thầm (chỉ tiêu 16.1): 
+- Người khám thở ra hết rồi nói thầm để thử 
+- Phải thử từng tai riêng biệt (tai không thử phải được bịt kín bằng cách đè ngón tay lên nắp lỗ tai do người được thử làm).
+- Tiếng nói phát ra thẳng góc với tai thử.
+- Người được thử phải được che kín mắt để không nhìn được miệng người thử.
+7. Xoang mặt (chỉ tiêu 22):
+Viêm các xoang hàm mạn tính, viêm đa xoang mạn tính phải được xác định trên phim X quang (chụp  Blondeau và Hirtz).
+8. Mất răng (chỉ tiêu 24):
+- Mất một răng coi như mất cả răng cùng số đối diện với mặt nhai. Sức nhai được đánh giá theo phụ lục số 3.
+- Răng bị lung lay đến mức độ không điều trị được cần phải nhổ hoặc mất hết chân răng hoặc chỉ còn chân răng thì coi như mất răng.
+9. Động kinh (chỉ tiêu 35):
+- Bệnh động kinh phải được chẩn đoán ở Bệnh viện và chẩn đoán xác định dựa trên điện não đồ.
+10. Ra mồ hôi tay, chân (chỉ tiêu 37):
+- Nhẹ: Sờ vào bàn tay chỉ hơi ấm nhìn vào kẻ đường chỉ bàn tay thấy lấm tấm ướt óng ánh mồ hôi, không thành vệt dài. Lau khô thì sau 10 phút thì xuất hiện lại như cũ.
+- Vừa: Nặng hơn loại nhẹ và có khi thấy cả mồ hôi chân.
+- Nặng: Mùa hè cũng như mùa đông, bàn tay luôn nhớt nhát mồ hôi, sờ vào đầu ngón tay thấy lạnh, các kẻ chỉ bàn tay óng ánh mồ hôi thành vệt dài và thành giọt. Sau khi lau mồ hôi để 5-6 phút mồ hôi lại tiết dần như cũ. Loại này thường kèm theo mồ hôi toàn thân, nhất là khi cảm xúc.
+11. Bệnh thần kinh – Cơ (chỉ tiêu 44):
+- Teo cơ ở gốc chi, bệnh nhân đang ngồi xổm mà đứng dây không được hoặc rất khó khăn.
+- Bệnh nhược cơ thường biểu hiện sụp mí mắt, sáng còn mở được về chiều thì sụp càng rõ. Các cơ khác lúc đầu vận động còn khá, sau một thời gian vận động và càng về chiều thì càng yếu dần.
+12. Huyết áp động mạch (chỉ tiêu 45):
+Nếu thấy huyết áp động mạch cao bất thường phải cho đối tượng nghỉ ngơi 10 – 15 phút, sau đó đo lại ít nhất 3 lần vào những thời điểm khác nhau. Phải quản lý đối tượng 2 – 3 giờ trước khi đo lại.
+13. Mạch (chỉ tiêu 46):
+- Bắt mạch trong 2 phút rồi chia đôi.
+- Nếu thấy mạch nhanh đơn thuần, không kèm huyết áp tăng và không có bệnh tim mạch thì cho đối tượng ngồi nghỉ hoặc nằm nghỉ (có sự giám sát của cán bộ khám) sau 2-4 giờ lấy mạch lại.
+- Mạch chậm: Cần lưu ý rằng với lực sĩ, vận động viên, cầu thủ chuyên nghiệp có thể tim đập chậm tới 50 lần/phút.
+14. Thiếu máu nặng thường xuyên do các nguyên nhân (chỉ tiêu 50.5):
+Khi khám lâm sàng có nghỉ đến thiếu máu nặng, thường xuyên thì phải được xác định bằng công thức máu, hồng cầu dưới 3 triệu, huyết sắc tố dưới 10g/100ml.
+15. Hen phế quản (chỉ tiêu 52.4):
+- Nhẹ: Cơn khó thở nhẹ, thỉnh thỏang xuất hiện về ban đêm trong mùa rét, chưa ảnh hưởng tới thể trạng, lao động bình thường không phải nằm viện.
+- Vừa: Thường đã bị 10 – 15 năm, cơn hen xuất hiện về đêm và sáng, tái phát phụ thuộc vào thời tiết dù sức khỏe còn khá.
+- Nặng: Đã mắc từ 10-15 năm, cơn hen xuất hiện cả ngày đêm, có khí phế thũng, tâm phế mạn, viêm phế quản mạn, liên tục nằm viện.
+16. Rối lọan chức năng đại tràng mạn tính (chỉ tiêu 56.2):
+- Nhẹ: mỗi năm chỉ 1-2 đợt ngắn, đau ít và nhẹ, rối lọan đại tiện nhẹ, ít ảnh hưởng đến sinh họat và sức khỏe nói chung.
+- Vừa: mỗi năm chỉ 3-4 đợt, cường độ đau đáng kể, rối lọan tiêu hóa kéo dài, có ảnh hưởng đến sinh họat và sức khỏe.
+- Nặng: mỗi năm trên 4 đợt hoặc đau kéo dài hàng tháng, cường độ đau nhiều, ảnh hưởng đến sức khỏe, sinh họat và tinh thần.
+17. Cứng, dính các khớp (chỉ tiêu 66.4):
+(Xem phụ lục 5)
+18. Nấm da (chỉ tiêu m79.2):
+Thể giản đơn là thể chỉ có da hơi đỏ, viền bờ rõ, nền không cộm, chưa bị biến chứng viêm da.
+19. Bệnh phong (chỉ tiêu 90.2):
+- Tàn phế độ I: Mất cảm giác, da thay đổi màu sắc.
+- Tàn phế độ II: Đã có lóet, cụt các đốt, các ngón…
+20. Bệnh béo phệ (chỉ tiêu 10):
+(Xem phụ lục 6)
+Phụ lục 2: PHÂN LỌAI THỂ LỰC. CƠ QUAN BỘ MÁY
+Lọai
+
+Cơ quan,
+ bộ máy	Lọai I	Lọai II	Lọai III	Lọai IV	Lọai V
+Thể lực	Cả 3 chỉ tiêu đều đạt lọai I hoặc chỉ có vòng ngực là lọai 2	Cả 3 chỉ tiêu đều đạt lọai I và 2 hoặc chỉ có vòng ngực lọai 3	Cả 3 chỉ tiêu đều đạt lọai  3 trở lên	Có 1 chỉ tiêu ở lọai 4	Có 1 chỉ tiêu ở lọai 5
+Mắt	Cả 13 chỉ tiêu đều đạt lọai I hoặc chỉ có chỉ tiêu 3.2 là lọai 2	Cả 13 chỉ tiêu đều đạt lọai 1, 2 trở lên	Cả 13 chỉ tiêu đều đạt lọai  3 trở lên	Có 1 chỉ tiêu ở lọai 4	Có 1 chỉ tiêu ở lọai 5
+Tai–Mũi - Họng	Cả 9 chỉ tiêu đều đạt lọai I hoặc chỉ có chỉ tiêu 19.2, 20.2 là lọai 2	Cả 9 chỉ tiêu đều đạt lọai 1 và lọai 2 hoặc chỉ có chỉ tiêu 20.3 là lọai 3	Cả 9 chỉ tiêu đều đạt lọai  3 trở lên	Có 1 chỉ tiêu ở lọai 4	Có 1 chỉ tiêu ở lọai 5
+Răng–Hàm-Mặt	Cả 9 chỉ tiêu đều đạt lọai I hoặc chỉ có chỉ tiêu 24.2, 27.2 là lọai 2	Cả 9 chỉ tiêu đều đạt lọai 1 và lọai 2 hoặc chỉ có chỉ tiêu 23.3, 29.3 là lọai 3	Cả 9 chỉ tiêu đều đạt lọai  3 trở lên	Có 1 chỉ tiêu ở lọai 4	Có 1 chỉ tiêu ở lọai 5
+Tâm thần, thần kinh	Cả 13 chỉ tiêu đều đạt lọai I hoặc chỉ có chỉ tiêu 35.2, 37.2, 38.2 là lọai 2	Cả 13 chỉ tiêu đều đạt lọai 2 trở lên	Cả 13 chỉ tiêu đều đạt lọai  3 trở lên	Có 1 chỉ tiêu ở lọai 4	Có 1 chỉ tiêu ở lọai 5
+Tuần hòan	Cả 6 chỉ tiêu đều đạt lọai I hoặc chỉ có chỉ tiêu 45.1, đạt lọai 2	Cả 6 chỉ tiêu đều đạt lọai I và lọai 2 hoặc chỉ có chỉ tiêu 45.1 lọai 3	Cả 6 chỉ tiêu đều đạt lọai  3 trở lên	Có 1 chỉ tiêu ở lọai 4	Có 1 chỉ tiêu ở lọai 5
+Hô hấp	Cả 3 chỉ tiêu đều đạt lọai I	Cả 3 chỉ tiêu đều đạt lọai I và 2	Cả 3 chỉ tiêu đều đạt lọai  3 trở lên	Có 1 chỉ tiêu ở lọai 4	Có 1 chỉ tiêu ở lọai 5
+Tiêu hóa	Cả 9 chỉ tiêu đều đạt lọai I hoặc chỉ có chỉ tiêu 58.3, 59.2, là lọai 2	Cả 9 chỉ tiêu đều đạt lọai 1 và 2	Cả 9 chỉ tiêu đều đạt lọai 3 trở lên	Có 1 chỉ tiêu ở lọai 4	Có 1 chỉ tiêu ở lọai 5
+Tiết niệu – Sinh dục	Cả 3 chỉ tiêu đều đạt lọai I	Cả 3 chỉ tiêu đều đạt lọai 1 và 2	Cả 3 chỉ tiêu đều đạt lọai 3 trở lên	Có 1 chỉ tiêu ở lọai 4	Có 1 chỉ tiêu ở lọai 5
+Hệ vận động	Cả 13 chỉ tiêu đều đạt lọai I hoặc chỉ có chỉ tiêu 69.2, 71.2 là lọai 2	Cả 3 chỉ tiêu đều đạt lọai 1 và 2 hoặc chỉ có chỉ tiêu 67.2, 71.4 là lọai 3	Cả 13 chỉ tiêu đều đạt lọai 3 trở lên	Có 1 chỉ tiêu ở lọai 4	Có 1 chỉ tiêu ở lọai 5
+Ngòai da – Da Liễu	Cả 16 chỉ tiêu đều đạt lọai I hoặc chỉ có chỉ tiêu 82.2 là lọai 2	Cả 16 chỉ tiêu đều đạt lọai I và 2	Cả 16 chỉ tiêu đều đạt lọai 3 trở lên	Có 1 chỉ tiêu ở lọai 4	Có 1 chỉ tiêu ở lọai 5
+Nội tiết - chuyển hóa	Cả 6 chỉ tiêu đều đạt lọai I	Cả 6 chỉ tiêu đều đạt lọai I và 2	Cả 6 chỉ tiêu đều đạt lọai 3 trở lên	Có 1 chỉ tiêu ở lọai 4	Có 1 chỉ tiêu ở lọai 5
+U các lọai	Cả 2 chỉ tiêu đều đạt lọai I	Cả 2 chỉ tiêu đều đạt lọai I và 2	Cả 2 chỉ tiêu đều đạt lọai 3 trở lên	Có 1 chỉ tiêu ở lọai 4	Có 1 chỉ tiêu ở lọai 5
+
+Phụ lục 3: PHÂN LỌAI MẤT SỨC NHAI
+Hàm trên	Sức nhai %	2	5	5	3	3	4	1	2	2	1	4	3	3	5	5	2
+	Răng số	8	7	6	5	4	3	2	1	1	2	3	4	5	6	7	8
+Hàm dưới	Răng số	8	7	6	5	4	3	2	1	1	2	3	4	5	6	7	8
+	Sức nhai %	2	5	5	3	3	4	2	1	1	2	4	3	3	5	5	2
+
+Phụ lục 4: PHÂN LỌAI TÚI LỢI BỆNH LÝ TRONG VIÊM QUANH RĂNG
+Độ 1: Chảy máu lợi tự nhiên
+Độ 2: Chảy máu lợi + vội (cao) răng (từ 6 răng trở lên)
+Độ 3: Túi lợi dưới 4 mm.
+Độ 4: Túi lợi trên 5 mm
+Phụ lục 5. BẢNG ĐÁNH GIÁ CHỨC NĂNG VẬN ĐỘNG.
+Tên khớp	Chức năng	Bình thường	Tên khớp	Chức năng	Bình thường
+Vai	- Đưa ra trước tiên
+- Đưa ngang
+- Duổi ra sau
+- Quay	185o
+185o
+40o
+360o	Háng	    • Gấp
+    • Duỗi
+    • Xoay ngòai
+    • Xoay trong
+    • Khép
+    • Dạng	125o
+40o
+40o
+35o
+35o
+90o
+Khủyu		135o	Gối	Gấp	125o
+Cổ tay	    • Gấp
+    • Ngửa
+    • Khép
+    • Dạng	620
+500
+400
+300	Cổ chân	    • Gấp
+    • Duỗi
+    • Xoay ngòai
+    • Xoay trong	45o
+35o
+45o
+30o
+
+Phụ lục 6: Chỉ số BMI (Body Mass Index) của tổ chức Y tế Thế giới
+BMI =	Trọng lượng cơ thể (kg)
+	(Chiều cao đứng (m))2
+

@@ -1,0 +1,458 @@
+* { box-sizing: border-box; }
+/* Thuộc tính hidden phải luôn thắng các rule display có id/class bên dưới
+   (nếu không: #login-screen{display:flex} và .cmd-palette{display:flex} sẽ
+   ghi đè hidden -> màn login không ẩn sau đăng nhập, bảng lệnh luôn nổi). */
+[hidden] { display: none !important; }
+body {
+  font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  margin: 0; background: #f3f5f7; color: #1a1a1a;
+}
+
+/* ---------- Đăng nhập ---------- */
+#login-screen {
+  display: flex; align-items: center; justify-content: center;
+  height: 100vh;
+}
+.login-form {
+  background: #fff; padding: 32px; border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0,0,0,.1); width: 320px;
+}
+.login-form h1 { font-size: 18px; margin-top: 0; }
+.login-form label { display: block; margin-bottom: 12px; font-size: 13px; }
+.login-form input { width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; }
+.login-form button { width: 100%; padding: 10px; background: #2563eb; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+.error { color: #c0392b; font-size: 13px; margin-top: 8px; min-height: 16px; }
+
+/* ---------- Khung ứng dụng ---------- */
+#app-header {
+  display: flex; align-items: center; gap: 24px; padding: 8px 16px;
+  background: #1e293b; color: #fff; position: sticky; top: 0; z-index: 50;
+}
+#app-header .brand { font-weight: 600; }
+#app-header nav { display: flex; gap: 8px; flex: 1; }
+#app-header nav button {
+  background: transparent; border: 1px solid #475569; color: #cbd5e1;
+  padding: 6px 12px; border-radius: 4px; cursor: pointer;
+}
+#app-header nav button.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+.user-box { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.user-box button { background: #475569; color: #fff; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; }
+
+#main-area { display: flex; gap: 0; padding: 12px; align-items: stretch; }
+#list-view { flex: 0 0 45%; min-width: 0; }
+#detail-panel {
+  flex: 1 1 0; min-width: 0; background: #fff; border-radius: 6px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08); padding: 12px; max-height: calc(100vh - 90px);
+  overflow-y: auto; position: sticky; top: 60px;
+}
+
+/* ---------- Splitter kéo được (tiêu chí 7) ---------- */
+.main-splitter {
+  flex: 0 0 6px; width: 6px; margin: 0 8px; align-self: stretch;
+  background: #e2e8f0; border-radius: 3px; cursor: col-resize;
+  position: sticky; top: 60px; height: calc(100vh - 90px);
+}
+.main-splitter:hover, .main-splitter.dragging { background: #94a3b8; }
+
+/* ---------- Bộ lọc (tiêu chí 8 — gọn, nhóm hàng hợp lý) ---------- */
+.filter-bar {
+  display: flex; flex-direction: column; gap: 10px;
+  background: #fff; padding: 12px; border-radius: 6px; margin-bottom: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+.filter-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.filter-row-date { align-items: flex-end; }
+.filter-row-actions { justify-content: flex-end; }
+.filter-field { font-size: 12px; min-width: 150px; flex: 1 1 150px; }
+.filter-field-grow { flex: 2 1 220px; }
+.filter-row-date .filter-field { flex: 0 1 160px; min-width: 140px; }
+.filter-label { font-weight: 600; margin-bottom: 3px; color: #334155; }
+.filter-field input[type="text"], .filter-field input[type="date"],
+.filter-select {
+  width: 100%; height: 30px; padding: 4px 8px; font-size: 12px; box-sizing: border-box;
+  border: 1px solid #cbd5e1; border-radius: 4px; background: #fff;
+}
+.date-presets { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; height: 30px; }
+.date-chip {
+  font-size: 11px; padding: 4px 10px; border-radius: 14px; cursor: pointer;
+  border: 1px solid #cbd5e1; background: #f8fafc; color: #334155;
+}
+.date-chip:hover { background: #eff6ff; border-color: #93c5fd; }
+.date-chip.clear { color: #c0392b; border-color: #fca5a5; background: #fff; }
+.date-chip.clear:hover { background: #fdecea; }
+#btn-xoa-loc {
+  padding: 6px 14px; background: #64748b; color: #fff; border: none;
+  border-radius: 4px; cursor: pointer; font-size: 12px;
+}
+#btn-xoa-loc:hover { background: #475569; }
+.list-summary { font-size: 13px; color: #334155; margin: 0 2px 8px; }
+
+/* ---------- Multiselect (checkbox-dropdown, tiêu chí 8) ---------- */
+.ms-wrap { position: relative; width: 100%; outline: none; }
+.ms-btn {
+  width: 100%; height: 30px; padding: 4px 10px; font-size: 12px; text-align: left;
+  border: 1px solid #cbd5e1; border-radius: 4px; background: #fff; cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ms-wrap:focus-visible .ms-btn, .ms-wrap.open .ms-btn { border-color: #2563eb; outline: none; }
+.ms-panel {
+  position: absolute; z-index: 30; top: 100%; left: 0; margin-top: 3px;
+  min-width: 100%; width: max-content; max-width: 320px; max-height: 240px; overflow-y: auto;
+  background: #fff; border: 1px solid #cbd5e1; border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.15); padding: 4px;
+}
+.ms-item {
+  display: flex; align-items: center; gap: 6px; padding: 5px 8px; font-size: 12px;
+  cursor: pointer; border-radius: 4px; white-space: nowrap;
+}
+.ms-item input[type="checkbox"] { pointer-events: none; }
+.ms-item:hover, .ms-item.active { background: #eff6ff; }
+.ms-item-all { border-bottom: 1px solid #e5e7eb; margin-bottom: 3px; padding-bottom: 6px; font-weight: 600; }
+
+/* ---------- Bảng kết quả ---------- */
+.table-wrap { background: #fff; border-radius: 6px; overflow-x: auto; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { padding: 6px 8px; border-bottom: 1px solid #e5e7eb; text-align: left; white-space: nowrap; }
+th { background: #f8fafc; position: sticky; top: 0; }
+tbody tr { cursor: pointer; }
+tbody tr:hover { background: #f1f5f9; }
+tr.selected { outline: 2px solid #2563eb; outline-offset: -2px; }
+tr.row-do { background: #fdecea; }
+tr.row-vang { background: #fff8e1; }
+.pager { display: flex; gap: 10px; align-items: center; padding: 8px; font-size: 13px; }
+.pager button { padding: 4px 10px; cursor: pointer; }
+
+/* ---------- Chi tiết ---------- */
+.detail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.detail-header-info { display: flex; flex-direction: column; gap: 1px; }
+.detail-header-name { font-size: 18px; font-weight: 700; }
+.detail-header-mahoso { font-size: 12px; font-weight: 400; color: #64748b; }
+.detail-header-sub { font-size: 12px; color: #64748b; }
+.chan-doan-goc {
+  background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 6px;
+  padding: 8px 10px; margin-bottom: 8px; position: sticky; top: 0; z-index: 5;
+}
+.chan-doan-goc .label { font-size: 11px; font-weight: 700; color: #4338ca; text-transform: uppercase; }
+.chan-doan-goc .content { font-size: 13px; margin-top: 2px; }
+.qd1613-banner.vi-pham {
+  background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b;
+  padding: 8px 10px; border-radius: 6px; margin-bottom: 8px; font-size: 13px;
+}
+.qd1613-banner.vi-pham button { margin-left: 10px; background: #991b1b; color: #fff; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; }
+#flags-summary { margin-bottom: 8px; font-size: 12px; }
+.flag-chip { display: inline-block; padding: 2px 8px; border-radius: 12px; margin: 2px; font-size: 11px; }
+.flag-chip.flag-do { background: #fdecea; color: #c0392b; }
+.flag-chip.flag-cam { background: #ffe8cc; color: #a15c00; }
+.flag-chip.flag-vang { background: #fff8e1; color: #8a6d00; }
+.detail-actions { margin-bottom: 8px; }
+.detail-actions button, .detail-header button {
+  background: #2563eb; color: #fff; border: none; padding: 6px 12px;
+  border-radius: 4px; cursor: pointer; font-size: 12px;
+}
+
+details { margin-bottom: 6px; border: 1px solid #e5e7eb; border-radius: 6px; }
+details summary {
+  padding: 6px 10px; background: #f8fafc; cursor: pointer; font-weight: 600; font-size: 13px;
+}
+.field-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; padding: 10px; }
+
+.field { font-size: 12px; }
+.field label { display: block; font-weight: 600; color: #475569; margin-bottom: 2px; }
+.field input, .field select, .field textarea {
+  width: 100%; padding: 4px 6px; font-size: 12px;
+  transition: background-color .6s ease, border-color .6s ease;
+}
+.field textarea { min-height: 46px; }
+.field.field-checkbox input { width: auto; }
+/* Tiêu chí 9 — mỗi lựa chọn radio 1–5 là 1 khối inline-flex (input + span
+   text cùng dòng); trước đây `.field.field-radio5 label{display:inline}` có
+   độ đặc trưng CSS cao hơn `.radio5 label{display:flex}` nên ĐÈ MẤT layout
+   ngang, khiến nhãn "I/II/III..." rơi xuống dòng dưới radio. white-space:
+   nowrap đảm bảo input+text trong 1 label không bao giờ tách dòng; container
+   .radio5 dùng flex-wrap để các Ô (không phải chữ trong 1 ô) xuống dòng khi
+   thiếu chỗ ngang — bấm phím số 1-5 vẫn chọn trực tiếp (widgets.js).
+*/
+.field.field-radio5 label { display: inline-flex; align-items: center; gap: 3px; font-weight: normal; white-space: nowrap; }
+.radio5 {
+  display: flex; flex-wrap: wrap; gap: 10px; padding: 4px 2px; border-radius: 4px;
+  transition: background-color .6s ease, border-color .6s ease;
+}
+.radio5 label { display: inline-flex; align-items: center; gap: 3px; font-weight: normal; white-space: nowrap; cursor: pointer; }
+
+/* Tiêu chí 7/10 — viền vàng NHẠT thụ động cho mọi trường Nguồn='suy' theo
+   SPEC §5 (fields.js) — chỉ để phân biệt với dữ liệu gốc, KHÔNG có ⚠/nút. */
+.field.suy-field { border-left: 3px solid #fde68a; padding-left: 6px; }
+/* "Cần rà soát" THẬT (trường suy đang mang cờ QC CHƯA xác nhận — chỉ áp
+   dụng cho CONFIRMABLE_SUY_FIELDS ở detail.js) — highlight NỔI hơn hẳn viền
+   vàng thụ động ở trên: nền vàng đậm #fef3c7 + viền trái dày #f59e0b. */
+.field.suy { background: #fef3c7; border-left: 3px solid #f59e0b; padding-left: 6px; }
+.field.suy-confirmed { border-left-color: #86efac; background: #f0fdf4; }
+.suy-warn { color: #b45309; margin-left: 6px; cursor: help; }
+.suy-confirm { margin-left: 6px; font-size: 11px; padding: 1px 6px; cursor: pointer; }
+.field.readonly input, input.readonly { background: #f1f5f9; color: #64748b; }
+
+/* Tiêu chí 10 — trạng thái lưu NGAY trên ô nhập (widgets.js/sinhhieu.js):
+   .invalid = ngoài ngưỡng/lỗi lưu (đỏ, "cần rà soát" tương đương suy nhưng
+   mức nghiêm trọng hơn); .saved = vừa autosave PATCH 2xx thành công (xanh,
+   tự phai sau ~1.5s nhờ transition khai báo ở input/.radio5/.sh-cell). */
+.invalid, input.invalid, textarea.invalid, select.invalid, .radio5.invalid, .sh-cell.invalid {
+  background: #fee2e2 !important; border: 1px solid #ef4444 !important;
+}
+.saved, input.saved, textarea.saved, select.saved, .radio5.saved, .sh-cell.saved {
+  background: #dcfce7 !important; border: 1px solid #22c55e !important;
+}
+
+/* Tiêu chí 10 — Họ tên (và tương đương) tự IN HOA khi gõ (CSS phản hồi tức
+   thời); giá trị thật gửi lên server được .toLocaleUpperCase('vi') lúc lưu. */
+.input-uppercase { text-transform: uppercase; }
+
+/* ---------- Nhóm D — card theo cơ quan (tiêu chí 11) ---------- */
+.organ-cards {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 12px; padding: 10px;
+}
+.organ-card {
+  border: 1px solid #cbd5e1; border-radius: 8px; background: #fff;
+  overflow: hidden; display: flex; flex-direction: column;
+}
+.organ-card-head {
+  background: #eff6ff; color: #1e40af; font-weight: 700; font-size: 13px;
+  padding: 7px 12px; border-bottom: 1px solid #dbeafe;
+}
+.organ-card-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.organ-card-body .field.field-radio5 { margin-top: -2px; }
+
+.date-input { display: flex; gap: 4px; align-items: center; position: relative; }
+.date-picker-btn { cursor: pointer; background: none; border: 1px solid #cbd5e1; border-radius: 4px; }
+.date-picker-native { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
+
+.icd-input { position: relative; }
+.icd-suggestions {
+  position: absolute; z-index: 20; background: #fff; border: 1px solid #cbd5e1;
+  max-height: 200px; overflow-y: auto; width: 100%; box-shadow: 0 2px 8px rgba(0,0,0,.15);
+}
+.icd-item { padding: 4px 8px; font-size: 12px; cursor: pointer; }
+.icd-item:hover, .icd-item.active { background: #dbeafe; }
+
+/* Đợt 4B criterion 4 — combobox danh mục dùng chung: kế thừa nguyên khối
+   .icd-suggestions/.icd-item ở trên (combobox.js gắn thêm class
+   .combo-suggestions) — chỉ cần position:relative cho input cha để menu định
+   vị đúng, giống .icd-input. */
+.combobox-input { position: relative; }
+
+.benh-table-wrap { padding: 10px; }
+.benh-table { width: 100%; font-size: 12px; }
+.benh-add-form { display: flex; gap: 6px; margin-top: 8px; position: relative; align-items: center; }
+.benh-add-form input { flex: 2; padding: 4px; }
+.benh-add-form select { flex: 1; }
+
+/* ---------- Bảng lệnh Ctrl+K ---------- */
+.cmd-palette {
+  position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex;
+  align-items: flex-start; justify-content: center; padding-top: 100px; z-index: 100;
+}
+.cmd-palette-box { background: #fff; border-radius: 8px; width: 420px; max-height: 60vh; overflow-y: auto; box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+.cmd-palette-title { padding: 10px 14px; font-weight: 700; border-bottom: 1px solid #e5e7eb; }
+#cmd-list { list-style: none; margin: 0; padding: 4px; }
+#cmd-list li { padding: 8px 10px; border-radius: 4px; cursor: pointer; font-size: 13px; }
+#cmd-list li:hover { background: #eff6ff; }
+
+/* ---------- Toast ---------- */
+#toast {
+  position: fixed; bottom: 20px; right: 20px; background: #1e293b; color: #fff;
+  padding: 8px 16px; border-radius: 4px; opacity: 0; transform: translateY(10px);
+  transition: all .2s; pointer-events: none; z-index: 200;
+}
+#toast.show { opacity: 1; transform: translateY(0); }
+
+/* ---------- Phân công (admin) ---------- */
+#phan-cong-panel { padding: 16px; background: #fff; margin: 12px; border-radius: 6px; }
+.phan-cong-form { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+.phan-cong-form label { font-size: 12px; font-weight: 600; }
+.phan-cong-form input, .phan-cong-form select { display: block; margin-top: 4px; padding: 6px; }
+.phan-cong-form button { padding: 8px 16px; background: #2563eb; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+#pc-result.ok { color: #15803d; }
+#pc-result.error { color: #c0392b; }
+.phan-cong-table { width: 100%; margin-top: 12px; font-size: 13px; }
+
+/* ---------- Xuất file (admin) ---------- */
+#xuat-file-panel { padding: 16px; background: #fff; margin: 12px; border-radius: 6px; max-width: 900px; }
+.xf-block { margin-bottom: 16px; }
+.xf-label { font-weight: 700; margin-bottom: 6px; }
+.xf-scope-radios { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; margin-bottom: 8px; }
+#xf-scope-value select, #xf-scope-value textarea { width: 100%; max-width: 420px; padding: 6px; font-size: 13px; }
+#xf-scope-value textarea { min-height: 70px; }
+.xf-toggle { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.xf-warning {
+  background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b;
+  padding: 8px 10px; border-radius: 6px; margin-top: 6px; font-size: 13px; font-weight: 700;
+}
+.xf-ext-cols {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 4px; margin-top: 8px; background: #f8fafc; padding: 10px; border-radius: 6px;
+}
+.ext-col { font-size: 12px; font-weight: normal; display: flex; align-items: center; gap: 4px; }
+#xf-preview-btn, #xf-start-btn {
+  background: #2563eb; color: #fff; border: none; padding: 8px 16px;
+  border-radius: 4px; cursor: pointer; font-size: 13px;
+}
+#xf-start-btn { background: #15803d; }
+.xf-preview-stats { margin-top: 8px; font-size: 13px; background: #f8fafc; padding: 8px 10px; border-radius: 6px; }
+.xf-red { color: #c0392b; }
+.xf-ok { color: #15803d; }
+.xf-error { color: #c0392b; margin-top: 6px; font-size: 13px; }
+.xf-job-stats { font-size: 12px; color: #475569; margin-bottom: 6px; }
+.xf-xa-list { display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; }
+.xf-xa-line {
+  display: flex; gap: 12px; font-size: 12px; padding: 4px 8px; border-radius: 4px;
+  background: #f8fafc; align-items: center;
+}
+.xf-xa-line .xf-xa-name { flex: 1; font-weight: 600; }
+.xf-xa-cho { color: #64748b; }
+.xf-xa-dang_chay { background: #dbeafe; color: #1e40af; }
+.xf-xa-xong { background: #dcfce7; color: #15803d; }
+.xf-xa-loi { background: #fdecea; color: #c0392b; }
+.xf-files ul { margin: 4px 0; padding-left: 18px; font-size: 12px; }
+.xf-log {
+  background: #0f172a; color: #e2e8f0; padding: 10px; border-radius: 6px;
+  font-size: 11px; max-height: 220px; overflow-y: auto; white-space: pre-wrap;
+}
+.xf-job-hist-item { font-size: 12px; padding: 6px 0; border-bottom: 1px solid #e5e7eb; }
+.xf-job-hist-item button { margin-left: 8px; font-size: 11px; padding: 2px 8px; cursor: pointer; }
+
+/* ================= Dashboard (P3) ================= */
+#dashboard-panel { padding: 16px; margin: 12px; }
+.dash-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.dash-header h2 { margin: 0; }
+.dash-header button { padding: 6px 14px; background: #2563eb; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+.dash-loading { padding: 20px; color: #64748b; }
+.dash-section { background: #fff; border-radius: 6px; padding: 14px 16px; margin-bottom: 14px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+.dash-section h3 { margin-top: 0; }
+.dash-section h4 { margin: 16px 0 6px; font-size: 13px; color: #334155; }
+
+.dash-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.dash-card { background: #f8fafc; border-radius: 6px; padding: 12px; text-align: center; }
+.dash-card-val { font-size: 22px; font-weight: 700; color: #1e293b; }
+.dash-card-label { font-size: 11px; color: #64748b; margin-top: 4px; }
+.dash-card-do .dash-card-val { color: #c0392b; }
+.dash-card-warn .dash-card-val { color: #a15c00; }
+.dash-card-ok .dash-card-val { color: #15803d; }
+.dash-card-mantinh { background: #fef2f2; }
+.dash-card-pct { font-size: 12px; color: #c0392b; font-weight: 600; margin-top: 2px; }
+
+.dash-legend, .dash-flag-legend { display: flex; gap: 14px; font-size: 11px; margin-bottom: 8px; color: #475569; }
+.dash-legend .leg, .dash-flag-legend .leg { display: flex; align-items: center; gap: 4px; }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+.seg-xong, .dash-hbar-new { background: #2563eb; }
+.seg-dang { background: #38bdf8; }
+.seg-cdc { background: #f59e0b; }
+.seg-chua { background: #cbd5e1; }
+.dash-hbar-old { background: #94a3b8; }
+
+.dash-xa-chart { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.dash-xa-row { display: flex; align-items: center; gap: 8px; }
+.dash-xa-name { width: 170px; font-size: 12px; flex-shrink: 0; }
+.dash-stack { display: flex; height: 16px; border-radius: 3px; overflow: hidden; background: #f1f5f9; }
+.dash-stack-seg { height: 100%; }
+.dash-xa-pct { width: 110px; font-size: 12px; font-weight: 600; text-align: right; flex-shrink: 0; }
+
+.dash-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px; }
+.dash-table th, .dash-table td { padding: 5px 8px; border-bottom: 1px solid #e5e7eb; text-align: left; }
+.dash-table th { background: #f8fafc; }
+
+.dash-role { color: #94a3b8; font-size: 11px; }
+.sparkline { vertical-align: middle; }
+.spark-dot { fill: #2563eb; }
+
+.dash-flag-chart { display: flex; flex-direction: column; gap: 8px; }
+.dash-flag-row { display: flex; align-items: center; gap: 10px; }
+.dash-flag-name { width: 240px; flex-shrink: 0; text-align: left; }
+.dash-flag-bars { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.dash-hbar { height: 12px; border-radius: 2px; min-width: 2px; position: relative; }
+.dash-hbar span { position: absolute; right: -28px; top: -2px; font-size: 10px; color: #475569; }
+.dash-line-chart { background: #f8fafc; border-radius: 6px; }
+.dash-empty { color: #94a3b8; font-size: 12px; padding: 10px 0; }
+
+.dash-gl-bar { display: flex; height: 28px; border-radius: 4px; overflow: hidden; }
+.dash-gl-seg { display: flex; align-items: center; justify-content: center; font-size: 11px; color: #fff; min-width: 40px; }
+.gl-none { background: #94a3b8; }
+.gl-ok { background: #15803d; }
+.gl-high { background: #c0392b; }
+
+/* ================= Sinh hiệu (P4) ================= */
+#sinh-hieu-panel { padding: 16px; margin: 12px; background: #fff; border-radius: 6px; }
+.sh-toolbar { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.sh-filter { font-size: 12px; font-weight: 600; }
+.sh-filter select { display: block; margin-top: 4px; padding: 4px; }
+.sh-toolbar button { padding: 6px 14px; background: #2563eb; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+.sh-toast { font-size: 12px; color: #15803d; opacity: 0; transition: opacity .2s; }
+.sh-toast.show { opacity: 1; }
+
+.sh-excel-box { background: #f8fafc; border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; font-size: 13px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sh-excel-box button { padding: 5px 12px; cursor: pointer; }
+#sh-import-report { flex-basis: 100%; }
+.sh-import-stats { font-size: 12px; margin-top: 6px; }
+
+.sh-table-wrap { max-height: 60vh; overflow: auto; }
+.sh-grid { width: 100%; border-collapse: collapse; font-size: 12px; }
+.sh-grid th, .sh-grid td { padding: 4px 6px; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+.sh-grid th { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
+.sh-grid .sh-ma { font-family: monospace; font-size: 11px; }
+.sh-cell { width: 80px; padding: 3px 4px; font-size: 12px; transition: background-color .6s ease, border-color .6s ease; }
+.sh-cell.sh-saving { background: #fef9c3; }
+.sh-bmi { font-weight: 700; text-align: center; }
+.bmi-thap { color: #a15c00; }
+.bmi-binhthuong { color: #15803d; }
+.bmi-cao { color: #c0392b; }
+/* Đợt 5 criterion 4: ô PL cố định bề rộng — chỉ còn badge trạng thái hiện
+   tại (server tự tính, không còn popover gợi ý/xác nhận tay của Đợt 4B). */
+.sh-pl-cell { width: 150px; min-width: 150px; max-width: 150px; white-space: normal; }
+.sh-pl-confirmed { background: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+.sh-pl-empty { color: #94a3b8; }
+
+/* ---------- Người dùng (admin, criterion 1) ---------- */
+#nguoi-dung-panel { padding: 16px; margin: 12px; background: #fff; border-radius: 6px; }
+.nd-create-form { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 8px; }
+.nd-create-form label { font-size: 12px; font-weight: 600; }
+.nd-create-form input { display: block; margin-top: 4px; padding: 6px; }
+.nd-create-form button { padding: 8px 16px; background: #2563eb; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+#nd-create-result.ok { color: #15803d; font-size: 13px; margin-bottom: 8px; }
+#nd-create-result.error { color: #c0392b; font-size: 13px; margin-bottom: 8px; }
+.nd-table { width: 100%; margin-top: 12px; font-size: 13px; border-collapse: collapse; }
+.nd-table th, .nd-table td { padding: 6px 8px; border-bottom: 1px solid #e5e7eb; text-align: left; }
+.nd-table th { background: #f8fafc; }
+.nd-active { color: #15803d; font-weight: 600; }
+.nd-inactive { color: #c0392b; font-weight: 600; }
+.nd-actions button { font-size: 11px; padding: 4px 8px; margin-right: 4px; cursor: pointer; }
+.nd-actions button.nd-danger { background: #fdecea; color: #c0392b; border: 1px solid #fca5a5; border-radius: 4px; }
+
+/* ---------- Tài khoản của tôi (mọi user, criterion 3) ---------- */
+.tai-khoan-box { width: 340px; padding: 16px; }
+.tai-khoan-form label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 10px; }
+.tai-khoan-form input { width: 100%; padding: 6px; margin-top: 4px; box-sizing: border-box; }
+.tk-section-title { font-size: 12px; font-weight: 700; color: #334155; margin: 10px 0 8px; }
+#tk-result.ok { color: #15803d; font-size: 12px; }
+#tk-result.error { color: #c0392b; font-size: 12px; }
+.tk-actions { display: flex; gap: 8px; margin-top: 10px; }
+.tk-actions button { padding: 6px 14px; cursor: pointer; border-radius: 4px; border: none; }
+.tk-actions button[type="submit"] { background: #2563eb; color: #fff; }
+.tk-actions button#tk-close-btn { background: #e5e7eb; color: #1a1a1a; }
+
+/* ---------- Cài đặt ngưỡng sinh hiệu (admin, Đợt 3 criterion 8) ---------- */
+#cai-dat-panel { padding: 16px; margin: 12px; background: #fff; border-radius: 6px; max-width: 640px; }
+.cd-hint { font-size: 12px; color: #64748b; margin-bottom: 14px; }
+.cd-form { display: flex; flex-direction: column; gap: 10px; }
+.cd-row {
+  display: flex; align-items: center; gap: 14px; padding: 8px 10px;
+  background: #f8fafc; border-radius: 6px; flex-wrap: wrap;
+}
+.cd-row-label { font-weight: 700; font-size: 13px; color: #334155; flex: 1 1 200px; }
+.cd-unit { font-weight: normal; color: #64748b; font-size: 11px; }
+.cd-row label { font-size: 12px; font-weight: 600; color: #475569; display: flex; align-items: center; gap: 4px; }
+.cd-row input { width: 90px; padding: 5px 7px; font-size: 12px; }
+#cd-result.ok { color: #15803d; font-size: 13px; }
+#cd-result.error { color: #c0392b; font-size: 13px; }
+.cd-form button[type="submit"] {
+  align-self: flex-start; padding: 8px 18px; background: #2563eb; color: #fff;
+  border: none; border-radius: 4px; cursor: pointer; font-size: 13px;
+}

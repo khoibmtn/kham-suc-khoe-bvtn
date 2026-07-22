@@ -1,0 +1,483 @@
+4419	mất răng
+3921	gan nhiễm mỡ
+2799	mất nhiều răng
+1643	thoái hóa khớp
+1415	mộng
+1141	tật khúc xạ
+1129	sâu răng
+922	nghe kém
+844	tăng huyết áp
+712	thiếu máu cơ tim
+604	nang thận
+574	thoái hóa cột sống thắt lưng
+522	đục thể thủy tinh
+509	viêm họng mạn tính
+424	nhịp nhanh xoang
+409	iol
+349	phì đại tuyến tiền liệt
+335	viêm họng cấp
+308	sẩn ngứa
+293	lão thị
+286	đã đặt thể thủy tinh nhân tạo
+279	nang gan
+274	mất toàn bộ răng
+263	viêm lợi
+239	u xơ tuyến tiền liệt
+234	sỏi túi mật
+226	nang thận trái
+207	sỏi thận
+197	sai khớp cắn (móm)
+195	viêm bờ mi
+194	nang thận phải
+165	đục t3
+155	viêm quanh răng
+148	block nhánh phải
+139	trĩ nội
+139	viêm âm đạo
+138	nhịp chậm xoang
+130	hàm giả
+122	đã mổ t3
+120	sỏi thận trái
+112	sỏi thận phải
+102	đục t3 bắt đầu
+100	đục t3 tiến triển
+100	cặn thận 2 bên
+99	cstl
+98	thoái hóa khớp cstl
+95	gan thô
+93	đtđ type 2
+91	viêm dạ dày
+78	rung nhĩ
+77	nhịp tim nhanh
+75	mất toàn bộ r
+74	viêm kết mạc
+74	mắt p mộng
+73	cặn thận
+71	bướu giáp nhân
+71	suy giãn tm chi dưới
+70	ngoại tâm thu thất
+69	cao răng
+68	viêm da cơ địa
+68	vẩn đục dịch kính
+68	rl tiền đình
+66	nấm da
+63	nang thận 2 bên
+62	đtđ tuyp ii
+62	vhm
+61	cắt túi mật
+61	đục dịch kính
+60	đục bao sau
+60	2mtkx
+58	u tuyến giáp
+58	thoái hóa khớp gối
+56	viêm mũi dị ứng
+55	sẹo giác mạc
+55	vkm
+55	tai nghe kém
+55	block nhánh p hoàn toàn
+54	mộng thịt
+53	viêm phế quản
+52	tăng ha
+52	polip túi mật
+51	rltđ
+51	đau khớp
+48	viêm da
+47	nhân tuyến giáp
+47	gối
+46	sỏi thận 2 bên
+46	2miol
+45	mắt t mộng
+44	giãn đài bể thận
+43	thoát vị đĩa đệm cstl
+42	thoái hóa cstl
+41	gù vẹo cs
+41	thoái hóa các khớp
+39	tai biến mạch máu não
+39	mpiol
+39	pt bướu cổ
+38	viêm da dị ứng
+37	s3
+37	mất r16s3
+36	cắt ruột thừa
+35	móm hàm giả
+34	cắt 2
+34	viễn thị
+34	cơn đau thắt ngực
+34	viêm đa khớp
+34	tkx
+33	rối loạn tiền đình
+33	chóng mặt
+31	gù vẹo cột sống
+31	gù vẹo cstl
+31	cắt rt
+31	cơn đau tn
+31	tắc lệ đạo
+31	thoái hóa khớp+cstl
+30	gout mạn
+30	nghe kém mức độ nhẹ
+30	sỏi mật
+29	bệnh phổi tắc nghẽn mạn tính
+29	tbmmn cũ
+29	vqr
+28	3 dạ dày
+28	sẹo gm
+27	bướu giáp
+27	suy giáp
+27	ngoại tâm thu nhĩ
+27	viêm họng
+27	cao răng viêm lợi
+26	thoái hóa xương khớp
+26	rlth tai trong
+26	2mi02
+26	điếc tuổi già
+25	u tuyến giáp đã pt
+25	polyp túi mật
+25	u máu gan
+25	nttt
+24	viêm da tiếp xúc
+24	khô mắt
+24	đục t3 tt
+23	viễn lão thị
+23	cắt u tuyến giáp
+23	viêm bờ mi mạn
+23	ngoại t3
+23	nghe kém mức độ vừa
+23	i02
+22	th khớp gối
+22	th các khớp
+22	u mi trên
+22	đã mổ iol
+22	blok nhánh p hoàn toàn
+21	đục thủy tinh thể
+21	thoái hóa
+21	viêm da chàm hóa
+21	mtiol
+21	cđtn
+21	bán tắc lệ đạo
+21	pt bướu giáp
+20	cắt 3
+20	mất chức năng
+19	sâu răng <r>,26s3
+19	viêm tai giữa mạn
+19	sỏi đường mật
+19	parkinson
+19	mòn mặt nhai
+18	pt thủng dạ dày
+18	thoát vị đĩa đệm
+18	2 người t
+18	đặt stent
+18	mất răng <r> 37
+18	mất răng <r> 27
+18	u mi dưới
+18	hàm giả toàn phần
+17	viêm tai giữa
+17	th cstl
+17	túi mật đã cắt
+17	răng sâu
+17	thoái hóa cstl+ gối
+17	cr viêm lợi
+16	thoái hóa cột sống cổ
+16	ngoại tâm thu
+16	phì đại ttl
+16	4 dạ dày
+16	mất răng <r> 47
+16	ioc
+16	block nhánh trái
+16	block nhánh
+16	sụp mi
+16	suy tim
+16	viêm lợi cấp
+15	suy giãn tĩnh mạch chi dưới
+15	sa sinh dục
+15	viêm gan b
+15	2 người p
+15	viêm đại tràng
+15	mất răng toàn bộ
+15	tăng đường máu
+15	nấm móng
+15	rối loạn chuyển hóa lipid máu
+14	thoái hóa cột sống
+14	sỏi bàng quang
+14	đã t3
+14	viêm bờ mi mạn tính
+14	mổ u xơ tc
+14	td đtđ
+14	mất 2 r
+13	k vú đã pt
+13	cắt thận p
+13	sỏi đường mật trong gan
+13	liệt 1
+13	bạch biến rải rác
+13	u hắc tố da
+13	bướu giáp nhân thùy p
+13	đái tháo đường
+13	tật kx
+13	mất nhiều răng hàm giả
+13	viêm xoang mạn
+13	rl tuần hoàn tai trong
+13	thoái hóa võng mạc
+13	lang ben
+13	ngoại ttt
+12	thoái hóa khớp vai
+12	viêm tai giữa mạn tính
+12	ntt thất
+12	yếu 1
+12	thoái hóa nhiều khớp
+12	glocom
+12	gãy cũ đầu dưới xương quay t
+12	cắt tuyến giáp
+12	vhc
+12	cắt tc hoàn toàn
+12	đục
+12	suy giáp sau pt
+12	mất răng <r> 46
+12	hở van 2 lá
+12	hen pq
+12	mcn
+12	sâu răng <r>,27s3
+12	gan nhiêễm mỡ
+12	viêm tai giữa t mạn
+12	tuyến tiền liệt
+12	th khớp+cstl
+11	k đại tràng
+11	suy giãn tm
+11	viêm thanh quản cấp
+11	tvđ đ cstl
+11	thkg
+11	tăng đường huyết
+11	viêm phổi
+11	mất răng <r> 36
+11	teo thận t
+11	lông xiêu
+11	k đại tràng đã pt
+11	nttn
+11	thận p teo nhỏ
+11	bàng quang tăng hoạt
+11	thoái hóa đa khớp
+11	mẩn ngứa
+11	th khớp cstl
+11	đục t3 bđ
+11	mất răng 1.7
+11	thoái hóa cstl+gối
+10	thoái hóa cơ xương khớp
+10	gãy cũ đầu dưới xương quay p
+10	k tuyến giáp
+10	gãy cũ đầu dưới xương quay
+10	bạch biến
+10	viêm phế quản mạn tính
+10	xơ gan
+10	tvđ đ
+10	thận t teo nhỏ
+10	bướu cổ
+10	sâu răng <r>,26
+10	viêm thanh quản mạn
+10	2 mtkx
+10	gout
+10	viêm mũi cấp
+10	đã mổ
+10	csc
+9	thoái hóa cs cổ
+9	pt cắt ruột thừa
+9	thoái hóa cs
+9	mắt t iol
+9	th
+9	đtđ tuýp ii
+9	sỏi và nang thận
+9	điếc
+9	suy tuyến thượng thận
+9	túi mật co nhỏ
+9	mất r
+9	gan nhiêm mỡ
+9	pt sỏi thận
+9	móm hàm dưới
+9	1
+9	mất 1 r
+8	đặt máy tạo nhịp
+8	đục ttt
+8	ntt nhĩ
+8	mât nhiều răng
+8	teo thận p
+8	di chứng tbmmn
+8	thoái hóa 2 khớp gối
+8	pt cắt rt
+8	mắt p đục t3
+8	u đại tràng đã pt
+8	u nhú hắc tố da
+8	mổ cắt tc
+8	mộng góc trong
+8	đã mổ t3+iol
+8	đã mổ t3+ iol
+8	mất r26s3
+8	4
+8	block nhĩ thất
+8	cặn thận t
+8	mắt t sẹo giác mạc
+8	lác trong
+8	quặm mi dưới
+8	nhịp nhanh tim
+8	teo gai
+8	rlth tai
+8	sỏi niệu quản
+8	ts tăng ha
+8	ha cao
+8	viêm ctc
+7	tim nhịp nhanh
+7	nghe kém mức độ trung bình
+7	polip ctc
+7	6
+7	viêm âm đạo ctc
+7	mất đốt 2
+7	trĩ
+7	gãy cũ xương đòn t
+7	mổ u nang bt
+7	hở van 3 lá
+7	cắt bướu giáp
+7	xuất huyết dưới da
+7	viêm loét dạ dày
+7	th khớp vai
+7	bướu giáp nhân 2 thùy
+7	viêm dạ dầy
+7	đã iol
+7	móm hàm trên
+7	mất răng <r> 17
+7	cắt 1
+7	thoái hoa khớp
+7	nhìn kém
+7	pt u tuyến giáp
+7	khô
+7	sa da mi
+7	mất r17s3
+7	zona thần kinh
+7	5
+7	block p
+7	bệnh basedow
+7	mắt p mất chức năng
+7	teo thận
+7	di chứng yếu 1
+7	mắt giả
+7	mti02
+7	td đtđ type 2
+7	viêm pq mạn
+7	viêm lợi cao răng
+7	loét dạ dày
+7	đtđ đã bc
+7	mất răng 1.6
+7	mòm mặt nhai
+7	âm iol
+6	cứng khớp
+6	viêm ađ
+6	parkison
+6	viêm phế quản mạn
+6	viêm đại tràng mạn
+6	đã cắt túi mật
+6	quặm mi trên
+6	mổ sỏi thận t
+6	pt cắt tuyến giáp
+6	khớp háng t nhân tạo
+6	bctk
+6	mắt p iol
+6	3 dạ dầy
+6	mộng độ 2 đục t3
+6	thoái hóa khớp gối 2 bên
+6	viêm qr
+6	thoái hóa gù vẹo cstl
+6	pt tuyến giáp
+6	tắc tuyến lệ
+6	rl th tai trong
+6	thoát vị bẹn p
+6	cđtn đã đặt stent
+6	mất r27s3
+6	mất r46s3
+6	vai
+6	mổ đẻ 1 lần
+6	lao phổi cũ
+6	thận p đã cắt
+6	suy thận mạn
+6	quặn mi dưới
+6	pt cột sống
+6	mắt p sẹo giác mạc
+6	cơn đau tnod
+6	mắt t đục t3
+6	k giáp đã pt
+6	đục ttt bắt đầu
+6	mất ngủ
+6	8
+6	cắt tc bán phần
+6	cắt bướu giáp nhân
+6	tmct cục bộ
+6	mất răng 2.6
+6	block nhánh (p)
+6	mất 2r
+6	sẩn ngưứa
+5	phì đại tiền liệt tuyến
+5	đau tk vai gáy
+5	thcs cổ
+5	u xơ tử cung
+5	gãy cũ xương đòn p
+5	xẹp cstl
+5	k trực tràng đã pt
+5	mổ u xơ tử cung
+5	bạch biến âm hộ
+5	thoái hóa khớp vai t
+5	mổ sỏi thận
+5	nhịp không đều
+5	rl điều tiết
+5	gối 2 bên
+5	xh dưới da
+5	th khớp gối 2 bên
+5	cắt polip đại tràng
+5	đã mổ t3 iol
+5	lác ngoài
+5	gẫy cũ đầu dưới xương quay t
+5	tiền sử tăng huyết áp
+5	tăng glucose
+5	máy tạo nhịp
+5	tlt to 30g
+5	pt thoát vị bẹn
+5	tlt đã pt
+5	suy thận
+5	đã pt u tuyến giáp
+5	mất răng <r> 46 47
+5	gan tho
+5	mất răng <r> 36 37
+5	gan nhiếm mỡ
+5	vh mạn tính
+5	điếc vừa
+5	nghe kém 2 tai
+5	mổ u nang buồng trứng
+5	mộng độ 2 3
+5	khớp háng p nhân tạo
+5	2 người do đột quỵ
+5	đã đặt stent
+5	mổ sỏi thận p
+5	pt sỏi thận p
+5	loãng xương
+5	viêm pq
+5	rlthtt
+5	blok nhanh p hoàn toàn
+5	nmct đã đặt stent
+5	polup túi mật
+5	mất nhiêu răng
+5	răng giả
+5	thk cstl
+5	tê chân tay
+5	thkcstl
+5	cắt thận t
+5	hàm giả hàm trên
+5	thoái hóa khớp +cstl
+5	vtg mạn tính
+5	nhịp xoang nhanh
+5	sỏi gan
+5	nốt vôi hóa thận
+5	2mio2
+5	đt đ type 2
+5	mất 3 răng
+5	tăng đường máu đói
+5	mổ triệt sản
+5	mổ cắt tc bán phần
+5	mất răng 3.6
+5	mất răng 2.7
+5	suy nhược cơ thể
+5	mất răng 1 7
+5	mất 3 r
+5	nút ráy tai

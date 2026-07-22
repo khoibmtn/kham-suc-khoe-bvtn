@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KSK NCT — Quản lý &amp; rà soát</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+
+<div id="login-screen">
+  <form id="login-form" class="login-form">
+    <h1>KSK NCT — Đăng nhập</h1>
+    <label>Tên đăng nhập
+      <input type="text" id="login-user" autofocus required>
+    </label>
+    <label>Mật khẩu
+      <input type="password" id="login-pass" required>
+    </label>
+    <button type="submit">Đăng nhập</button>
+    <div id="login-error" class="error"></div>
+  </form>
+</div>
+
+<div id="app-shell" hidden>
+  <header id="app-header">
+    <div class="brand">KSK NCT — Rà soát dữ liệu (TTYT Thủy Nguyên)</div>
+    <nav>
+      <button id="nav-danh-sach" class="active">Danh sách</button>
+      <button id="nav-sinh-hieu">Sinh hiệu</button>
+      <button id="nav-dashboard">Dashboard</button>
+      <button id="nav-phan-cong" hidden>Phân công</button>
+      <button id="nav-xuat-file" hidden>Xuất file</button>
+      <button id="nav-nguoi-dung" hidden>Người dùng</button>
+      <button id="nav-cai-dat" hidden>Cài đặt</button>
+    </nav>
+    <div class="user-box">
+      <span id="user-info"></span>
+      <button id="tai-khoan-btn">Tài khoản</button>
+      <button id="logout-btn">Đăng xuất</button>
+    </div>
+  </header>
+
+  <main id="main-area">
+    <div id="list-view"></div>
+    <div id="main-splitter" class="main-splitter" hidden title="Kéo để đổi tỷ lệ — nhấp đúp để về mặc định"></div>
+    <div id="detail-panel" hidden></div>
+  </main>
+
+  <div id="phan-cong-panel" hidden></div>
+  <div id="xuat-file-panel" hidden></div>
+  <div id="dashboard-panel" hidden></div>
+  <div id="sinh-hieu-panel" hidden></div>
+  <div id="nguoi-dung-panel" hidden></div>
+  <div id="cai-dat-panel" hidden></div>
+</div>
+
+<div id="cmd-palette" class="cmd-palette" hidden>
+  <div class="cmd-palette-box">
+    <div class="cmd-palette-title">Bảng lệnh (Ctrl+K)</div>
+    <ul id="cmd-list"></ul>
+  </div>
+</div>
+
+<div id="tai-khoan-modal" class="cmd-palette" hidden>
+  <div class="cmd-palette-box tai-khoan-box">
+    <div class="cmd-palette-title">Tài khoản của tôi</div>
+    <form id="tai-khoan-form" class="tai-khoan-form">
+      <label>Họ tên
+        <input type="text" id="tk-ho-ten">
+      </label>
+      <hr>
+      <div class="tk-section-title">Đổi mật khẩu (để trống nếu không đổi)</div>
+      <label>Mật khẩu cũ
+        <input type="password" id="tk-mat-khau-cu" autocomplete="current-password">
+      </label>
+      <label>Mật khẩu mới
+        <input type="password" id="tk-mat-khau-moi" autocomplete="new-password">
+      </label>
+      <div id="tk-result"></div>
+      <div class="tk-actions">
+        <button type="submit">Lưu</button>
+        <button type="button" id="tk-close-btn">Đóng</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="/js/fields.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/nguong.js"></script>
+<script src="/js/multiselect.js"></script>
+<script src="/js/focusflow.js"></script>
+<script src="/js/widgets.js"></script>
+<script src="/js/combobox.js"></script>
+<script src="/js/list.js"></script>
+<script src="/js/detail.js"></script>
+<script src="/js/xuatfile.js"></script>
+<script src="/js/dashboard.js"></script>
+<script src="/js/sinhhieu.js"></script>
+<script src="/js/nguoidung.js"></script>
+<script src="/js/caidat.js"></script>
+<script src="/js/keyboard.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>

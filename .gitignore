@@ -1,0 +1,18 @@
+# ==== DỮ LIỆU BỆNH NHÂN — TUYỆT ĐỐI KHÔNG ĐƯA LÊN GIT ====
+# (13.326 hồ sơ KSK thật: họ tên, CCCD, chẩn đoán)
+output/
+app/data/
+tong-hop.xlsx
+2026 KSKNCT*.xlsx
+~$*
+*.db
+*.db.bak*
+*.sqlite
+
+# ==== Môi trường & file tạm ====
+app/.venv/
+__pycache__/
+*.pyc
+.DS_Store
+nohup.out
+*.log
