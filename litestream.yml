@@ -7,7 +7,7 @@ dbs:
     replicas:
       - type: s3
         bucket: ${S3_BUCKET}
-        path: ksk
+        path: ksk-v2
         endpoint: ${S3_ENDPOINT}
         access-key-id: ${S3_ACCESS_KEY_ID}
         secret-access-key: ${S3_SECRET_ACCESS_KEY}
