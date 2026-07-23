@@ -67,11 +67,33 @@ def add_benh(ma_ho_so: str, body: BenhBody, user=Depends(auth.get_current_user))
         new_id = cur.lastrowid
         _log(conn, ma_ho_so, user['id'], f'benh:add:{new_id}', None,
              f'{ma} — {ten}')
+
+        # Phản hồi anh Khôi (Phase 1/Đợt 12): thêm 1 mã ICD hợp lệ = đã bổ sung
+        # ánh xạ chẩn đoán -> tự gỡ cờ 'Còn chẩn đoán chưa ánh xạ' Ở BACKEND
+        # (bản Phase 1 chỉ gỡ client-side nên reload lại hiện cờ). Chỉ gỡ khi
+        # có mã ICD thật (ma) + cờ đang tồn tại; ghi nhật ký co_qc để truy vết.
+        hs = conn.execute('SELECT co_qc FROM ho_so WHERE ma_ho_so=?',
+                          (ma_ho_so,)).fetchone()
+        old_co_qc = hs['co_qc'] if hs else None
+        if ma and 'CON_CHAN_DOAN_CHUA_ANH_XA' in qc.flags_of(old_co_qc):
+            new_co_qc = qc.remove_flags(conn, ma_ho_so,
+                                        ['CON_CHAN_DOAN_CHUA_ANH_XA'])
+            _log(conn, ma_ho_so, user['id'], 'co_qc', old_co_qc or '',
+                 new_co_qc or '')
+
         conn.commit()
         row = conn.execute('SELECT * FROM benh WHERE id=?', (new_id,)).fetchone()
+        hs2 = conn.execute('SELECT co_qc, so_loi FROM ho_so WHERE ma_ho_so=?',
+                           (ma_ho_so,)).fetchone()
     finally:
         conn.close()
-    return dict(row)
+    # Trả dòng bệnh + meta cờ hiện tại của hồ sơ (để frontend cập nhật chip
+    # cảnh báo ngay, không cần tải lại toàn hồ sơ). Thêm khóa _co_qc/_so_loi
+    # (tiền tố _ để không lẫn với cột của bảng benh).
+    out = dict(row)
+    out['_co_qc'] = qc.flags_of(hs2['co_qc']) if hs2 else []
+    out['_so_loi'] = hs2['so_loi'] if hs2 else None
+    return out
 
 
 @router.patch('/ho-so/{ma_ho_so}/benh/{benh_id}')

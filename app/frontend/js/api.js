@@ -55,6 +55,8 @@ const Api = (() => {
     patchHoSo: (ma, fields) => req('PATCH', `/api/ho-so/${encodeURIComponent(ma)}`, fields),
     hoanThanh: (ma, filterParams) => req('POST', `/api/ho-so/${encodeURIComponent(ma)}/hoan-thanh?` + qs(filterParams)),
     xacNhanSuy: (ma, field) => req('POST', `/api/ho-so/${encodeURIComponent(ma)}/xac-nhan-suy`, { field }),
+    // Đợt 12: gỡ THỦ CÔNG một cờ cảnh báo (nhân viên xác định không phải lỗi).
+    goCoThuCong: (ma, flag) => req('POST', `/api/ho-so/${encodeURIComponent(ma)}/go-co`, { flag }),
 
     addBenh: (ma, body) => req('POST', `/api/ho-so/${encodeURIComponent(ma)}/benh`, body),
     patchBenh: (ma, id, body) => req('PATCH', `/api/ho-so/${encodeURIComponent(ma)}/benh/${id}`, body),

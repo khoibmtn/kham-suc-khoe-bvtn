@@ -501,6 +501,46 @@ def hoan_thanh(ma_ho_so: str, request: Request,
     return {'ok': True, 'next_ma_ho_so': next_row['ma_ho_so'] if next_row else None}
 
 
+class GoCoBody(BaseModel):
+    flag: str
+
+
+@router.post('/ho-so/{ma_ho_so}/go-co')
+def go_co_thu_cong(ma_ho_so: str, body: GoCoBody,
+                   user=Depends(auth.get_current_user)):
+    """Gỡ THỦ CÔNG một cờ cảnh báo mà nhân viên đã kiểm tra và xác định KHÔNG
+    phải lỗi (vd chuỗi 'mất' không ánh xạ được ICD nhưng không phải chẩn đoán
+    thật -> gỡ CON_CHAN_DOAN_CHUA_ANH_XA). Khác /xac-nhan-suy (gỡ theo TRƯỜNG
+    suy luận): ở đây gỡ trực tiếp theo MÃ CỜ. Ghi nhật ký để truy vết. Cơ chế
+    tự bỏ cờ khi sửa dữ liệu (recompute_cccd_flags, tính lại khi thêm bệnh...)
+    vẫn hoạt động độc lập — nếu sau này dữ liệu đổi làm cờ được tính lại thì
+    tính lại thắng (đúng ý anh Khôi: giữ tự động, thêm thủ công)."""
+    flag = body.flag
+    if flag not in qc.FLAG_META:
+        raise HTTPException(400, f'Mã cờ không hợp lệ: {flag}')
+    conn = db.get_connection()
+    try:
+        row = _load_ho_so_or_404(conn, ma_ho_so, user)
+        old_co_qc = row['co_qc']
+        if flag not in qc.flags_of(old_co_qc):
+            # Cờ đã không còn (người khác vừa gỡ / dữ liệu đã sửa) — idempotent.
+            return {'ok': True, 'co_qc': qc.flags_of(old_co_qc),
+                    'so_loi': row['so_loi']}
+        new_co_qc = qc.remove_flags(conn, ma_ho_so, [flag])
+        conn.execute(
+            'INSERT INTO nhat_ky(ma_ho_so, nguoi_dung_id, ten_truong, '
+            'gia_tri_cu, gia_tri_moi) VALUES (?,?,?,?,?)',
+            (ma_ho_so, user['id'], f'go_co_thu_cong:{flag}',
+             old_co_qc or '', new_co_qc or ''))
+        conn.commit()
+        new_row = conn.execute('SELECT co_qc, so_loi FROM ho_so WHERE ma_ho_so=?',
+                               (ma_ho_so,)).fetchone()
+    finally:
+        conn.close()
+    return {'ok': True, 'co_qc': qc.flags_of(new_row['co_qc']),
+            'so_loi': new_row['so_loi']}
+
+
 class XacNhanSuyBody(BaseModel):
     field: str
 

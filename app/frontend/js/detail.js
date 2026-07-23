@@ -417,14 +417,48 @@ const DetailView = (() => {
   function renderFlagsSummary() {
     const box = document.getElementById('flags-summary');
     if (!box) return;
-    const flags = current.co_qc_chi_tiet || [];
+    // Đợt 12: dựng chip TỪ co_qc_list (được MỌI luồng cập nhật: PATCH, xác
+    // nhận suy, gỡ thủ công, thêm bệnh) + tra metadata từ danh mục -> chip
+    // luôn đồng bộ (sửa lỗi cũ: chỉ đọc co_qc_chi_tiet nên chip không mất sau
+    // khi gỡ cờ). Fallback co_qc_chi_tiet cho lần tải đầu nếu list trống.
+    const metaBy = {};
+    (danhMuc.co_qc || []).forEach((f) => { metaBy[f.ma] = f; });
+    let flags = (current.co_qc_list || []).map((ma) => {
+      const m = metaBy[ma] || {};
+      return { ma, ten: m.ten || ma, muc: m.muc || null, y_nghia: m.y_nghia || '' };
+    });
+    if (!flags.length && current.co_qc_chi_tiet) flags = current.co_qc_chi_tiet;
     box.innerHTML = '';
     if (!flags.length) { box.textContent = 'Không còn cờ cảnh báo.'; return; }
     flags.forEach((f) => {
       const chip = document.createElement('span');
       chip.className = 'flag-chip flag-' + f.muc;
       chip.title = f.y_nghia;
-      chip.textContent = (f.muc === 'do' ? '🔴 ' : f.muc === 'cam' ? '🟠 ' : '🟡 ') + f.ten;
+      const label = document.createElement('span');
+      label.textContent = (f.muc === 'do' ? '🔴 ' : f.muc === 'cam' ? '🟠 ' : '🟡 ') + f.ten;
+      chip.appendChild(label);
+      // Nút ✕ gỡ cờ thủ công — nhân viên đã kiểm tra, xác định KHÔNG phải lỗi.
+      const x = document.createElement('button');
+      x.type = 'button';
+      x.className = 'flag-chip-x';
+      x.textContent = '✕';
+      x.title = 'Gỡ cảnh báo này (đã kiểm tra, không phải lỗi)';
+      x.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!confirm(`Gỡ cảnh báo "${f.ten}"?\n\nChỉ gỡ khi bạn đã kiểm tra và xác`
+          + ` định đây KHÔNG phải lỗi. Thao tác được ghi nhật ký.`)) return;
+        try {
+          const res = await Api.goCoThuCong(current.ma_ho_so, f.ma);
+          current.co_qc_list = res.co_qc;
+          current.co_qc = res.co_qc.join(';');
+          current.so_loi = res.so_loi;
+          renderFlagsSummary();
+          toast('Đã gỡ cảnh báo');
+        } catch (err) {
+          toast('Lỗi gỡ cảnh báo: ' + err.message);
+        }
+      });
+      chip.appendChild(x);
       box.appendChild(chip);
     });
   }
@@ -587,15 +621,20 @@ const DetailView = (() => {
     addBtn.textContent = '+ Thêm bệnh';
     addBtn.addEventListener('click', async () => {
       if (!chosen) { toast('Chưa chọn mã ICD'); return; }
-      const row = await Api.addBenh(current.ma_ho_so, {
+      const res = await Api.addBenh(current.ma_ho_so, {
         ma_icd: chosen.ma, co_quan: coQuanSel.value, chuoi_goc: icdInput.value,
       });
+      // Backend trả kèm _co_qc/_so_loi (cờ hiện tại của hồ sơ sau khi tự gỡ
+      // CON_CHAN_DOAN_CHUA_ANH_XA) — tách ra khỏi dòng bệnh rồi đồng bộ chip.
+      const coQc = res._co_qc; const soLoi = res._so_loi;
+      delete res._co_qc; delete res._so_loi;
       current.benh = current.benh || [];
-      current.benh.push(row);
-      // Xóa flag "Còn chẩn đoán chưa ánh xạ" nếu có ma_icd
-      if (row.ma_icd) {
-        current.co_qc_list = current.co_qc_list || [];
-        current.co_qc_list = current.co_qc_list.filter((f) => f !== 'CON_CHAN_DOAN_CHUA_ANH_XA');
+      current.benh.push(res);
+      if (coQc) {
+        current.co_qc_list = coQc;
+        current.co_qc = coQc.join(';');
+        if (soLoi != null) current.so_loi = soLoi;
+        renderFlagsSummary();
       }
       drawRows();
       icdInput.value = ''; chosen = null;

@@ -182,10 +182,17 @@ tr.row-vang { background: #fff8e1; }
 }
 .qd1613-banner.vi-pham button { margin-left: 10px; background: #991b1b; color: #fff; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; }
 #flags-summary { margin-bottom: 8px; font-size: 12px; }
-.flag-chip { display: inline-block; padding: 2px 8px; border-radius: 12px; margin: 2px; font-size: 11px; }
+.flag-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px 2px 8px; border-radius: 12px; margin: 2px; font-size: 11px; }
 .flag-chip.flag-do { background: #fdecea; color: #c0392b; }
 .flag-chip.flag-cam { background: #ffe8cc; color: #a15c00; }
 .flag-chip.flag-vang { background: #fff8e1; color: #8a6d00; }
+/* Đợt 12: nút ✕ gỡ cờ thủ công — kế thừa màu chữ của chip, mờ nhẹ, đậm khi hover */
+.flag-chip-x {
+  border: none; background: transparent; color: inherit; cursor: pointer;
+  font-size: 11px; line-height: 1; padding: 1px 3px; border-radius: 8px;
+  opacity: .55; font-weight: 700;
+}
+.flag-chip-x:hover { opacity: 1; background: rgba(0,0,0,.1); }
 .detail-actions { margin-bottom: 8px; }
 .detail-actions button, .detail-header button {
   background: #2563eb; color: #fff; border: none; padding: 6px 12px;
