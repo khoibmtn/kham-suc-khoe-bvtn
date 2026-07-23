@@ -558,7 +558,26 @@ const DetailView = (() => {
           suggBox.appendChild(row);
         });
         suggBox.hidden = items.length === 0;
+        // Đợt 12: tự cuộn panel để popup gợi ý luôn nằm trong tầm nhìn,
+        // không bắt user cuộn tay. block:'nearest' -> không giật khi đã
+        // hiển thị sẵn (chỉ cuộn phần thiếu).
+        if (!suggBox.hidden) {
+          suggBox.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
       }, 50);
+    });
+    icdInput.addEventListener('keydown', (e) => {
+      // Đợt 12: Esc trong ô này chỉ xóa nội dung đang gõ + đóng gợi ý,
+      // KHÔNG được nổi bọt lên global handler (keyboard.js) làm đóng cả
+      // panel chi tiết — theo đúng pattern combobox ICD khác trong form
+      // (xem widgets.js icd-suggestions Escape handler).
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        icdInput.value = '';
+        suggBox.innerHTML = '';
+        suggBox.hidden = true;
+      }
     });
     const coQuanSel = document.createElement('select');
     (danhMuc.co_quan_benh_chinh || []).forEach((c) => {
