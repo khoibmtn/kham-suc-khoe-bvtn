@@ -258,23 +258,17 @@ const ListView = (() => {
       return ms.el;
     }));
 
-    // Đợt 10 criterion 2: LUÔN hiện dropdown "Nhân viên rà soát" — user
-    // thường chỉ thấy 2 lựa chọn (Tất cả / chính mình) để tự lọc "chỉ hồ sơ
-    // của tôi" vs "tất cả (của tôi + chưa giao)"; admin giữ danh sách đầy đủ.
-    advPanel.appendChild(fieldBox('Nhân viên rà soát', () => {
+    // Đợt 12 (phản hồi anh Khôi): MỌI người (kể cả nhân viên) thấy danh sách
+    // đầy đủ; chọn 1 người -> lọc hồ sơ NGƯỜI ĐÓ ĐÃ THAM GIA SỬA (dấu vết
+    // nhat_ky), không phải theo phân công.
+    advPanel.appendChild(fieldBox('Nhân viên (đã tham gia sửa)', () => {
       const sel = document.createElement('select');
       sel.className = 'filter-select';
       const optAll = document.createElement('option'); optAll.value = ''; optAll.textContent = '(Tất cả)';
       sel.appendChild(optAll);
-      if (user.vai_tro === 'admin') {
-        (danhMuc.nguoi_dung || []).forEach((n) => {
-          const o = document.createElement('option'); o.value = n.ma; o.textContent = n.ten; sel.appendChild(o);
-        });
-      } else {
-        const o = document.createElement('option');
-        o.value = String(user.id); o.textContent = user.ho_ten;
-        sel.appendChild(o);
-      }
+      (danhMuc.nguoi_dung || []).forEach((n) => {
+        const o = document.createElement('option'); o.value = n.ma; o.textContent = n.ten; sel.appendChild(o);
+      });
       msRefs.nguoiRaSoatSel = sel;
       sel.addEventListener('change', () => { filters.nguoi_ra_soat_id = sel.value; page = 1; reload(); });
       return sel;

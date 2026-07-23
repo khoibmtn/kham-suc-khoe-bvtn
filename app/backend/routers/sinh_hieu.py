@@ -62,14 +62,11 @@ def _du_sinh_hieu(row_like):
 
 
 def _load_row(conn, ma_ho_so, user):
+    # Đợt 12 (phản hồi anh Khôi): mô hình cộng tác mở — MỌI người sửa được sinh
+    # hiệu của mọi hồ sơ (truy vết qua nhat_ky). Bỏ chặn 403 theo phân công.
     row = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?', (ma_ho_so,)).fetchone()
     if not row:
         return None, 'Không tìm thấy hồ sơ'
-    # Đợt 2 criterion 4: hồ sơ CHƯA giao (nguoi_ra_soat_id IS NULL) mọi nhân viên
-    # đều truy cập được; hồ sơ ĐÃ giao chỉ người được giao + admin.
-    if (user['vai_tro'] != 'admin' and row['nguoi_ra_soat_id'] is not None
-            and row['nguoi_ra_soat_id'] != user['id']):
-        return None, 'Hồ sơ đã được giao cho nhân viên khác — không thuộc phạm vi rà soát của bạn'
     return row, None
 
 
@@ -466,15 +463,7 @@ async def import_excel(file: UploadFile = File(...), user=Depends(auth.get_curre
                 khong_khop.append({'dong': dong_so, 'ly_do': ly_do})
                 continue
 
-            if (user['vai_tro'] != 'admin' and matched_row['nguoi_ra_soat_id'] is not None
-                    and matched_row['nguoi_ra_soat_id'] != user['id']):
-                khong_khop.append({
-                    'dong': dong_so,
-                    'ly_do': (f"Khớp hồ sơ {matched_row['ma_ho_so']} nhưng đã được giao "
-                              'cho nhân viên khác — ngoài phạm vi rà soát của bạn'),
-                })
-                continue
-
+            # Đợt 12: mô hình cộng tác mở — không chặn theo phân công nữa.
             changes_in = {}
             for ui_field in CORE_VITAL_COLS:  # chieu_cao, can_nang, mach, huyet_ap
                 if ui_field in values and values[ui_field] not in (None, ''):

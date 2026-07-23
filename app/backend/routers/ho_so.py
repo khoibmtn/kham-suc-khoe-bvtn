@@ -55,27 +55,25 @@ def _ymd(ddmmyyyy_col):
 
 
 def build_where(params, user):
-    """Trả (where_sql, args, xa_list) dùng chung cho GET list & hoàn thành.
-    Áp dụng phạm vi theo vai trò (Đợt 2 criterion 4 — "giao việc là TÙY
-    CHỌN"): ra_soat thấy hồ sơ CHƯA giao (nguoi_ra_soat_id IS NULL) +
-    hồ sơ giao cho chính mình; hồ sơ đã giao cho người khác thì KHÔNG thấy."""
+    """Trả (where_sql, args) dùng chung cho GET list & hoàn thành.
+
+    Đợt 12 (phản hồi anh Khôi): MỌI người dùng (kể cả nhân viên) xem được TOÀN
+    BỘ hồ sơ + thống kê — không còn giới hạn phạm vi theo vai trò. Bộ lọc
+    "Nhân viên" = hồ sơ có DẤU VẾT người đó THAM GIA SỬA (nhat_ky), KHÔNG phải
+    theo phân công (nguoi_ra_soat_id)."""
     where = ['1=1']
     args = []
 
-    if user['vai_tro'] != 'admin':
-        # Đợt 10 criterion 2: user thường CÓ THỂ lọc "chỉ hồ sơ của tôi" bằng
-        # cách truyền chính id của mình; truyền id NGƯỜI KHÁC bị bỏ qua (coi
-        # như "Tất cả") để chống dò dữ liệu người khác qua tham số URL.
-        raso_param = params.get('nguoi_ra_soat_id')
-        if raso_param and str(raso_param) == str(user['id']):
-            where.append('nguoi_ra_soat_id = ?')
-            args.append(user['id'])
-        else:
-            where.append('(nguoi_ra_soat_id IS NULL OR nguoi_ra_soat_id = ?)')
-            args.append(user['id'])
-    elif params.get('nguoi_ra_soat_id'):
-        where.append('nguoi_ra_soat_id = ?')
-        args.append(int(params['nguoi_ra_soat_id']))
+    raso = params.get('nguoi_ra_soat_id')
+    if raso:
+        try:
+            raso_id = int(raso)
+        except (TypeError, ValueError):
+            raso_id = None
+        if raso_id is not None:
+            where.append('ma_ho_so IN '
+                         '(SELECT ma_ho_so FROM nhat_ky WHERE nguoi_dung_id = ?)')
+            args.append(raso_id)
 
     xa = params.get('xa') or []
     if xa:
@@ -186,15 +184,16 @@ def danh_muc(user=Depends(auth.get_current_user)):
                             for i, r in zip(range(1, 6), ['I', 'II', 'III', 'IV', 'V'])]
     out['co_qc'] = [{'ma': k, 'ten': v['ten'], 'muc': v['muc'],
                       'y_nghia': v['y_nghia']} for k, v in qc.FLAG_META.items()]
-    if user['vai_tro'] == 'admin':
-        conn = db.get_connection()
-        try:
-            out['nguoi_dung'] = [
-                {'ma': r['id'], 'ten': r['ho_ten']} for r in
-                conn.execute('SELECT id, ho_ten FROM nguoi_dung '
-                              'WHERE dang_hoat_dong=1 ORDER BY ho_ten')]
-        finally:
-            conn.close()
+    # Đợt 12: trả danh sách nhân viên cho MỌI người (không chỉ admin) — để nhân
+    # viên cũng lọc được "Nhân viên" theo tên bất kỳ (xem hồ sơ họ tham gia sửa).
+    conn = db.get_connection()
+    try:
+        out['nguoi_dung'] = [
+            {'ma': r['id'], 'ten': r['ho_ten']} for r in
+            conn.execute('SELECT id, ho_ten FROM nguoi_dung '
+                          'WHERE dang_hoat_dong=1 ORDER BY ho_ten')]
+    finally:
+        conn.close()
     return out
 
 
@@ -301,17 +300,12 @@ def list_ho_so(request: Request, page: int = Query(1, ge=1),
 
 
 def _load_ho_so_or_404(conn, ma_ho_so, user):
+    # Đợt 12 (phản hồi anh Khôi): MỌI người mở/sửa được mọi hồ sơ — mô hình
+    # cộng tác mở, truy vết ai sửa gì qua nhat_ky. (Bỏ chặn 403 theo phân công.)
     row = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?',
                         (ma_ho_so,)).fetchone()
     if not row:
         raise HTTPException(404, 'Không tìm thấy hồ sơ')
-    # Đợt 2 criterion 4: hồ sơ CHƯA giao (nguoi_ra_soat_id IS NULL) mọi nhân viên
-    # đều truy cập được; hồ sơ ĐÃ giao chỉ người được giao + admin.
-    if (user['vai_tro'] != 'admin' and row['nguoi_ra_soat_id'] is not None
-            and row['nguoi_ra_soat_id'] != user['id']):
-        raise HTTPException(
-            403, 'Hồ sơ đã được giao cho nhân viên khác — không thuộc phạm vi rà '
-                 'soát của bạn')
     return row
 
 

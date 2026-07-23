@@ -224,17 +224,20 @@ const DashboardView = (() => {
         <td>${esc(r.ho_ten)} <span class="dash-role">(${r.vai_tro === 'admin' ? 'Quản trị' : 'Nhân viên'})</span></td>
         <td>${r.giao}</td><td>${r.hoan_thanh}</td><td>${r.ty_le}%</td>
         <td class="dash-rs-cell">${r.rs_xong == null ? '—' : r.rs_xong}</td>
-        <td>${r.so_luot_sua}</td>
+        <td><b>${r.so_ho_so_tham_gia == null ? '—' : r.so_ho_so_tham_gia}</b></td>
+        <td class="dash-role">${r.so_luot_sua}</td>
         <td>${r.hoat_dong_gan_nhat ? esc(r.hoat_dong_gan_nhat) : '—'}</td>
         <td>${sparklineSvg(r.nang_suat_7_ngay)}</td>
       </tr>`).join('');
     return `
       <section class="dash-section">
         <h3>Tiến độ theo nhân viên</h3>
+        <p class="dash-role" style="margin:0 0 8px">Số liệu tính theo <b>số hồ sơ</b> nhân viên đã tham gia sửa (không tính số lượt sửa).</p>
         <table class="dash-table">
           <thead><tr><th>Nhân viên</th><th>Giao</th><th>Hoàn thành</th><th>%</th>
-            <th>RS xong đủ 4 mục</th><th>Lượt sửa</th><th>Hoạt động gần nhất</th><th>Năng suất 7 ngày</th></tr></thead>
-          <tbody>${trs || '<tr><td colspan="8">Chưa có nhân viên</td></tr>'}</tbody>
+            <th>RS xong đủ 4 mục</th><th>Hồ sơ tham gia</th><th>Lượt sửa</th>
+            <th>Hoạt động gần nhất</th><th>Năng suất 7 ngày (hồ sơ/ngày)</th></tr></thead>
+          <tbody>${trs || '<tr><td colspan="9">Chưa có nhân viên</td></tr>'}</tbody>
         </table>
       </section>`;
   }

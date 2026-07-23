@@ -172,10 +172,14 @@ def theo_can_bo(user=Depends(auth.get_current_user)):
                 """):
             hs_by[r['uid']] = r
 
-        # Aggregate nhật ký theo người dùng (số lượt sửa + hoạt động gần nhất)
+        # Aggregate nhật ký theo người dùng: SỐ HỒ SƠ đã tham gia sửa (đếm
+        # theo HỒ SƠ - distinct, KHÔNG theo lượt sửa - phản hồi anh Khôi Đợt
+        # 12) + số lượt sửa (giữ để tham khảo) + hoạt động gần nhất.
         nk_by = {}
         for r in conn.execute(
-                'SELECT nguoi_dung_id AS uid, COUNT(*) AS so_luot, '
+                'SELECT nguoi_dung_id AS uid, '
+                'COUNT(DISTINCT ma_ho_so) AS so_ho_so, '
+                'COUNT(*) AS so_luot, '
                 'MAX(thoi_diem) AS gan_nhat FROM nhat_ky GROUP BY nguoi_dung_id'):
             nk_by[r['uid']] = r
 
@@ -186,11 +190,12 @@ def theo_can_bo(user=Depends(auth.get_current_user)):
         today = date(y, m, d)
         seven_days = [(today - timedelta(days=i)).isoformat() for i in range(6, -1, -1)]
 
-        # Đếm nhật ký theo (người, ngày) trong 7 ngày — 1 query, pivot ở Python.
-        day_by = {}  # uid -> {ngay: so_luot}
+        # Năng suất 7 ngày: đếm SỐ HỒ SƠ (distinct) người đó tham gia sửa mỗi
+        # ngày — KHÔNG đếm lượt sửa (Đợt 12). 1 query, pivot ở Python.
+        day_by = {}  # uid -> {ngay: so_ho_so}
         for r in conn.execute(
                 "SELECT nguoi_dung_id AS uid, date(thoi_diem) AS ngay, "
-                "COUNT(*) AS c FROM nhat_ky "
+                "COUNT(DISTINCT ma_ho_so) AS c FROM nhat_ky "
                 "WHERE date(thoi_diem) >= date('now','localtime','-6 day') "
                 "GROUP BY nguoi_dung_id, date(thoi_diem)"):
             day_by.setdefault(r['uid'], {})[r['ngay']] = r['c']
@@ -211,6 +216,7 @@ def theo_can_bo(user=Depends(auth.get_current_user)):
             'giao': giao, 'hoan_thanh': hoan_thanh,
             'ty_le': round(hoan_thanh / giao * 100, 1) if giao else 0,
             'rs_xong': (hs['rs_xong'] if hs else 0) or 0,
+            'so_ho_so_tham_gia': (nk['so_ho_so'] if nk else 0) or 0,
             'so_luot_sua': (nk['so_luot'] if nk else 0) or 0,
             'hoat_dong_gan_nhat': nk['gan_nhat'] if nk else None,
             'nang_suat_7_ngay': series,
