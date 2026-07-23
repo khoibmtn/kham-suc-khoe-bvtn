@@ -519,3 +519,13 @@ details summary {
 .field.field-checkbox > label { order: 2; display: inline; margin: 0; cursor: pointer; }
 .field.field-checkbox > input[type="checkbox"] { order: 1; width: auto; margin: 0; flex: 0 0 auto; }
 .field.field-checkbox .suy-warn, .field.field-checkbox .suy-confirm { order: 3; }
+
+/* Chỉ báo "Đang tìm kiếm…" — spinner xoay + dấu chấm động (. .. ...) */
+.search-status { display: flex; align-items: center; gap: 8px; font-size: 12px;
+  color: #2563eb; font-style: italic; margin: 2px 0 0 2px; }
+.search-status .spinner { width: 12px; height: 12px; border: 2px solid #bfdbfe;
+  border-top-color: #2563eb; border-radius: 50%; animation: spin .7s linear infinite; flex: 0 0 auto; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.search-status .dots::after { content: ''; display: inline-block; width: 14px; text-align: left;
+  animation: dots 1.2s steps(1, end) infinite; }
+@keyframes dots { 0%{content:''} 25%{content:'.'} 50%{content:'..'} 75%{content:'...'} }

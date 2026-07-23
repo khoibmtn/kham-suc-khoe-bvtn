@@ -221,7 +221,7 @@ def list_ho_so(request: Request, page: int = Query(1, ge=1),
         # thay cho quét TOÀN BỘ 13.326 dòng bằng Python (_global_search_rank
         # cũ, đã bỏ).
         if q_raw and hoten_only:
-            q_kd = fuzzy.strip_diacritics(q_raw)
+            q_kd = fuzzy.strip_diacritics(q_raw).replace(',', '.')
             like_sql, like_args = _like_tokens('ho_ten_kd', q_kd)
             where_q = f'{where_sql} AND {like_sql}'
             args_q = args + like_args
@@ -236,7 +236,7 @@ def list_ho_so(request: Request, page: int = Query(1, ge=1),
             # tìm toàn cột (checkbox "Chỉ tìm họ tên" TẮT) — search_blob_kd
             # đã gộp mọi cột hiển thị; khớp TỪNG TỪ; xếp hồ sơ khớp đủ từ ở
             # HỌ TÊN lên trước.
-            q_kd = fuzzy.strip_diacritics(q_raw)
+            q_kd = fuzzy.strip_diacritics(q_raw).replace(',', '.')
             like_sql, like_args = _like_tokens('search_blob_kd', q_kd)
             rank_sql, rank_args = _like_tokens('ho_ten_kd', q_kd)
             where_q = f'{where_sql} AND {like_sql}'

@@ -115,8 +115,20 @@ def build_search_cols(rec):
         _get(rec, 'ma_ho_so'), _get(rec, 'ket_luan_benh'),
         _get(rec, 'ngay_sinh'), _get(rec, 'ngay_vao'), _get(rec, 'gioi_tinh'),
         co_quan_ten, pl_nhan,
+        # Bổ sung các trường lâm sàng để "tìm toàn cột" phủ đủ (phản hồi anh
+        # Khôi — vd tìm glucose 5.8): glucose, điện tim, siêu âm, chẩn đoán gốc,
+        # mã/tên bệnh kèm, điện thoại, địa chỉ.
+        _get(rec, 'glu_gia_tri'), _get(rec, 'glu_thoi_diem'),
+        _get(rec, 'kq_dien_tim'), _get(rec, 'kq_sieu_am_o_bung'),
+        _get(rec, 'cac_benh_tat_neu_co'), _get(rec, 'ma_benh_chinh'),
+        _get(rec, 'ma_benh_kem'), _get(rec, 'ten_benh_kem'),
+        _get(rec, 'dien_thoai'), _get(rec, 'dia_chi'),
     ]
+    # Chuẩn hóa dấu phẩy -> chấm để tìm '5,8' cũng khớp glucose '5.8' (và ngược
+    # lại). Tách ';' thành khoảng trắng để mã bệnh kèm 'I49.4;I45.9' -> mỗi mã
+    # là 1 từ tìm được.
     blob = ' '.join(strip_diacritics(str(p)) for p in parts if p not in (None, ''))
+    blob = blob.replace(',', '.').replace(';', ' ')
     return ho_ten_kd, blob
 
 

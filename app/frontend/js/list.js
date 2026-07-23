@@ -122,6 +122,15 @@ const ListView = (() => {
 
     bar.appendChild(rowText);
 
+    // Chỉ báo "Đang tìm kiếm…" (dấu ... động) ngay dưới ô tìm — hiện khi đang
+    // query để user biết app đang chạy (phản hồi anh Khôi).
+    const statusEl = document.createElement('div');
+    statusEl.id = 'search-status';
+    statusEl.className = 'search-status';
+    statusEl.hidden = true;
+    statusEl.innerHTML = '<span class="spinner"></span>Đang tìm kiếm<span class="dots"></span>';
+    bar.appendChild(statusEl);
+
     // ---- Hàng 2 (mặc định hiện, tiêu chí 2): Xã/phường + Cờ cảnh báo ----
     const rowBasic = document.createElement('div');
     rowBasic.className = 'filter-row filter-row-select';
@@ -357,15 +366,21 @@ const ListView = (() => {
     if (tbodyL) tbodyL.innerHTML = `<tr><td colspan="${TABLE_COLSPAN}" class="list-loading">Đang tải…</td></tr>`;
     const sumL = document.getElementById('list-summary');
     if (sumL) sumL.textContent = 'Đang tải…';
+    const statusEl = document.getElementById('search-status');
+    if (statusEl) statusEl.hidden = false;   // hiện "Đang tìm kiếm…" (dấu động)
     const params = Object.assign({ page, page_size: pageSize }, currentFilterParams());
     let data;
     try {
       data = await Api.listHoSo(params);
     } catch (e) {
-      if (seq === _reloadSeq && tbodyL) tbodyL.innerHTML = `<tr><td colspan="${TABLE_COLSPAN}" class="list-empty">Lỗi tải dữ liệu — thử lại</td></tr>`;
+      if (seq === _reloadSeq) {
+        if (statusEl) statusEl.hidden = true;
+        if (tbodyL) tbodyL.innerHTML = `<tr><td colspan="${TABLE_COLSPAN}" class="list-empty">Lỗi tải dữ liệu — thử lại</td></tr>`;
+      }
       return;
     }
     if (seq !== _reloadSeq) return; // đã có request mới hơn -> bỏ kết quả cũ
+    if (statusEl) statusEl.hidden = true;
     items = data.items;
     total = data.total;
     page = data.page;
