@@ -33,7 +33,7 @@ const DashboardView = (() => {
     { key: 'chuyenMon', label: 'Thống kê chuyên môn', fn: () => Api.dashChuyenMon(), render: (d) => renderChuyenMon(d), count: (d) => `${d.top20_icd.length} mã ICD` },
   ];
 
-  async function refresh() {
+  function refresh() {
     panel.innerHTML = `
       <div class="dash-header">
         <h2>Dashboard</h2>
@@ -45,8 +45,11 @@ const DashboardView = (() => {
     const body = panel.querySelector('#dash-body');
 
     const total = DASH_TASKS.length;
+    // Danh sách tiến trình Ở TRÊN + các "ô" biểu đồ (theo đúng thứ tự) Ở DƯỚI.
+    // Mỗi luồng xong -> ĐỔ biểu đồ vào ô của nó NGAY (render dần, không chờ đủ
+    // 5). Khi cả 5 xong -> ẩn danh sách tiến trình, chỉ còn biểu đồ.
     body.innerHTML = `
-      <div class="dash-progress">
+      <div class="dash-progress" id="dash-progress">
         <div class="dash-progress-head">Đang tải dashboard... <b id="dash-prog-count">0/${total} (0%)</b></div>
         <div class="dash-progress-bar"><div id="dash-prog-fill" class="dash-progress-fill" style="width:0%"></div></div>
         ${DASH_TASKS.map((t) => `
@@ -55,50 +58,60 @@ const DashboardView = (() => {
             <span class="dash-prog-label">${esc(t.label)}</span>
             <span class="dash-prog-status">đang chờ...</span>
           </div>`).join('')}
+      </div>
+      <div id="dash-sections">
+        ${DASH_TASKS.map((t) => `<div class="dash-slot" id="sec-${t.key}"></div>`).join('')}
       </div>`;
 
-    const results = {};
     let done = 0;
+    let failed = 0;
     const setCount = () => {
-      const pct = Math.round(done / total * 100);
+      const pct = Math.round((done + failed) / total * 100);
       const c = body.querySelector('#dash-prog-count');
       const f = body.querySelector('#dash-prog-fill');
-      if (c) c.textContent = `${done}/${total} (${pct}%)`;
+      if (c) c.textContent = `${done}/${total} (${Math.round(done / total * 100)}%)`;
       if (f) f.style.width = pct + '%';
     };
-
-    try {
-      await Promise.all(DASH_TASKS.map(async (t) => {
-        const rowEl = body.querySelector(`#prog-${t.key}`);
-        const st = rowEl && rowEl.querySelector('.dash-prog-status');
-        const ico = rowEl && rowEl.querySelector('.dash-prog-ico');
-        const t0 = performance.now();
-        try {
-          results[t.key] = await t.fn();
-          const ms = Math.round(performance.now() - t0);
-          done += 1;
-          if (rowEl) rowEl.classList.add('done');
-          if (ico) ico.textContent = '✅';
-          if (st) {
-            const extra = t.count(results[t.key]);
-            st.textContent = `xong · ${ms} ms${extra ? ' · ' + extra : ''}`;
-          }
-          setCount();
-        } catch (err) {
-          if (rowEl) rowEl.classList.add('err');
-          if (ico) ico.textContent = '❌';
-          if (st) st.textContent = 'lỗi: ' + (err.message || '');
-          throw err;
-        }
-      }));
-      // Tất cả xong -> vẽ dashboard đầy đủ.
-      body.innerHTML = DASH_TASKS.map((t) => t.render(results[t.key])).join('');
+    const finalize = () => {
+      if (done + failed < total) return;
+      const prog = body.querySelector('#dash-progress');
+      if (failed === 0) {
+        if (prog) prog.remove();            // xong hết -> ẩn loading
+      } else if (prog) {
+        const head = prog.querySelector('.dash-progress-head');
+        if (head) head.innerHTML = `<span class="xf-error">${failed} luồng lỗi — xem chi tiết bên dưới. Các thống kê còn lại vẫn hiển thị.</span>`;
+      }
       wireAfterRender(body);
-    } catch (err) {
-      // Giữ nguyên danh sách tiến trình (để thấy luồng nào lỗi) + báo dòng lỗi.
-      const head = body.querySelector('.dash-progress-head');
-      if (head) head.innerHTML = `<span class="xf-error">Lỗi tải dashboard: ${esc(err.message)}</span>`;
-    }
+    };
+
+    // Bắn 5 luồng song song, mỗi luồng TỰ đổ biểu đồ + tự kết thúc.
+    DASH_TASKS.forEach((t) => {
+      const rowEl = body.querySelector(`#prog-${t.key}`);
+      const st = rowEl && rowEl.querySelector('.dash-prog-status');
+      const ico = rowEl && rowEl.querySelector('.dash-prog-ico');
+      const t0 = performance.now();
+      t.fn().then((data) => {
+        const ms = Math.round(performance.now() - t0);
+        const slot = body.querySelector(`#sec-${t.key}`);
+        if (slot) slot.innerHTML = t.render(data);   // hiện biểu đồ NGAY
+        done += 1;
+        if (rowEl) rowEl.classList.add('done');
+        if (ico) ico.textContent = '✅';
+        if (st) {
+          const extra = t.count(data);
+          st.textContent = `xong · ${ms} ms${extra ? ' · ' + extra : ''}`;
+        }
+        setCount();
+        finalize();
+      }).catch((err) => {
+        failed += 1;
+        if (rowEl) rowEl.classList.add('err');
+        if (ico) ico.textContent = '❌';
+        if (st) st.textContent = 'lỗi: ' + (err.message || '');
+        setCount();
+        finalize();
+      });
+    });
   }
 
   // ---------------- 8.1 Thẻ tổng quan ----------------

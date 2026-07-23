@@ -424,6 +424,9 @@ details summary {
 .dash-prog-status { color: #94a3b8; font-size: 12px; white-space: nowrap; }
 .dash-prog-row.done .dash-prog-status { color: #15803d; }
 .dash-prog-row.err .dash-prog-status { color: #c0392b; }
+/* Ô biểu đồ render dần: xong luồng nào hiện ngay; ô rỗng không chiếm chỗ */
+#dash-sections { margin-top: 12px; }
+.dash-slot:empty { display: none; }
 .dash-section { background: #fff; border-radius: 6px; padding: 14px 16px; margin-bottom: 14px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
 .dash-section h3 { margin-top: 0; }
 .dash-section h4 { margin: 16px 0 6px; font-size: 13px; color: #334155; }
