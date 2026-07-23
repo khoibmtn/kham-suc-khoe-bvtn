@@ -524,6 +524,7 @@ const DetailView = (() => {
     const icdInput = document.createElement('input');
     icdInput.type = 'text'; icdInput.placeholder = 'Gõ để tìm ICD...';
     const suggBox = document.createElement('div'); suggBox.className = 'icd-suggestions';
+    suggBox.hidden = true;
     let chosen = null;
     let dTimer = null;
     // Đợt 11 criterion 3: đảm bảo cache sẵn sàng khi user mở ô ICD của bảng
