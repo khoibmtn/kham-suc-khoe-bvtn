@@ -198,6 +198,25 @@ def danh_muc(user=Depends(auth.get_current_user)):
     return out
 
 
+@router.get('/co-qc-thong-ke')
+def co_qc_thong_ke(user=Depends(auth.get_current_user)):
+    """Đếm SỐ HỒ SƠ theo TỪNG mã cờ (toàn bộ dữ liệu) — dùng cho bộ lọc "Cờ
+    cảnh báo": hiện số lượng cạnh mỗi cờ + ẩn cờ có 0 hồ sơ. Gộp 1 query
+    (SUM CASE WHEN) như dashboard/chat-luong để nhẹ (1 round-trip)."""
+    conn = db.get_connection()
+    try:
+        flags = list(qc.FLAG_META.keys())
+        sel = ', '.join(
+            f"SUM(CASE WHEN (';'||co_qc||';') LIKE ? THEN 1 ELSE 0 END) AS f{i}"
+            for i in range(len(flags)))
+        args = [f'%;{f};%' for f in flags]
+        row = conn.execute(f'SELECT {sel} FROM ho_so', args).fetchone()
+        out = {f: (row[f'f{i}'] or 0) for i, f in enumerate(flags)}
+    finally:
+        conn.close()
+    return out
+
+
 @router.get('/ho-so')
 def list_ho_so(request: Request, page: int = Query(1, ge=1),
                 page_size: int = Query(20, ge=1, le=200),

@@ -19,6 +19,40 @@ const ListView = (() => {
   let debounceTimer = null;
   let lastQStripped = ''; // dùng để highlight (chỉ khi tìm toàn cột)
   const msRefs = {}; // tham chiếu Multiselect + input ngày để "Xóa hết bộ lọc"
+  let coQcCounts = null; // {mã cờ: số hồ sơ} — nạp sau, để hiện count + ẩn cờ rỗng
+
+  // Tùy chọn cho dropdown "Cờ cảnh báo": khi đã có coQcCounts thì gắn số lượng
+  // vào nhãn + BỎ cờ 0 hồ sơ (giữ lại cờ đang được chọn dù = 0 để không mất
+  // lựa chọn hiện tại). Chưa có count -> hiện toàn bộ như cũ.
+  function coQcOptions() {
+    let flags = danhMuc.co_qc;
+    if (coQcCounts) {
+      flags = flags.filter((f) => (coQcCounts[f.ma] || 0) > 0
+        || (filters.co_qc || []).includes(f.ma));
+    }
+    return flags.map((f) => {
+      const n = coQcCounts ? (coQcCounts[f.ma] || 0) : null;
+      return {
+        ma: f.ma,
+        ten: f.ten + (n === null ? '' : ` (${n.toLocaleString('vi-VN')})`),
+        title: f.y_nghia,
+        icon: f.muc === 'do' ? '🔴' : f.muc === 'cam' ? '🟠' : '🟡',
+      };
+    });
+  }
+
+  // Dựng lại multiselect Cờ cảnh báo tại chỗ (sau khi count về) — thay phần tử
+  // cũ, giữ nguyên lựa chọn hiện tại.
+  function rebuildCoQc() {
+    if (!msRefs.coQc || !msRefs.coQc.el) return;
+    const ms = Multiselect.create({
+      options: coQcOptions(),
+      selected: filters.co_qc,
+      onChange: (vals) => { filters.co_qc = vals; page = 1; reload(); },
+    });
+    msRefs.coQc.el.replaceWith(ms.el);
+    msRefs.coQc = ms;
+  }
 
   function defaultFilters() {
     return {
@@ -36,6 +70,16 @@ const ListView = (() => {
     filters = defaultFilters();
     buildLayout();
     reload();
+    // Nạp số lượng hồ sơ theo từng cờ (không chặn giao diện) -> gắn count vào
+    // dropdown + ẩn cờ 0 hồ sơ. Chỉ nạp 1 lần cho mỗi phiên mở danh sách.
+    if (coQcCounts) {
+      rebuildCoQc();
+    } else {
+      Api.coQcThongKe().then((counts) => {
+        coQcCounts = counts;
+        rebuildCoQc();
+      }).catch(() => { /* lỗi mạng tạm — giữ danh sách đầy đủ như cũ */ });
+    }
   }
 
   function fieldBox(label, buildInput, extraClass) {
@@ -147,10 +191,7 @@ const ListView = (() => {
 
     rowBasic.appendChild(fieldBox('Cờ cảnh báo', () => {
       const ms = Multiselect.create({
-        options: danhMuc.co_qc.map((f) => ({
-          ma: f.ma, ten: f.ten, title: f.y_nghia,
-          icon: f.muc === 'do' ? '🔴' : f.muc === 'cam' ? '🟠' : '🟡',
-        })),
+        options: coQcOptions(),
         selected: filters.co_qc,
         onChange: (vals) => { filters.co_qc = vals; page = 1; reload(); },
       });

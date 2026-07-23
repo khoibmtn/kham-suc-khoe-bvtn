@@ -47,6 +47,7 @@ const Api = (() => {
     me: () => req('GET', '/api/me'),
     updateMe: (body) => req('PATCH', '/api/me', body),
     danhMuc: () => req('GET', '/api/danh-muc'),
+    coQcThongKe: () => req('GET', '/api/co-qc-thong-ke'),
     caiDatGet: () => req('GET', '/api/cai-dat'),
     caiDatPut: (body) => req('PUT', '/api/cai-dat', body),
 
