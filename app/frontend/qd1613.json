@@ -1,0 +1,4063 @@
+{
+ "meta": {
+  "nguon": "Quyết định 1613/BYT-QĐ — Tiêu chuẩn phân loại sức khỏe (hiệu lực 15/08/1997)",
+  "loai_ten": {
+   "1": "Rất khỏe",
+   "2": "Khỏe",
+   "3": "Trung bình",
+   "4": "Yếu",
+   "5": "Rất yếu"
+  }
+ },
+ "the_luc": {
+  "hoc_sinh": {
+   "nam": [
+    {
+     "loai": 1,
+     "chieu_cao": "160 trở lên",
+     "can_nang": "48 trở lên",
+     "vong_nguc": "80 trở lên"
+    },
+    {
+     "loai": 2,
+     "chieu_cao": "156-159",
+     "can_nang": "46-47",
+     "vong_nguc": "77-79"
+    },
+    {
+     "loai": 3,
+     "chieu_cao": "152-155",
+     "can_nang": "42-45",
+     "vong_nguc": "74-76"
+    },
+    {
+     "loai": 4,
+     "chieu_cao": "149-151",
+     "can_nang": "39-41",
+     "vong_nguc": "71-73"
+    },
+    {
+     "loai": 5,
+     "chieu_cao": "Dưới 149",
+     "can_nang": "Dưới 39",
+     "vong_nguc": "Dưới 71"
+    }
+   ],
+   "nu": [
+    {
+     "loai": 1,
+     "chieu_cao": "152 trở lên",
+     "can_nang": "44 trở lên",
+     "vong_nguc": "75 trở lên"
+    },
+    {
+     "loai": 2,
+     "chieu_cao": "149-151",
+     "can_nang": "42-43",
+     "vong_nguc": "73-74"
+    },
+    {
+     "loai": 3,
+     "chieu_cao": "145-148",
+     "can_nang": "40-41",
+     "vong_nguc": "71-72"
+    },
+    {
+     "loai": 4,
+     "chieu_cao": "142-144",
+     "can_nang": "37-39",
+     "vong_nguc": "69-70"
+    },
+    {
+     "loai": 5,
+     "chieu_cao": "Dưới 142",
+     "can_nang": "Dưới 37",
+     "vong_nguc": "Dưới 69"
+    }
+   ]
+  },
+  "lao_dong": {
+   "nam": [
+    {
+     "loai": 1,
+     "chieu_cao": "1603 trở lên",
+     "can_nang": "50 trở lên",
+     "vong_nguc": "82 trở lên"
+    },
+    {
+     "loai": 2,
+     "chieu_cao": "158-162",
+     "can_nang": "47-49",
+     "vong_nguc": "79-81"
+    },
+    {
+     "loai": 3,
+     "chieu_cao": "154-157",
+     "can_nang": "45-46",
+     "vong_nguc": "76-78"
+    },
+    {
+     "loai": 4,
+     "chieu_cao": "150-153",
+     "can_nang": "41-44",
+     "vong_nguc": "74-75"
+    },
+    {
+     "loai": 5,
+     "chieu_cao": "Dưới 150",
+     "can_nang": "Dưới 40",
+     "vong_nguc": "Dưới 74"
+    }
+   ],
+   "nu": [
+    {
+     "loai": 1,
+     "chieu_cao": "155 trở lên",
+     "can_nang": "45 trở lên",
+     "vong_nguc": "76 trở lên"
+    },
+    {
+     "loai": 2,
+     "chieu_cao": "151-154",
+     "can_nang": "43-44",
+     "vong_nguc": "74-75"
+    },
+    {
+     "loai": 3,
+     "chieu_cao": "147-150",
+     "can_nang": "40-42",
+     "vong_nguc": "72-73"
+    },
+    {
+     "loai": 4,
+     "chieu_cao": "143-146",
+     "can_nang": "38-39",
+     "vong_nguc": "70-71"
+    },
+    {
+     "loai": 5,
+     "chieu_cao": "Dưới 143",
+     "can_nang": "Dưới 38",
+     "vong_nguc": "Dưới 70"
+    }
+   ]
+  }
+ },
+ "benh_tat": [
+  {
+   "co_quan": "MẮT",
+   "so": 1,
+   "ten": "Thị lực",
+   "muc": [
+    {
+     "dk": "10/10 19-20/10",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "9-10/10  16-18/10",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "7 - 9/10  14-15/10",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "6 - 7/10  11-13/10",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "Dưới 6/10  Dưới 11/10",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "MẮT",
+   "so": 2,
+   "ten": "Mộng thịt:",
+   "muc": [
+    {
+     "dk": "2.1. Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "2.2. Mộng thịt độ I,II,III xếp loại theo thị lực chuẩn của 2 mắt",
+     "loai": []
+    },
+    {
+     "dk": "2.3. Mộng thịt độ III, một mắt có thị lực dưới 6/10",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "2.4. Mộng thịt đã mổ, tái phát gây dính",
+     "loai": [
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "MẮT",
+   "so": 3,
+   "ten": "Sẹo giác mạc:",
+   "muc": [
+    {
+     "dk": "3.1. Không có sẹo giác mạc",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "3.2. Sẹo đơn thuần, mỏng, nhỏ, ngoài vùng trung tâm (dựa vào thị lực chuẩn hạ xuống 1 loại)",
+     "loai": []
+    },
+    {
+     "dk": "3.3. Sẹo giác mạc có dính mống mắt:\n  - Tổng thị lực cả 2 mắt từ 16/10 trở lên.\n  - Thị lực 1 mắt 6/10 trở xuống",
+     "loai": [
+      2,
+      3,
+      4
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "MẮT",
+   "so": 4,
+   "ten": "Mắt hột",
+   "muc": [
+    {
+     "dk": "4.1. Không có mắt hột",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "4.2. Mắt hột chưa có biến chứng",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "4.3. Mắt hột có biến chứng lông quặm:\n  - Không ảnh hưởng tới thị lực (dựa vào thị lực chuẩn hạ xuống một loại)\n  - Có ảnh hưởng tới thị lực (dựa vào thị lực chuẩn hạ xuống một loại)",
+     "loai": []
+    }
+   ]
+  },
+  {
+   "co_quan": "MẮT",
+   "so": 5,
+   "ten": "Viêm tắc lệ đạo mạn tính hoặc đã điều trị nhiều lần không khỏi:",
+   "muc": [
+    {
+     "dk": "5.1. Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "5.2. Có",
+     "loai": [
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "MẮT",
+   "so": 6,
+   "ten": "Lác mắt",
+   "muc": [
+    {
+     "dk": "6.1.Không lác mắt",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "6.2.Lác mắt:\n  - Không ảnh hưởng tới chức năng thị giác (Xếp loại theo thị lực chuẩn sau đó hạ xuống một loại)\n  - Có ảnh hưởng tới chức năng thị lực",
+     "loai": [
+      3,
+      4
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "MẮT",
+   "so": 7,
+   "ten": "Hỏng một mắt",
+   "muc": [
+    {
+     "dk": "7.1.Mắt kia thị lực 10/10",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "7.2.Mắt kia thị lực dưới 10/10",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "MẮT",
+   "so": 8,
+   "ten": "Cận thị",
+   "muc": [
+    {
+     "dk": "8.1.Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "8.2.Có cận thị: Căn cứ vào thị lực khi có kính để xếp lọai theo thị lực chuẩn, sau đó hạ xuống một lọai",
+     "loai": []
+    }
+   ]
+  },
+  {
+   "co_quan": "MẮT",
+   "so": 9,
+   "ten": "Viễn thị",
+   "muc": [
+    {
+     "dk": "9.1.Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "9.2.Có viễn thị: Căn cứ vào thị lực khi có kính để xếp lọai theo thị lực chuẩn, sau đó hạ xuống một lọai",
+     "loai": []
+    }
+   ]
+  },
+  {
+   "co_quan": "MẮT",
+   "so": 11,
+   "ten": "Rối lọan sắc giác",
+   "muc": [
+    {
+     "dk": "11.1.Không có rối lọan sắc giác",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "11.2.Có rối lọan sắc giác",
+     "loai": [
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "MẮT",
+   "so": 12,
+   "ten": "Các bệnh về đáy mắt",
+   "muc": [
+    {
+     "dk": "Viêm võng mạc do bệnh thận, do tăng huyết áp, viêm võng mạc sắc tố.",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "MẮT",
+   "so": 13,
+   "ten": "Các bệnh khác về mắt",
+   "muc": [
+    {
+     "dk": "13.1.Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "13.2.Bệnh bong võng mạc, teo gai thị",
+     "loai": [
+      5
+     ]
+    },
+    {
+     "dk": "13.3.Các bệnh sau đây đã được điều trị ổn định: Tăng nhãn áp, đục thủy tinh thể, lệch thủy tinh thể, viêm màng bồ đào dính bít đồng tử, các bệnh ở mi mắt, thì xếp lọai theo thị lực chuẩn, sau đó hạ xuống một lọai",
+     "loai": []
+    }
+   ]
+  },
+  {
+   "co_quan": "TAI MŨI HỌNG",
+   "so": 14,
+   "ten": "Tai ngòai",
+   "muc": [
+    {
+     "dk": "14.1.Bình thường",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "14.2.Rách hoặc viêm teo sụn vành tai",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "14.3.Viêm ống tai ngòai mạn tính hoặc hẹp, dị dạng ống tai.",
+     "loai": [
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TAI MŨI HỌNG",
+   "so": 15,
+   "ten": "Tai giữa",
+   "muc": [
+    {
+     "dk": "15.1.Bình thường",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "15.2.Viêm tai giữa mạn tính có mủ nhầy hoặc có thủng màng nhĩ:\n- Thủng nhĩ trước dưới, sau dưới.\n- Thủng nhĩ trên và sau trên",
+     "loai": [
+      3,
+      4
+     ]
+    },
+    {
+     "dk": "15.3.Viêm tai giữa mạn tính, tai khô hòan tòan (Xếp lọai theo sức nghe ở điểm 16.1 và 16.2.)",
+     "loai": []
+    }
+   ]
+  },
+  {
+   "co_quan": "TAI MŨI HỌNG",
+   "so": 16,
+   "ten": "Tai trong",
+   "muc": [
+    {
+     "dk": "16.1. Đo bằng tiếng nói thì thầm (nói gió",
+     "loai": []
+    },
+    {
+     "dk": "- Một bên tai 5cm, tai bên kia 5 cm",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "- Một bên tai 4cm, tai bên kia 2 cm",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "- Một bên tai 3cm, tai bên kia 1 cm",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Một bên tai 2cm, tai bên kia 0,5 cm",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "- Một bên tai 1cm, tai bên kia 0,1 cm",
+     "loai": [
+      5
+     ]
+    },
+    {
+     "dk": "16.2. Đo bằng thính lực kế",
+     "loai": []
+    },
+    {
+     "dk": "- Không giảm thính lực hoặc giảm dưới 15 dBA",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "- Giảm thính lực cả 2 tai từ 15-35 dBA",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "- Giảm thính lực cả 2 tai từ 36-45 dBA",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Giảm thính lực cả 2 tai từ 46-65 dBA",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "- Giảm thính lực cả 2 tai ttên 65 dBA",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TAI MŨI HỌNG",
+   "so": 17,
+   "ten": "Xương chũm",
+   "muc": [
+    {
+     "dk": "17.1. Bình thường",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "17.2. Viêm xương chũm mạn tính",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "17.3. Viêm xương chũm đã được phẩu thuật:",
+     "loai": []
+    },
+    {
+     "dk": "- Tai khô, sức nghe giảm nhẹ",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Tai vẫn chảy mũ, sức nghe giảm vừa",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "- Tai chảy mủ liên tục, sức nghe giảm nặng",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TAI MŨI HỌNG",
+   "so": 18,
+   "ten": "Mũi",
+   "muc": [
+    {
+     "dk": "18.1. Bình thường",
+     "loai": []
+    },
+    {
+     "dk": "18.2. Hốc mũi, tháp mũi, vách ngăn mũi bị lệch vẹo, dị dạng.",
+     "loai": []
+    },
+    {
+     "dk": "- Không có rối lọan hô hấp",
+     "loai": []
+    },
+    {
+     "dk": "- Có rối lọan hô hấp nhẹ",
+     "loai": []
+    },
+    {
+     "dk": "- Có rối lọan hô hấp rõ rệt",
+     "loai": []
+    },
+    {
+     "dk": "- Có rối lọan hô hấp mạn tính, ảnh hưởng tới cấu tạo lồng ngực",
+     "loai": []
+    },
+    {
+     "dk": "18.3. Viêm mũi vận mạch, viêm mũi dị ứng, viêm mũi mạn tính đơn thuần (tiết dịch, ngạt, tắc mũi, tái phát)",
+     "loai": []
+    },
+    {
+     "dk": "- Không có rối lọan chức năng hô hấp đáng kể",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "- Có rối lọan chức năng hô hấp rõ, thể trạng khỏe",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Có rối lọan chức năng hô hấp rõ, thể trạng không khỏe",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "18.4. Viêm mũi teo, trĩ mũi, chảy máu mũi thường xuyên",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TAI MŨI HỌNG",
+   "so": 19,
+   "ten": "Họng",
+   "muc": [
+    {
+     "dk": "19.1. Bình thường",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "19.2. Viêm họng mạn tính đơn thuần, thể trạng tốt",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "19.3. Viêm họng mạn tính niêm mạc dày, quá phát, họng hạt… thường hay sốt, ho, ảnh hưởng đến thể trạng",
+     "loai": [
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TAI MŨI HỌNG",
+   "so": 20,
+   "ten": "Amidan:",
+   "muc": [
+    {
+     "dk": "20.1. Amidan trung bình, không gây ảnh hưởng gì đến chức năng, thể trạng tốt",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "20.2. Amidan hơi to hay trung bình, thỉnh thỏang mới bị viêm, không ảnh hưởng đến thể trạng",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "20.3. Amidan bị viêm mạn tính, có hốc mủ hay viêm nhiễm tái phát ảnh hưởng đến thể trạng",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "20.4. Amidan đã được phẩu thuật, kết quá tốt",
+     "loai": [
+      2
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TAI MŨI HỌNG",
+   "so": 21,
+   "ten": "Thanh quản",
+   "muc": [
+    {
+     "dk": "21.1.Bình thường",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "21.2.Viêm thanh quản mạn tính",
+     "loai": []
+    },
+    {
+     "dk": "-Không có rối lọan nhiều đến phát âm, tiếng nói còn phân biệt được, thể trạng tốt",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "- Có rối lọan phát âm rõ, khó phân biệt tiếng nói, thể trạng kém",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "21.3. Liệt cơ khép mở thanh quản",
+     "loai": [
+      5
+     ]
+    },
+    {
+     "dk": "21.4. Khản tiếng đơn thuần (do hạt dây thanh hoặc pôlip dây thanh) không liệt dây thanh (dây hồi quy",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "21.5. Nói lắp:",
+     "loai": []
+    },
+    {
+     "dk": "- Nói 1 câu, 4-5 từ lắp một lần",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Nói 1 câu, 4-5 từ lắp hai lần trở lên",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "21.6. Biến dạng thanh quản do di chứng chấn thương, viêm dính, sẹo rúm ró thanh quản, hẹp thanh môn, u thanh quản... có ảnh hưởng đến chức năng",
+     "loai": [
+      5
+     ]
+    },
+    {
+     "dk": "21.7. Thanh quản sau khi phẩu thuật, chức năng được hồi phục, thể trạng tốt",
+     "loai": [
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TAI MŨI HỌNG",
+   "so": 22,
+   "ten": "Xoang mặt",
+   "muc": [
+    {
+     "dk": "22.1. Bình thường",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "22.2. Viêm xoang hàm hoặc viêm liên xoang (sàng-hàm) mạn tính không ảnh hưởng chức năng thở",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "22.3. Viêm đa xoang mạn tính 1 bên + pôlip mũi",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "22.4. Viêm đa xoang mạn tính 2 bên + pôlip mũi 1 bên",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "22.5. Viêm đa xoang mạn tính 2 bên + pôlip mũi 2 bên",
+     "loai": [
+      5
+     ]
+    },
+    {
+     "dk": "22.6. Đã phẩu thuật xoang, cắt polip, ổn định tốt",
+     "loai": [
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "RĂNG HÀM MẶT",
+   "so": 23,
+   "ten": "Răng sâu",
+   "muc": [
+    {
+     "dk": "23.1. Không có răng sâu",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "23.2. Răng sâu men, ngà từ 1-3 cái, không đau hoặc đã trám",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "23.3. Răng sâu men, ngà từ 4-5 cái, không đau hoặc đã trám",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "23.4- Răng sâu men, ngà từ 6 cái trở lên",
+     "loai": [
+      4
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "RĂNG HÀM MẶT",
+   "so": 24,
+   "ten": "Mất răng:",
+   "muc": [
+    {
+     "dk": "(Xem phụ lục 3: Mất sức nhai)",
+     "loai": []
+    },
+    {
+     "dk": "24.1- Đủ răng không kể rằng khôn",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "24.2- Mất 1 - 2 răng, sức nhai còn trên 90 %",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "24.3- Mất răng sức nhai còn từ 81 - 90 %",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "24.4- Mất răng sức nhai còn từ 61 - 80 %",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "24.5- Mất răng sức nhai còn dưới 61 %",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "RĂNG HÀM MẶT",
+   "so": 25,
+   "ten": "Viêm quanh răng:\n(Xem tiêu chuẩn phân loại viêm và túi lợi bệnh lý: Phụ lục 4)",
+   "muc": [
+    {
+     "dk": "25.1- Không viêm",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "25.2- Viêm quanh răng, ở 4 -5 răng, túi lợi sâu độ 3 trở lên",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "25.3- Viêm quanh răng ở 6 - 11 răng, túi lợi sâu độ 3 trở lên",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "25.4- Viêm quanh răng từ 12 răng trở lên, túi lợi sâu độ 3 trở lên",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "Nếu viêm quanh răng nặng, răng lung lay nhiều không còn tác dụng nhai, có chỉ định nhổ thì coi như răng đó bị mất và tính theo tỷ lệ mất sức nhai.",
+     "loai": []
+    }
+   ]
+  },
+  {
+   "co_quan": "RĂNG HÀM MẶT",
+   "so": 26,
+   "ten": "Răng viêm tuỷ, tuỷ hoại tử, viêm quanh cuống:",
+   "muc": [
+    {
+     "dk": "26.1- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "26.2- Có 1 - 2 răng bị viêm tuỷ, viêm quanh cuống đã chữa khỏi",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "26.3- Có 1- 2 răng bị viêm tuỷ, viêm quanh cuống, răng không được điều trị (hàn ống tuỷ)",
+     "loai": [
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "RĂNG HÀM MẶT",
+   "so": 27,
+   "ten": "Răng khôn:",
+   "muc": [
+    {
+     "dk": "27.1- Bình thường",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "27.2- Có biến chứng đã điều trị tốt",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "27.3- Răng khôn đang biến chứng",
+     "loai": [
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "RĂNG HÀM MẶT",
+   "so": 28,
+   "ten": "Xương hàm:",
+   "muc": [
+    {
+     "dk": "28.1- Bình thường",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "28.2- Gãy đã liền, khớp cắn không di lệch, sức nhai tốt",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "28.3- Khớp cắn di lệch ít, còn nhai được",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "28.4- Khớp cắn di lệch nhiều, ảnh hưởng tới sức nhai",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "RĂNG HÀM MẶT",
+   "so": 29,
+   "ten": "Viêm lợi:",
+   "muc": [
+    {
+     "dk": "29.1- Không viêm",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "29.2- Viêm lợi không quá ½ số răng",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "29.3- Viêm lợi trên ½ số răng",
+     "loai": [
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "RĂNG HÀM MẶT",
+   "so": 30,
+   "ten": "Viêm tuyến mang tai:",
+   "muc": [
+    {
+     "dk": "30.1- Không viêm",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "30.2- Viêm đã chữa khỏi, không tái phát từ 1 năm trở lên",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "30.3- Viêm tuyến mang tai mạn tính đã ổn định",
+     "loai": [
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "RĂNG HÀM MẶT",
+   "so": 31,
+   "ten": "Sứt môi, khe hở vòm miệng:",
+   "muc": [
+    {
+     "dk": "31.1- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "31.2- Khe hở môi đơn, không hở vòm miệng",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "31.3- Khe hở môi đã vá lành, ít ảnh hưởng tới phát âm và thẩm mỹ",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "31.4- Lưỡi gà tách đôi, khe hở nhỏ đã vá ở vòm miệng mềm, nói không ngọng",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "31.5- Khe hở vòm miệng đã vá lành và có ảnh hưởng tới phát âm",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "31.6- Khe hở môi kèm khe hở vòm miệng",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TÂM THẦN - THẦN KINH",
+   "so": 32,
+   "ten": "Bệnh tâm thần phân liệt các thể",
+   "muc": [
+    {
+     "dk": "32.1- Không có bệnh tâm thần phân liệt",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "32.2- Bệnh tâm thần phân liệt các thể",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TÂM THẦN - THẦN KINH",
+   "so": 33,
+   "ten": "Loạn thần về triệu chứng và thực tổn:",
+   "muc": [
+    {
+     "dk": "33.1- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "33.2- Có các loạn thần do bị chấn thương sọ não, sau nhiễm khuẩn hoặc tâm thần, hoặc là để lại di chứng sau điều trị",
+     "loai": [
+      5
+     ]
+    },
+    {
+     "dk": "- Hoạt động tâm thần khôi phục được nhưng còn rối loạn tim mạch, thực vật nhẹ",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "33.3- Loạn thần thể trầm uất, hội chứng nghi bệnh:",
+     "loai": []
+    },
+    {
+     "dk": "- Cấp, bán cấp, mạn tính",
+     "loai": [
+      5
+     ]
+    },
+    {
+     "dk": "- Được bù trừ lâu dài và ổn định, hoạt động tâm thần được khôi phục tốt",
+     "loai": [
+      4
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TÂM THẦN - THẦN KINH",
+   "so": 35,
+   "ten": "Động kinh:",
+   "muc": [
+    {
+     "dk": "35.1- Không có động kinh",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "35.2- Cơn động kinh hiếm, thưa (đã được điều trị nhưng vẫn còn dưới 3 cơn/năm)",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "35.3- Cơn động kinh lớn hoặc nhỏ, có biến đổi tính tình, hành vi, nhân cách",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TÂM THẦN - THẦN KINH",
+   "so": 36,
+   "ten": "Hội chứng suy nhược thần kinh của bệnh thần kinh thực tổn:",
+   "muc": [
+    {
+     "dk": "36.1- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "36.2- đau đầu mất ngủ ít",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "36.3- Giảm trí nhớ, giảm khả năng lao động, thể trạng kém",
+     "loai": [
+      4
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TÂM THẦN - THẦN KINH",
+   "so": 37,
+   "ten": "Ra mồ hôi tay, chân:",
+   "muc": [
+    {
+     "dk": "37.1- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "37.2- Nhẹ",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "37.3- Vừa và nặng",
+     "loai": [
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TÂM THẦN - THẦN KINH",
+   "so": 38,
+   "ten": "Phản xạ gân xương:",
+   "muc": [
+    {
+     "dk": "38.1- Bình thường",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "38.2- Tăng hoặc không tăng có đều cả hai bên, không có rối loạn vận động cảm giác (xếp theo nguyên nhân)",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "38.3- Giảm đều cả hai bên, có rối loạn vận động cảm giác (xếp theo nguyên nhân)",
+     "loai": [
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TÂM THẦN - THẦN KINH",
+   "so": 39,
+   "ten": "Chóng mặt có hệ thống, rối loạn Tiền đình - Tiểu não:",
+   "muc": [
+    {
+     "dk": "39.1- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "39.2- Nhẹ (Mỗi năm xuất hiện 1 - 2 lần)",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "39.3- Vừa và nặng, điều trị đã ổn định trên 1 năm",
+     "loai": [
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TÂM THẦN - THẦN KINH",
+   "so": 40,
+   "ten": "Liệt mặt ngoaị vi:",
+   "muc": [
+    {
+     "dk": "40.1 - Không liệt",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "40.2 - Có liệt:",
+     "loai": []
+    },
+    {
+     "dk": "- Có di chứng, méo mồm nhẹ khi cười, không ảnh hưởng tới nhắm mắt, phát âm.",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Còn di chứng méo mồm thường xuyên, có ảnh hưởng tới nhắm mắt, phát âm.",
+     "loai": [
+      4
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TÂM THẦN - THẦN KINH",
+   "so": 41,
+   "ten": "Liệt dây thần kinh:",
+   "muc": [
+    {
+     "dk": "41.1 - Không liệt.",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "41.2 - Liệt dây thần kinh quay, trụ, hông khoeo ngoài.",
+     "loai": [
+      5
+     ]
+    },
+    {
+     "dk": "41.3 - Liệt dây thần kinh ngoại vi khác:",
+     "loai": []
+    },
+    {
+     "dk": "- Mất hoặc giảm khả năng lao động một phần chi.",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "- Mất khả năng lao động hoàn toàn một chi",
+     "loai": [
+      5
+     ]
+    },
+    {
+     "dk": "41.1 Không có",
+     "loai": [
+      1
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TÂM THẦN - THẦN KINH",
+   "so": 42,
+   "ten": "Di chứng tổn thương thần kinh trung ương:",
+   "muc": [
+    {
+     "dk": "42.2 - Liệt dây thần kinh sọ não hoặc tuỷ sống gây hạn chế khả năng lao động của chân tay.",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TÂM THẦN - THẦN KINH",
+   "so": 43,
+   "ten": "Đau rễ thần kinh và các đám rối thần kinh:",
+   "muc": [
+    {
+     "dk": "43.1 - Không đau",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "43.2 - Đau, ảnh hưởng rõ rệt đến khả năng lao động",
+     "loai": [
+      4
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TÂM THẦN - THẦN KINH",
+   "so": 44,
+   "ten": "Bệnh thần kinh - Cơ:",
+   "muc": [
+    {
+     "dk": "44.1 - Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "44.2 - Teo cơ nhẹ, ảnh hưởng ít đến vận động.",
+     "loai": [
+      2,
+      3
+     ]
+    },
+    {
+     "dk": "44.3 - Teo cơ nặng ảnh hưỏng rõ rệt đến khả năng lao động.",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "44.4 - Bệnh nhược cơ",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TUẦN HOÀN",
+   "so": 45,
+   "ten": "Huyết áp động mạch",
+   "muc": [
+    {
+     "dk": "45.1 - Dưới 30 tuỏi:",
+     "loai": []
+    },
+    {
+     "dk": "Tối đa                                         Tối thiểu",
+     "loai": []
+    },
+    {
+     "dk": "- 110 - 125 mmHg                        65 - 85 mmHg",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "- 126 - 135 mmHg                        60 - dưới 90 mmHg",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "- 136 - 140 mmHg                        90 - 95 mmHg",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Trên 140 mmHg                        Trên 95 mmHg",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "- Dưới 100 mmHg                        Dưới 60 mmHg",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "45.2 - Từ 30 - 50 tuổi:",
+     "loai": []
+    },
+    {
+     "dk": "Tối đa                                   Tối thiểu",
+     "loai": []
+    },
+    {
+     "dk": "- Dưới 140 mmHg                      Dưới 90 mmHg",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "- 140 - 145 mmHg                     90 - 95 mmHg",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Trên 150 mmHg                      96 - 100 mmHg",
+     "loai": [
+      4
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TUẦN HOÀN",
+   "so": 46,
+   "ten": "Mạch:",
+   "muc": [
+    {
+     "dk": "46.1 - Tần số mạch: (lần/Phút)",
+     "loai": []
+    },
+    {
+     "dk": "- 60 -75 lần/phút",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "- 76 -85 lần/phút",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "- 86 -95 lần/phút hoặc từ 55 - 60 lần/phút",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Trên 95 hoặc từ 55lần/phút",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "46.2 - Viêm tắc động, tĩnh mạch:",
+     "loai": []
+    },
+    {
+     "dk": "- Không viêm tắc.",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "- Viêm tắc: + Chưa gây hoại tử đầu chi.",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "+ Hoại tử đầu chi phải can thiệp ngoại khoa.",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TUẦN HOÀN",
+   "so": 47,
+   "ten": "Giãn tĩnh mạch:",
+   "muc": [
+    {
+     "dk": "47.1 - Giãn tĩnh  mạch ở khoeo chân, cẳng chân.",
+     "loai": []
+    },
+    {
+     "dk": "- Không có.",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "- Chưa thành búi.",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "- Đã thành búi, đi lại, chạy nhảy gây căng nhức.",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "- Đã phải phẫu thuật, kết quả tốt.",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "47.2 - Giãn tĩnh mạch thừng tinh:",
+     "loai": []
+    },
+    {
+     "dk": "- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "- Nhẹ (Sờ thấy tĩnh mạch to thẳng chưa quấn vào nhau)",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "- Nặng (quấn vào nhau thành búi)",
+     "loai": [
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TUẦN HOÀN",
+   "so": 48,
+   "ten": "Nhịp tim:",
+   "muc": [
+    {
+     "dk": "48.1 - Không có rối loại nhịp tim",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "48.2 - Ngoại tâm thu:",
+     "loai": []
+    },
+    {
+     "dk": "- Thưa dưới 6 nhịp/phút:",
+     "loai": []
+    },
+    {
+     "dk": "+ Mất hoặc giảm sau vận động gắng sức.",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "+ Không mất hoặc không giảm sau vận động gắng sức.",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Mau trên 7-12 nhịp/phút, tăng lên sau vận động gắng sức.",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "- Loạn nhịp hoàn toàn:",
+     "loai": []
+    },
+    {
+     "dk": "+ Từng cơn ngắn.",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "+ Liên tục",
+     "loai": [
+      5
+     ]
+    },
+    {
+     "dk": "48.3 - Rối loạn hoàn toàn dẫn truyền trong cơ tim",
+     "loai": [
+      4
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TUẦN HOÀN",
+   "so": 49,
+   "ten": "Bệnh tim:",
+   "muc": [
+    {
+     "dk": "49.1 - Không có bệnh tim.",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "49.2 - Có tiếng thổi tâm thu chức năng.",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "49.3 - Tiếng tim đập mạnh đơn thuần",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "49.4 - Tiếng tim tách đôi sinh lý",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "49.5 - Bệnh tim bẩm sinh:",
+     "loai": []
+    },
+    {
+     "dk": "- Chưa gây tím tái, chưa có suy tim.",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "- Gây tím tái, có suy tim.",
+     "loai": [
+      5
+     ]
+    },
+    {
+     "dk": "- Tim sang phải (dextrocardie)",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "49.6 - Bệnh tim mắc phải:",
+     "loai": []
+    },
+    {
+     "dk": "- Bệnh van tim (trừ hẹp hai lá) chưa suy tim.",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "- Xơ hoá cơ tim, hẹp van hai lá, các bệnh tim khác:",
+     "loai": []
+    },
+    {
+     "dk": "+ Chưa có suy tim.",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "+ Đã có suy tim.",
+     "loai": [
+      5
+     ]
+    },
+    {
+     "dk": "- Đã có phẫu thuật về tim và van tim.",
+     "loai": [
+      5
+     ]
+    },
+    {
+     "dk": "- Các bệnh thực thể ở cơ tim, màng tim, động mạch chủ, động mạch vành",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TUẦN HOÀN",
+   "so": 50,
+   "ten": "Máu - bạch huyết:",
+   "muc": [
+    {
+     "dk": "50.1 - Bình thường (Theo hằng số sinh lý người VN)",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "50.2 - Bệnh các cơ quan tạo máu.",
+     "loai": [
+      4,
+      5
+     ]
+    },
+    {
+     "dk": "50.3 -Hậu quả của máu về bệnh phóng xạ.",
+     "loai": [
+      4,
+      5
+     ]
+    },
+    {
+     "dk": "50.4 - Bệnh giun chỉ.",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "50.5 - Thiếu máu nặng thường xuyên do các nguyên nhân.",
+     "loai": [
+      3,
+      4
+     ]
+    },
+    {
+     "dk": "50.6 - Thiếu máu do các nguyên nhân bẩm sinh (Bệnh hồng  cầu, bạch cầu, rối loạn đông máu)",
+     "loai": [
+      4,
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "HÔ HẤP",
+   "so": 51,
+   "ten": "Màng phổi",
+   "muc": [
+    {
+     "dk": "51.1- Bình thường",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "51.2- Viêm màng phổi, viêm màng phổi tràng dịch thanh tơ, tràn mủ màng phổi đã điều trị khỏi:",
+     "loai": []
+    },
+    {
+     "dk": "- Không có dày dính hoặc dày dính ít",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Dày dính ít toàn bộ một bên phổi",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "51.3- Tràn khí màng phổi",
+     "loai": [
+      4
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "HÔ HẤP",
+   "so": 52,
+   "ten": "Phế quản:",
+   "muc": [
+    {
+     "dk": "52.1-Bình thường",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "52.2- Giãn phế quản nhẹ, viêm phế quãn mạng tính tắc nghẽn",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "52.3- Viêm phế quản mạng tính chưa có tắc nghẽn",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "52.4- Hen phế quản :                 *  Nhẹ và vừa",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "*  Nặng",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "52.5- Ung thư phế quản",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "HÔ HẤP",
+   "so": 53,
+   "ten": "Phổi:",
+   "muc": [
+    {
+     "dk": "53.1- Bình thường",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "53.2- Khí phế thũng, xẹp phổi, cắt thuỳ phổi",
+     "loai": [
+      5
+     ]
+    },
+    {
+     "dk": "53.3- Các bệnh buị phổi",
+     "loai": [
+      4,
+      5
+     ]
+    },
+    {
+     "dk": "- Đã điều trị và ổn định trên 3 năm",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Lao phổi xơ mới",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "53.5- Ung thư phổi",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TIÊU HOÁ",
+   "so": 54,
+   "ten": "Thực quản",
+   "muc": [
+    {
+     "dk": "54.1- Bình thường",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "54.2- Viêm thực quản mạng tính, giãn, loét",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "54.3- Hẹp thực quản",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "54.4- Giãn tĩnh mạch thực quản",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "54.5- Ung thư thực quản",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TIÊU HOÁ",
+   "so": 55,
+   "ten": "Dạ dày tá tràng:",
+   "muc": [
+    {
+     "dk": "55.1- Bình thường",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "55.2- Viêm dạ dày - tá tràng mạng tính",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "55.3- Loét dạ dày:",
+     "loai": []
+    },
+    {
+     "dk": "- Chưa có biến chứng",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "- Có biến chứng: chảy máu, hẹp môn vị",
+     "loai": [
+      5
+     ]
+    },
+    {
+     "dk": "55.4- Sa dạ dày:   * Độ I",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "* Độ II, III",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "55.5- Loét hành tá tràng:",
+     "loai": []
+    },
+    {
+     "dk": "- Có biến chứng",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "55.6- Loét dạ dày tá tràngđã phải mổ:",
+     "loai": []
+    },
+    {
+     "dk": "- Kết quả tốt",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Kết quả không tốt",
+     "loai": [
+      4,
+      5
+     ]
+    },
+    {
+     "dk": "55.7- Ung thư dạ dày",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TIÊU HOÁ",
+   "so": 56,
+   "ten": "Đại tràng, trực tràng:",
+   "muc": [
+    {
+     "dk": "56.1- Bình thường",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "56.2- Rối loạn chức năng đại tràng mạn tính:",
+     "loai": []
+    },
+    {
+     "dk": "- Nhẹ",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "- Vừa",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Nặng",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "56.3- Viêm loét đại tràng xuất huyết:",
+     "loai": []
+    },
+    {
+     "dk": "56.4- Các bệnh lành tính của đại tràng phải can thiệp bằng phẫu thuật",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "56.5- Pôlíp trực tràng:",
+     "loai": []
+    },
+    {
+     "dk": "- Cuống nhỏ điều trị khỏi",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Chảy máu",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "56.6- Ung thư trực tràng, đại tràng",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TIÊU HOÁ",
+   "so": 57,
+   "ten": "Hậu môn trực tràng:",
+   "muc": [
+    {
+     "dk": "57.1- Bình thường",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "57.2- Rò hậu môn:",
+     "loai": []
+    },
+    {
+     "dk": "- Đơn giản đã điều trị tốt",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Phức tạp đã điều trị nhiều lần",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "57.3- Sa trực tràng",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "57.4 - Nứt hậu môn:",
+     "loai": []
+    },
+    {
+     "dk": "- Đã điều trị, kết quả tốt",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Nhiễm trùng đã phải điều trị nhiều lần",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "57.5- Trĩ:",
+     "loai": []
+    },
+    {
+     "dk": "- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "- Trĩ ngoại: + Độ I",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "+ Độ II",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "+ Đô III",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "- Trĩ nội hoặc trĩ kết hợp, có búi nhỏ( dưới 0,5cm) không có hoặc có ít biến chứng",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Trĩ nội ngoại kết hợp có triệu chứng ít",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "- Trĩ đã thắt nay có búi trĩ tái phát",
+     "loai": [
+      4
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TIÊU HOÁ",
+   "so": 58,
+   "ten": "Tiểu tràng:",
+   "muc": [
+    {
+     "dk": "58.1- Bình thường",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "58.2- Thủng tiểu tràng do các nguyên nhân phải mổ:",
+     "loai": []
+    },
+    {
+     "dk": "- Kết quả tốt, không có ảnh hưởng tới tiêu hoá",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Có ảnh hưởng tiêu hoá và sinh hoạt, có hội chứng bán tắc",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "58.3- Tắc ruột cơ giới phải mổ:",
+     "loai": []
+    },
+    {
+     "dk": "- Kết quả tốt",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Vẫn còn rối loạn tiêu hoá",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "- Thoát vị bẹnL + Chưa phẫu thuật",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "+ Đã phẫu thuật kết quả tốt",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "+ Đã phẫu thuật kết quả không tốt",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "58.4- Ký sinh trùng đường ruột:",
+     "loai": []
+    },
+    {
+     "dk": "- Chưa gây biến đổi chức năng",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "- Gây biến đổi chức năng",
+     "loai": [
+      3,
+      4
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TIÊU HOÁ",
+   "so": 59,
+   "ten": "Ruột thừa:",
+   "muc": [
+    {
+     "dk": "59.1- Bình thường hoặc mổ từ bé, kết quả tốt",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "59.2- Đã mổ kết quả tốt( người lớn)",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "59.3- Có di chứng, biến chứng sau mổ",
+     "loai": [
+      4
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TIÊU HOÁ",
+   "so": 60,
+   "ten": "Gan:",
+   "muc": [
+    {
+     "dk": "60.1- Bình thường",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "60.2- Viêm gan đã chữa khỏi trên 12 tháng, sức khoẻ bình thường",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "60.3- Viêm gan mạn tính thể tồn tại, thể tấn công",
+     "loai": [
+      5
+     ]
+    },
+    {
+     "dk": "60.4- Xơ gan, gan to chưa rõ nguyên nhân",
+     "loai": [
+      5
+     ]
+    },
+    {
+     "dk": "60.5- Đụng dập gan đã xử trí kết quả tốt",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "60.6- Áp xe gan đã phải can thiệp ngoại khoa, nay ổn định",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "60.7- Áp xe gan đã vỡ gây biến chứng, tuy đã điều trị khỏi",
+     "loai": [
+      5
+     ]
+    },
+    {
+     "dk": "60.8- Ung thư gan",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TIÊU HOÁ",
+   "so": 61,
+   "ten": "Mật, tuỵ:",
+   "muc": [
+    {
+     "dk": "61.1- Bình thường",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "61.2- Viêm túi mật, ống dẫn mật mạn tính",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "61.3- Sỏi túi mật đã cắt bỏ túi mật",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "61.4- Sỏi ống chủ mật",
+     "loai": [
+      5
+     ]
+    },
+    {
+     "dk": "61.5- Viêm tuỵ mạn tính",
+     "loai": [
+      5
+     ]
+    },
+    {
+     "dk": "61.6- Viêm tuỵ cấp đã điều trị khỏi",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "61.7- Viêm tuỵ chảy máu đã điều trị ngoại khoa",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "61.8- Ung thư tuỵ",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TIÊU HOÁ",
+   "so": 62,
+   "ten": "Lách:",
+   "muc": [
+    {
+     "dk": "62.1- Bình thường",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "62.2- Lách to mạn tính xơ cứng",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "62.3- Cắt lách kết quả tốt",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "62.4- Đụng dập lách đã xử trí ngoại khoa tốt",
+     "loai": [
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TIẾT NIỆU - SINH DỤC",
+   "so": 63,
+   "ten": "Tiết niệu",
+   "muc": [
+    {
+     "dk": "63.1- Bình thường",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "63.2- Cắt 1 thận",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "63.3- U thận đã mổ không có biến chứng",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "63.4- Bệnh thận mạn tính: viêm cầu thận do các lọai nguyên nhân, hư thận, các loại u...",
+     "loai": []
+    },
+    {
+     "dk": "- Chưa suy thận",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "- Đã suy thận",
+     "loai": [
+      5
+     ]
+    },
+    {
+     "dk": "63.5- Bệnh thận bẩm sinh( lạc chỗ, đa nang, dị dạng)",
+     "loai": []
+    },
+    {
+     "dk": "63.6- Sỏi thận * Đã mổ kết quả tốt",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "* Chưa mổ",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "63.7- Sỏi niệu quản",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "63.8- Sỏi bàng quang:",
+     "loai": []
+    },
+    {
+     "dk": "- Đã mổ kết quả tốt",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Đã mổ lại nhiều lần",
+     "loai": [
+      4
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TIẾT NIỆU - SINH DỤC",
+   "so": 64,
+   "ten": "Sinh dục nam:",
+   "muc": [
+    {
+     "dk": "64.1- Bình thường",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "64.2- Hẹp bao qui đầu:",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "- Chưa phẫu thuật",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "- Đã phẫu thuật kết quả tốt",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "- Sau phẫu thuật có ảnh hưởng tiết niệu",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "64.3- Thiếu tinh hoàn",
+     "loai": []
+    },
+    {
+     "dk": "- Thiếu 1 tinh hoàn hoặc 1 tinh hoàn ẩn",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "- Thiếu 2 tinh hoàn hoặc 2 tinh hoàn ẩn",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "64.4- Bao tinh hoàn có nước( hydrocèle)",
+     "loai": []
+    },
+    {
+     "dk": "- Đã điều trị tốt",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "- Chưa điều trị",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "64.5- Cắt cụt dương vật",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "64.6- Ung thư dương vật",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "TIẾT NIỆU - SINH DỤC",
+   "so": 65,
+   "ten": "Sinh dục nữ:",
+   "muc": [
+    {
+     "dk": "65.1- Bình thường kinh nguyệt đều",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "65.2- Rối loạn kinh nguyệt( kinh nguyệt không đều, kinh thất thường, kinh kéo dài 6-7 ngày)",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "65.3- Rong kinh, đa kinh, băng kinh",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "65.4- Bế kinh, vô kinh( tuỳ nguyên nhân mà xếp loại)",
+     "loai": []
+    },
+    {
+     "dk": "65.5- Sinh dục ngoài dị dạng bẩm sinh",
+     "loai": [
+      2,
+      3
+     ]
+    },
+    {
+     "dk": "65.6- U nang buồng trứng, u xơ tử cung:",
+     "loai": []
+    },
+    {
+     "dk": "- Chưa mổ",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "- Đã mổ kết quả tốt",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "65.7- Viêm phần phụ: - Đã mổ kết quả tốt",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "65.8- Mổ lấy thai:",
+     "loai": []
+    },
+    {
+     "dk": "- Mổ 1 lần không có biến chứng",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "- Mổ 2 lần không có biến chứng",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Mổ 3 lần không có biến chứng",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "65.9- Rò bàng quang - âm đạo:",
+     "loai": []
+    },
+    {
+     "dk": "65.10- Ung thư sinh dục nữ",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "HỆ VẬN ĐỘNG",
+   "so": 66,
+   "ten": "Khớp xương",
+   "muc": [
+    {
+     "dk": "66.1- Bình thường",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "66.2- Sai các khớp:",
+     "loai": []
+    },
+    {
+     "dk": "- Đã nắn chỉnh không để lại di chứng",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "- Sai khớp lớn, không nắn chỉnh, thành cố tật có ảnh hưởng tới lao động học tập",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "- Sai khớp lớn đã được phẫu thuật:",
+     "loai": []
+    },
+    {
+     "dk": "+ Ổn định sau 1 năm, lao động sinh hoạt bình thường",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "+ Để lại di chứng: Hạn chế vận động, thoái hoá biến dạng hoặc cứng khớp",
+     "loai": [
+      5
+     ]
+    },
+    {
+     "dk": "+ Sai khớp bệnh lý các khớp lớn",
+     "loai": [
+      5
+     ]
+    },
+    {
+     "dk": "66.3- Khớp giả:",
+     "loai": []
+    },
+    {
+     "dk": "- Kèm theo mất đoạn xương lớn, chi ngắn trên 5 cm",
+     "loai": [
+      5
+     ]
+    },
+    {
+     "dk": "- Không ngắn chi",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "66.4- Cứng, dính các khớp:",
+     "loai": []
+    },
+    {
+     "dk": "- Các khớp vai, khuỷu, gối, háng, cột sống",
+     "loai": [
+      5
+     ]
+    },
+    {
+     "dk": "- Các khớp cổ tay, cổ chân",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "66.5- Dị dạng bẩm sinh ( Khớp lớn, mất đoạn đầu xương )",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "HỆ VẬN ĐỘNG",
+   "so": 67,
+   "ten": "Xương:",
+   "muc": [
+    {
+     "dk": "67.1- Không bị gẫy xương",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "67.2- Gẫy xương lớn:",
+     "loai": []
+    },
+    {
+     "dk": "- Đã liền tốt, trục thẳng, ổn định sau 1 năm, không hạn chế vận động",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Đã liền xương, can xấu, lệch trục, có ảnh hưởng đến vận động, có thoái hoá biến chứng",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "67.3- Gẫy xương sườn:",
+     "loai": []
+    },
+    {
+     "dk": "- Gẫy 1 xương sườn can tốt",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "- Gẫy 2-3 xương sườn can tốt",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Gãy trên 3 xương sườn can tốt",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "67.4- Gù vẹo, quá ưỡn:",
+     "loai": []
+    },
+    {
+     "dk": "- Do bẩm sinh",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Do mắc phải",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "67.5- Cứng dính cột sống do các nguyên nhân có ảnh hưởng tới lao động, vận động:",
+     "loai": []
+    },
+    {
+     "dk": "- Nhẹ",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Vừa",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "- Nặng",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "HỆ VẬN ĐỘNG",
+   "so": 68,
+   "ten": "Chiều dài các chi:",
+   "muc": [
+    {
+     "dk": "68.1- Không có chênh lệch chiều dài các chi",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "68.2- Có chênh lêch chiều dài các chi:",
+     "loai": []
+    },
+    {
+     "dk": "- Từ 1-2 cm",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Từ 3-4 cm",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "- Từ trên 4 cm",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "HỆ VẬN ĐỘNG",
+   "so": 69,
+   "ten": "Hai chân vòng kiềng hình chữ 0 hoặc chữ X:",
+   "muc": [
+    {
+     "dk": "69.1- Bình thường",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "69.2- Hai chân vòng kiềng:",
+     "loai": []
+    },
+    {
+     "dk": "- Không ảnh hưởng tới đi lại, chạy nhảy",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "- Có ảnh hưởng tới đi lại chạy nhảy",
+     "loai": [
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "HỆ VẬN ĐỘNG",
+   "so": 70,
+   "ten": "Bàn chân bẹt:",
+   "muc": [
+    {
+     "dk": "70.1- Không có bàn chân bẹt",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "70.1- Bàn chân bẹt",
+     "loai": []
+    },
+    {
+     "dk": "- Độ I",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "- Độ II",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "- Độ III",
+     "loai": [
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "HỆ VẬN ĐỘNG",
+   "so": 71,
+   "ten": "Chai chân, mắt cá lòng bàn chân, rỗ chân",
+   "muc": [
+    {
+     "dk": "71.1- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "71.2- Chai chân (durillon):",
+     "loai": []
+    },
+    {
+     "dk": "- Dày sừng không nắn còn mềm, không ảnh hưởng tới đi lại",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "- Dày sừng gây cộm cứng ảnh hưởng tới đi lại",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "71.3- Mắt cá lòng bàn chân (corp-plantaire)",
+     "loai": []
+    },
+    {
+     "dk": "- Đường kính dưới 1cm nhưng dưới 2 cái, không ảnh hưởng tới đi lại",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "- Đường kính dưới 1cm nhưng dưới 3 cái, không ảnh hưởng tới đi lại",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Đường kính trên 1cm, trên 3 cái, ảnh hưởng tới đi lại",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "71.4- Rỗ chân: ( porokeratose)",
+     "loai": []
+    },
+    {
+     "dk": "- Đường kính điểm lõm dưới 2cm, trong 1cm2 chỉ có 1-2 điểm, không ảnh hưởng tới đi lại",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "- Đường kính điểm lõm dưới 2cm, trong 1cm2 chỉ có trên 2 điểm, không ảnh hưởng tới đi lại",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Đường kính điểm lõm trên 2cm, trong 1cm2 có 2 điểm, có ảnh hưởng tới đi lại",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "- Gãy trên 3 xương sườn can tốt",
+     "loai": [
+      4
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "HỆ VẬN ĐỘNG",
+   "so": 72,
+   "ten": "Mất ngón tay, ngón chân:",
+   "muc": [
+    {
+     "dk": "72.1- Không ngón tay, ngón chân",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "72.2- Mất 1-2 đốt:",
+     "loai": []
+    },
+    {
+     "dk": "- Ngón tay cái, ngón chân cái, ngón tay trỏ bàn tay thuận, từ 2 ngón khác của bàn tay, bàn chân",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Ngón khác của bàn tay bàn chân",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "72.3- Mất 1 ngón:",
+     "loai": []
+    },
+    {
+     "dk": "- Ngón cái của bàn tay hoặc bàn chân",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "- Ngón trỏ bàn tay thuận",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Ngón khác của bàn tay hoặc bàn chân",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "72.4- Mất 2 ngón trong đó không mất ngón tay cái, không mất ngón trỏ bàn tay thuận, không mất ngón chân cái",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "72.5- Mất 3 ngón tay trở lên trong đó không mất ngón cái và ngón trỏ",
+     "loai": [
+      4
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "HỆ VẬN ĐỘNG",
+   "so": 73,
+   "ten": "Dính kẽ ngón tay, ngón chân:",
+   "muc": [
+    {
+     "dk": "73.1- Không dính kẽ ngón tay, ngón chân",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "73.2- Có dính kẽ ngón tay, ngón chân:",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "- Chưa xử trí phẫu thuật:",
+     "loai": []
+    },
+    {
+     "dk": "- Đã xử trí phẫu thuật:",
+     "loai": []
+    },
+    {
+     "dk": "+ Ảnh hưởng ít đến hoạt động bàn tay, bàn chân",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "+ Ảnh hưởng nhiều đến hoạt động bàn tay, bàn chân",
+     "loai": [
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "HỆ VẬN ĐỘNG",
+   "so": 74,
+   "ten": "Thừa ngón tay, ngón chân:",
+   "muc": [
+    {
+     "dk": "74.1- Không thừa ngón tay, ngón chân",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "74.2- Thừa ngón tay, ngón chân chưa cắt bỏ, không ảnh hưởng tới bàn tay, bàn chân hoặc đã cắt bỏ mà có ảnh hưởng tới bàn tay, bàn chân",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "Co rút ngón tay, ngón chân:",
+     "loai": []
+    }
+   ]
+  },
+  {
+   "co_quan": "HỆ VẬN ĐỘNG",
+   "so": 75,
+   "ten": "- Từ 1-2 ngón tay hoặc ngón chân, ảnh hưởng tới lao động, sinh hoạt",
+   "muc": [
+    {
+     "dk": "75.1- Không co rút ngón tay, ngón chân",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "75.2- Có co rút:",
+     "loai": []
+    },
+    {
+     "dk": "- Từ 3-4 ngón tay hoặc ngón chân, ảnh hưởng tới lao động, sinh hoạt",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "- Từ 5 ngón tay hoặc ngón chân, ảnh hưởng tới lao động, sinh hoạt",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "HỆ VẬN ĐỘNG",
+   "so": 76,
+   "ten": "Lệch vẹo ngón chân cái:",
+   "muc": [
+    {
+     "dk": "76.1- Không lệch",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "76.2- Lệch vẹo:",
+     "loai": []
+    },
+    {
+     "dk": "- Không ảnh hưởng tới dày dép, mang vác, chạy nhảy",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "- Có ảnh hưởng tới dày dép, mang vác, chạy nhảy",
+     "loai": [
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "HỆ VẬN ĐỘNG",
+   "so": 77,
+   "ten": "Lao xương:",
+   "muc": [
+    {
+     "dk": "77.1- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "77.2- Có lao xương đã điều trị khỏi, ổn định",
+     "loai": [
+      4
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "HỆ VẬN ĐỘNG",
+   "so": 78,
+   "ten": "Ung thư xương khớp",
+   "muc": [
+    {
+     "dk": "(hắc lào, nấm bẹn)",
+     "loai": []
+    }
+   ]
+  },
+  {
+   "co_quan": "HOA LIỄU",
+   "so": 79,
+   "ten": "Nấm da",
+   "muc": [
+    {
+     "dk": "79.1- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "79.2- Thể giản đơn chưa có biến chứng viêm da nhiễm khuẩn, diện tích không quá diện tích lòng bàn tay của đối tượng.",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "79.3- Có biến chứng nhiễm khuẩn, diện tích lớn hơn diện tích lòng bàn tay của đối tượng.",
+     "loai": [
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "HOA LIỄU",
+   "so": 80,
+   "ten": "Nấm kẻ:",
+   "muc": [
+    {
+     "dk": "80.1- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "80.2- Bột trắng 1-2 kẽ",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "80.3- Kèm theo nấm móng hoặc nấm da",
+     "loai": [
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "HOA LIỄU",
+   "so": 81,
+   "ten": "Lang ben:",
+   "muc": [
+    {
+     "dk": "81.1- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "81.2- Thể giản đơn không quá 1/3 cơ thể",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "81.3- Thể lan tỏa",
+     "loai": [
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "HOA LIỄU",
+   "so": 82,
+   "ten": "Ghẻ:",
+   "muc": [
+    {
+     "dk": "82.1- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "82.2- Thể đơn giản chưa có biến chứng",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "82.3- Thể rải rác:",
+     "loai": []
+    },
+    {
+     "dk": "- Có biến chứng nhiễm trùng",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Có biến chứng viêm thận",
+     "loai": [
+      4
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "HOA LIỄU",
+   "so": 83,
+   "ten": "Eczéma:",
+   "muc": [
+    {
+     "dk": "83.1- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "83.2- Mạn tính",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "83.3- cấp tính bội nhiễm",
+     "loai": [
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "HOA LIỄU",
+   "so": 84,
+   "ten": "Bệnh Durhing, Pemphigus:",
+   "muc": [
+    {
+     "dk": "84.1- Bệnh Durhing",
+     "loai": []
+    },
+    {
+     "dk": "- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "- Thể nhẹ khu trú một chỗ",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Thể rải rác",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "84.2 - Bệnh Pemphigus:",
+     "loai": []
+    },
+    {
+     "dk": "- Thể da mỡ, vảy lá",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "- Thể Vulgaris - Thể sùi",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "HOA LIỄU",
+   "so": 85,
+   "ten": "Bệnh Lupus ban đỏ, vảy nến:",
+   "muc": [
+    {
+     "dk": "85.1- Bệnh Lupus ban đỏ:",
+     "loai": []
+    },
+    {
+     "dk": "-Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "- Lupus đỏ kinh",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Lupus đỏ hệ thống",
+     "loai": [
+      5
+     ]
+    },
+    {
+     "dk": "85.2- Bệnh vảy nến:",
+     "loai": []
+    },
+    {
+     "dk": "- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "- Thể thông thường khu trú",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Thể lan tỏa, da đỏ toàn thân",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "-Thể khớp",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "HOA LIỄU",
+   "so": 86,
+   "ten": "Tổ đỉa, viêm da thần kinh:",
+   "muc": [
+    {
+     "dk": "86.1- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "86.2- Có tổ đỉa, viêm da thần kinh",
+     "loai": [
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "HOA LIỄU",
+   "so": 87,
+   "ten": "Lậu:",
+   "muc": [
+    {
+     "dk": "87.1- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "87.2- Lậu cấp đã điều trị khỏi",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "87.3- Lậu mạn chưa khỏi",
+     "loai": [
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "HOA LIỄU",
+   "so": 88,
+   "ten": "Giang mai:",
+   "muc": [
+    {
+     "dk": "88.1- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "88.2- Giang mai I đã điều trị khỏi",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "88.3- Giang mai II đã điều trị khỏi lâm sàng và xét nghiệm",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "88.4- Giang mai I và II chưa điều trị thì không xếp loại",
+     "loai": []
+    },
+    {
+     "dk": "88.5- Giang mai thần kinh, tim mạch",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "HOA LIỄU",
+   "so": 89,
+   "ten": "HIV/AIDS:",
+   "muc": [
+    {
+     "dk": "89.1- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "89.2- HIV dương tính",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "89.3- AIDS",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "HOA LIỄU",
+   "so": 90,
+   "ten": "Bệnh phong:",
+   "muc": [
+    {
+     "dk": "90.1- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "90.2- Có bệnh phong",
+     "loai": []
+    },
+    {
+     "dk": "- Không tàn phế",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Tàn phế độ I",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "-Tàn phế độ II",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "HOA LIỄU",
+   "so": 91,
+   "ten": "Hạ cam mềm:",
+   "muc": [
+    {
+     "dk": "91.1- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "91.2- Có hạ cam mềm",
+     "loai": []
+    },
+    {
+     "dk": "- Chưa điều trị khỏi",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Đã điều trị khỏi",
+     "loai": [
+      2
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "HOA LIỄU",
+   "so": 92,
+   "ten": "Sùi mào gà:",
+   "muc": [
+    {
+     "dk": "92.1- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "92.2- Có sùi mào gà:",
+     "loai": []
+    },
+    {
+     "dk": "- Chưa điều trị khỏi",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "- Đã điều trị khỏi",
+     "loai": [
+      2
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "HOA LIỄU",
+   "so": 93,
+   "ten": "Nicolas Favres:",
+   "muc": [
+    {
+     "dk": "93.1- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "93.2- Có Nicolas Favres:",
+     "loai": []
+    },
+    {
+     "dk": "- Chưa điều trị khỏi",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "- Đã điều trị khỏi",
+     "loai": [
+      2
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "HOA LIỄU",
+   "so": 94,
+   "ten": "Viêm móng, xung quanh móng:",
+   "muc": [
+    {
+     "dk": "94.1- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "94.2- Có viêm móng, xung quanh móng:",
+     "loai": []
+    },
+    {
+     "dk": "- Chưa điều trị khỏi",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Đã điều trị khỏi",
+     "loai": [
+      2
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "NỘI TIẾT - CHUYỂN HÓA",
+   "so": 95,
+   "ten": "Bệnh tuyến giáp",
+   "muc": [
+    {
+     "dk": "95.1- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "95.2- Bướu lành tình nhỏ",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "95.3- Bướu lành tính to, ảnh hưởng tới hô hấp",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "95.4- Basedow: - Chưa có biến chứng tim",
+     "loai": [
+      4
+     ]
+    },
+    {
+     "dk": "- Có biến chứng tim",
+     "loai": [
+      5
+     ]
+    },
+    {
+     "dk": "95.5- Ung thư",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "NỘI TIẾT - CHUYỂN HÓA",
+   "so": 96,
+   "ten": "Bệnh tuyến yến:",
+   "muc": [
+    {
+     "dk": "96.1- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "96.2- Suy hoặc cường tuyến yên",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "NỘI TIẾT - CHUYỂN HÓA",
+   "so": 97,
+   "ten": "Đái tháo đường:",
+   "muc": [
+    {
+     "dk": "97.1- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "97.2- Có đái tháo đường:",
+     "loai": []
+    },
+    {
+     "dk": "- Chưa có biến chứng:",
+     "loai": []
+    },
+    {
+     "dk": "+ Type I (Phụ thuộc Insuline)",
+     "loai": [
+      5
+     ]
+    },
+    {
+     "dk": "+ Type II(Không phụ thuộc Insuline)",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Có biến chứng mắt, thận, tắc mạch máu lớn",
+     "loai": [
+      4,
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "NỘI TIẾT - CHUYỂN HÓA",
+   "so": 98,
+   "ten": "Đái tháo nhạt:",
+   "muc": [
+    {
+     "dk": "98.1- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "98.2- Có đái tháo nhạt: - Nhẹ",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "- Vừa",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Nặng",
+     "loai": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "NỘI TIẾT - CHUYỂN HÓA",
+   "so": 99,
+   "ten": "Cường vỏ thượng thận:",
+   "muc": [
+    {
+     "dk": "99.1- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "99.2- Cường vỏ thượng thận chưa mổ",
+     "loai": [
+      5
+     ]
+    },
+    {
+     "dk": "99.3- Cường vỏ thượng thận đã mổ kết quả tốt",
+     "loai": [
+      3,
+      4
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "NỘI TIẾT - CHUYỂN HÓA",
+   "so": 100,
+   "ten": "Bệnh béo phệ:",
+   "muc": [
+    {
+     "dk": "100.1- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "100.2- Có bệnh béo phệ:(xem phụ lục 6)",
+     "loai": []
+    },
+    {
+     "dk": "- Chỉ số BMI = 25",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "- Chỉ số BMI = từ 26-27",
+     "loai": [
+      3
+     ]
+    },
+    {
+     "dk": "- Chỉ số BMI = từ 28 trở lên",
+     "loai": [
+      4
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "U CÁC LOẠI",
+   "so": 101,
+   "ten": "U lành tính",
+   "muc": [
+    {
+     "dk": "101.1- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "101.2- U không gây ảnh hưởng tới lao động, học tập",
+     "loai": [
+      2
+     ]
+    },
+    {
+     "dk": "101.3-U gây cản trở vận động đã mổ kết quả tốt",
+     "loai": [
+      2
+     ]
+    }
+   ]
+  },
+  {
+   "co_quan": "U CÁC LOẠI",
+   "so": 102,
+   "ten": "U ác tính:",
+   "muc": [
+    {
+     "dk": "102.1- Không có",
+     "loai": [
+      1
+     ]
+    },
+    {
+     "dk": "102.2- Có u ác tính",
+     "loai": [
+      5
+     ]
+    },
+    {
+     "dk": "Lọai\n\nCơ quan,\n bộ máy Lọai I Lọai II Lọai III Lọai IV Lọai V",
+     "loai": []
+    },
+    {
+     "dk": "Thể lực Cả 3 chỉ tiêu đều đạt lọai I hoặc chỉ có vòng ngực là lọai 2 Cả 3 chỉ tiêu đều đạt lọai I và 2 hoặc chỉ có vòng ngực lọai 3 Cả 3 chỉ tiêu đều đạt lọai  3 trở lên Có 1 chỉ tiêu ở lọai 4 Có 1 chỉ tiêu ở lọai 5",
+     "loai": []
+    },
+    {
+     "dk": "Mắt Cả 13 chỉ tiêu đều đạt lọai I hoặc chỉ có chỉ tiêu 3.2 là lọai 2 Cả 13 chỉ tiêu đều đạt lọai 1, 2 trở lên Cả 13 chỉ tiêu đều đạt lọai  3 trở lên Có 1 chỉ tiêu ở lọai 4 Có 1 chỉ tiêu ở lọai 5",
+     "loai": []
+    },
+    {
+     "dk": "Tai–Mũi - Họng Cả 9 chỉ tiêu đều đạt lọai I hoặc chỉ có chỉ tiêu 19.2, 20.2 là lọai 2 Cả 9 chỉ tiêu đều đạt lọai 1 và lọai 2 hoặc chỉ có chỉ tiêu 20.3 là lọai 3 Cả 9 chỉ tiêu đều đạt lọai  3 trở lên Có 1 chỉ tiêu ở lọai 4 Có 1 chỉ tiêu ở lọai 5",
+     "loai": []
+    },
+    {
+     "dk": "Răng–Hàm-Mặt Cả 9 chỉ tiêu đều đạt lọai I hoặc chỉ có chỉ tiêu 24.2, 27.2 là lọai 2 Cả 9 chỉ tiêu đều đạt lọai 1 và lọai 2 hoặc chỉ có chỉ tiêu 23.3, 29.3 là lọai 3 Cả 9 chỉ tiêu đều đạt lọai  3 trở lên Có 1 chỉ tiêu ở lọai 4 Có 1 chỉ tiêu ở lọai 5",
+     "loai": []
+    },
+    {
+     "dk": "Tâm thần, thần kinh Cả 13 chỉ tiêu đều đạt lọai I hoặc chỉ có chỉ tiêu 35.2, 37.2, 38.2 là lọai 2 Cả 13 chỉ tiêu đều đạt lọai 2 trở lên Cả 13 chỉ tiêu đều đạt lọai  3 trở lên Có 1 chỉ tiêu ở lọai 4 Có 1 chỉ tiêu ở lọai 5",
+     "loai": []
+    },
+    {
+     "dk": "Tuần hòan Cả 6 chỉ tiêu đều đạt lọai I hoặc chỉ có chỉ tiêu 45.1, đạt lọai 2 Cả 6 chỉ tiêu đều đạt lọai I và lọai 2 hoặc chỉ có chỉ tiêu 45.1 lọai 3 Cả 6 chỉ tiêu đều đạt lọai  3 trở lên Có 1 chỉ tiêu ở lọai 4 Có 1 chỉ tiêu ở lọai 5",
+     "loai": []
+    },
+    {
+     "dk": "Hô hấp Cả 3 chỉ tiêu đều đạt lọai I Cả 3 chỉ tiêu đều đạt lọai I và 2 Cả 3 chỉ tiêu đều đạt lọai  3 trở lên Có 1 chỉ tiêu ở lọai 4 Có 1 chỉ tiêu ở lọai 5",
+     "loai": []
+    },
+    {
+     "dk": "Tiêu hóa Cả 9 chỉ tiêu đều đạt lọai I hoặc chỉ có chỉ tiêu 58.3, 59.2, là lọai 2 Cả 9 chỉ tiêu đều đạt lọai 1 và 2 Cả 9 chỉ tiêu đều đạt lọai 3 trở lên Có 1 chỉ tiêu ở lọai 4 Có 1 chỉ tiêu ở lọai 5",
+     "loai": []
+    },
+    {
+     "dk": "Tiết niệu – Sinh dục Cả 3 chỉ tiêu đều đạt lọai I Cả 3 chỉ tiêu đều đạt lọai 1 và 2 Cả 3 chỉ tiêu đều đạt lọai 3 trở lên Có 1 chỉ tiêu ở lọai 4 Có 1 chỉ tiêu ở lọai 5",
+     "loai": []
+    },
+    {
+     "dk": "Hệ vận động Cả 13 chỉ tiêu đều đạt lọai I hoặc chỉ có chỉ tiêu 69.2, 71.2 là lọai 2 Cả 3 chỉ tiêu đều đạt lọai 1 và 2 hoặc chỉ có chỉ tiêu 67.2, 71.4 là lọai 3 Cả 13 chỉ tiêu đều đạt lọai 3 trở lên Có 1 chỉ tiêu ở lọai 4 Có 1 chỉ tiêu ở lọai 5",
+     "loai": []
+    },
+    {
+     "dk": "Ngòai da – Da Liễu Cả 16 chỉ tiêu đều đạt lọai I hoặc chỉ có chỉ tiêu 82.2 là lọai 2 Cả 16 chỉ tiêu đều đạt lọai I và 2 Cả 16 chỉ tiêu đều đạt lọai 3 trở lên Có 1 chỉ tiêu ở lọai 4 Có 1 chỉ tiêu ở lọai 5",
+     "loai": []
+    },
+    {
+     "dk": "Nội tiết - chuyển hóa Cả 6 chỉ tiêu đều đạt lọai I Cả 6 chỉ tiêu đều đạt lọai I và 2 Cả 6 chỉ tiêu đều đạt lọai 3 trở lên Có 1 chỉ tiêu ở lọai 4 Có 1 chỉ tiêu ở lọai 5",
+     "loai": []
+    },
+    {
+     "dk": "U các lọai Cả 2 chỉ tiêu đều đạt lọai I Cả 2 chỉ tiêu đều đạt lọai I và 2 Cả 2 chỉ tiêu đều đạt lọai 3 trở lên Có 1 chỉ tiêu ở lọai 4 Có 1 chỉ tiêu ở lọai 5",
+     "loai": []
+    },
+    {
+     "dk": "Tên khớp Chức năng Bình thường Tên khớp Chức năng Bình thường",
+     "loai": []
+    },
+    {
+     "dk": "Vai - Đưa ra trước tiên\n- Đưa ngang\n- Duổi ra sau\n- Quay 185o\n185o\n40o\n360o Háng Gấp\nDuỗi\nXoay ngòai\nXoay trong\nKhép\nDạng 125o\n40o\n40o\n35o\n35o\n90o",
+     "loai": []
+    },
+    {
+     "dk": "Khủyu 135o Gối Gấp 125o",
+     "loai": []
+    },
+    {
+     "dk": "Cổ tay Gấp\nNgửa\nKhép\nDạng 620\n500\n400\n300 Cổ chân Gấp\nDuỗi\nXoay ngòai\nXoay trong 45o\n35o\n45o\n30o",
+     "loai": []
+    },
+    {
+     "dk": "BMI = Trọng lượng cơ thể (kg)",
+     "loai": []
+    },
+    {
+     "dk": "(Chiều cao đứng (m))2",
+     "loai": []
+    }
+   ]
+  }
+ ]
+}
