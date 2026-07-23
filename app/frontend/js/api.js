@@ -77,6 +77,27 @@ const Api = (() => {
     xuatFileCotMoRong: () => req('GET', '/api/xuat-file/cot-mo-rong'),
     xuatFilePreview: (body) => req('POST', '/api/xuat-file/preview', body),
     xuatFileStart: (body) => req('POST', '/api/xuat-file', body),
+    // Xuất .xlsx đơn thuần — trả BLOB (không phải JSON) + tên file lấy từ
+    // Content-Disposition, để xuatfile.js kích hoạt tải về.
+    xuatFileXlsxDonThuan: async (body) => {
+      const res = await fetch('/api/xuat-file/xlsx-don-thuan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        let detail = `Lỗi ${res.status}`;
+        try { const d = await res.json(); if (d && d.detail) detail = d.detail; } catch (e) { /* no body */ }
+        if (res.status === 401 && onUnauthorized) onUnauthorized();
+        throw new Error(detail);
+      }
+      const blob = await res.blob();
+      const cd = res.headers.get('Content-Disposition') || '';
+      const m = /filename\*=UTF-8''([^;]+)/i.exec(cd);
+      const name = m ? decodeURIComponent(m[1]) : 'KSK_DonThuan.xlsx';
+      return { blob, name };
+    },
     xuatFileJobs: () => req('GET', '/api/xuat-file/jobs'),
     xuatFileJob: (id) => req('GET', `/api/xuat-file/jobs/${encodeURIComponent(id)}`),
 

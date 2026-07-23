@@ -68,7 +68,34 @@ const ExportView = (() => {
       </div>
 
       <div class="xf-block">
-        <button id="xf-start-btn" type="button">Bắt đầu xuất</button>
+        <button id="xf-start-btn" type="button">Bắt đầu xuất .xlsm (nộp Bộ)</button>
+      </div>
+
+      <div class="xf-block xf-plain-block">
+        <div class="xf-label">Hoặc: Xuất Excel đơn thuần (.xlsx)</div>
+        <p class="xf-hint">1 sheet nhập liệu, cấu trúc 103 cột giống mẫu
+          &ldquo;Trên 18&rdquo; nhưng <b>không có macro/dropdown</b> —
+          KHÔNG nộp Bộ được, dùng để rà soát &amp; đối chiếu nhanh.
+          Tải về ngay, chạy được cả trên bản đám mây.</p>
+        <button id="xf-plain-btn" type="button">Tải .xlsx đơn thuần</button>
+        <span id="xf-plain-status" class="xf-plain-status"></span>
+      </div>
+
+      <div class="xf-block xf-cmd-block">
+        <div class="xf-label">Xuất .xlsm chính thức trên máy cá nhân</div>
+        <p class="xf-hint">File .xlsm nộp Bộ (kèm dropdown &amp; VBA) chỉ tạo
+          được ở máy local. Câu lệnh dưới khởi động app trên máy anh và nối
+          thẳng DB online, để file .xlsm phản ánh ĐÚNG dữ liệu nhân viên đã rà
+          soát trên mạng — copy vào Terminal rồi chạy:</p>
+        <pre id="xf-cmd" class="xf-cmd">cd ~/Documents/Antigravity/kham-suc-khoe/app &amp;&amp; \
+TURSO_URL="libsql://ksk-khoibmtn.aws-ap-northeast-1.turso.io" \
+TURSO_AUTH_TOKEN="$(turso db tokens create ksk)" \
+./run.sh</pre>
+        <button id="xf-cmd-copy" type="button">Sao chép câu lệnh</button>
+        <p class="xf-hint">Sau khi chạy, mở <b>http://127.0.0.1:8000</b> →
+          trang <b>Xuất file</b> → bấm <b>Bắt đầu xuất .xlsm</b>.
+          (Máy cần đã cài <code>turso</code> CLI và đăng nhập
+          <code>turso auth login</code>.)</p>
       </div>
 
       <div id="xf-job-progress"></div>
@@ -110,6 +137,16 @@ const ExportView = (() => {
 
     panel.querySelector('#xf-preview-btn').addEventListener('click', doPreview);
     panel.querySelector('#xf-start-btn').addEventListener('click', doStart);
+    panel.querySelector('#xf-plain-btn').addEventListener('click', doExportPlain);
+
+    const copyBtn = panel.querySelector('#xf-cmd-copy');
+    copyBtn.addEventListener('click', () => {
+      const txt = panel.querySelector('#xf-cmd').textContent;
+      navigator.clipboard.writeText(txt).then(() => {
+        copyBtn.textContent = 'Đã sao chép ✓';
+        setTimeout(() => { copyBtn.textContent = 'Sao chép câu lệnh'; }, 1500);
+      }).catch(() => { copyBtn.textContent = 'Bôi đen để copy thủ công'; });
+    });
 
     const extToggle = panel.querySelector('#xf-extended-enabled');
     extToggle.addEventListener('change', () => {
@@ -164,6 +201,34 @@ const ExportView = (() => {
       panel.querySelector('#xf-job-progress').innerHTML = `<div class="xf-error">${err.message}</div>`;
     } finally {
       startBtn.disabled = false;
+    }
+  }
+
+  async function doExportPlain() {
+    const scope = currentScope();
+    const include_errors = panel.querySelector('#xf-include-errors').checked;
+    const btn = panel.querySelector('#xf-plain-btn');
+    const status = panel.querySelector('#xf-plain-status');
+    btn.disabled = true;
+    status.textContent = ' Đang tạo file .xlsx ...';
+    status.className = 'xf-plain-status';
+    try {
+      const { blob, name } = await Api.xuatFileXlsxDonThuan({ ...scope, include_errors });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      status.textContent = ` Đã tải: ${name}`;
+      status.className = 'xf-plain-status ok';
+    } catch (err) {
+      status.textContent = ' ' + err.message;
+      status.className = 'xf-plain-status error';
+    } finally {
+      btn.disabled = false;
     }
   }
 

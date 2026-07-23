@@ -14,6 +14,7 @@ Job chạy NỀN trên 1 thread; mỗi xã lại là 1 SUBPROCESS riêng (export
 để hệ điều hành thu hồi bộ nhớ openpyxl sau từng file (bẫy §10 SPEC).
 """
 import datetime
+import io
 import json
 import os
 import re
@@ -114,6 +115,111 @@ def preview(conn, pham_vi, gia_tri, include_errors):
     se_loai_tru = 0 if include_errors else do_flag_count
     return {'tong': tong, 'do_flag_count': do_flag_count,
             'se_xuat': tong - se_loai_tru, 'se_loai_tru': se_loai_tru}
+
+
+# ================= XUẤT .XLSX ĐƠN THUẦN (không macro) =================
+# Khác pipeline .xlsm nộp Bộ: KHÔNG mở template nặng (dmicdme 35.735 dòng),
+# KHÔNG job nền/đĩa, KHÔNG subprocess — chỉ dựng 1 workbook write_only trong
+# bộ nhớ rồi trả bytes. Nhờ vậy chạy được CẢ trên bản đám mây (serverless
+# không có tiến trình nền/đĩa bền) lẫn máy local, tải về ngay.
+FIRST_DATA_ROW = 4              # mẫu BYT: dòng 1 nhãn, 2 mã trường, 3 hướng dẫn
+_NCOL = 103                     # đúng 103 cột như mẫu 'Trên 18'
+_PLAIN_TEXT_CODES = {'SO_CCCD', 'NGAY_VAO', 'NGAY_SINH', 'NGAYCAP_CCCD'}
+_TPL_HEADER_CACHE = None
+
+
+def _template_header():
+    """Đọc 3 dòng header (nhãn/mã/hướng dẫn) của sheet 'Trên 18' từ template
+    — CHỈ 3 dòng đầu (read_only, không đụng sheet danh mục nặng). Trả
+    (header_rows: list[3][103], code2col: {MÃ_TRƯỜNG: chỉ_số_cột 1-based}).
+    Cache ở module vì header cố định, dùng lại cho mọi lần xuất."""
+    global _TPL_HEADER_CACHE
+    if _TPL_HEADER_CACHE is None:
+        import openpyxl
+        wb = openpyxl.load_workbook(config.CATALOG_XLSM, read_only=True,
+                                    keep_vba=False)
+        ws = wb['Trên 18']
+        header_rows = []
+        for row in ws.iter_rows(min_row=1, max_row=3, values_only=True):
+            vals = list(row[:_NCOL])
+            vals += [None] * (_NCOL - len(vals))
+            header_rows.append(vals)
+        wb.close()
+        code2col = {}
+        for c, code in enumerate(header_rows[1], 1):   # dòng 2 = mã trường
+            if code:
+                code2col[str(code).strip()] = c
+        _TPL_HEADER_CACHE = (header_rows, code2col)
+    return _TPL_HEADER_CACHE
+
+
+def _plain_xlsx_bytes(rows):
+    """Dựng .xlsx write_only: 1 sheet 'Trên 18' (3 dòng header giống mẫu +
+    dữ liệu từ dòng 4). Trả (bytes, số_dòng)."""
+    import openpyxl
+    from openpyxl.cell import WriteOnlyCell
+    from openpyxl.styles import Alignment, Font
+
+    header_rows, code2col = _template_header()
+    text_cols = {code2col[c] for c in _PLAIN_TEXT_CODES if c in code2col}
+
+    wb = openpyxl.Workbook(write_only=True)
+    ws = wb.create_sheet('Trên 18')
+    ws.freeze_panes = 'B4'
+    bold = Font(bold=True)
+    wrap = Alignment(wrap_text=True, vertical='top')
+
+    for ri, hrow in enumerate(header_rows, 1):
+        cells = []
+        for v in hrow:
+            c = WriteOnlyCell(ws, value=(v if v not in (None, '') else None))
+            if ri == 1:
+                c.font = bold
+            c.alignment = wrap
+            cells.append(c)
+        ws.append(cells)
+
+    for i, row in enumerate(rows):
+        rec = {k.upper(): row[k] for k in row.keys()}
+        line = [None] * _NCOL
+        line[0] = i + 1                                # cột TT
+        for code, col in code2col.items():
+            if code in rec and rec[code] not in (None, ''):
+                line[col - 1] = rec[code]
+        cells = []
+        for ci, v in enumerate(line, 1):
+            c = WriteOnlyCell(ws, value=v)
+            if ci in text_cols and v not in (None, ''):
+                c.number_format = '@'                  # giữ CCCD/ngày dạng text
+            cells.append(c)
+        ws.append(cells)
+
+    bio = io.BytesIO()
+    wb.save(bio)
+    wb.close()
+    return bio.getvalue(), len(rows)
+
+
+def build_plain_xlsx(conn, pham_vi, gia_tri, include_errors):
+    """Xuất .xlsx đơn thuần cho phạm vi đã chọn (gộp mọi hồ sơ vào 1 sheet).
+    Loại hồ sơ còn cờ đỏ khi include_errors=False, hệt logic .xlsm. Ném
+    ValueError nếu phạm vi rỗng — router chuyển thành 400."""
+    where_sql, args = resolve_scope_where(pham_vi, gia_tri)
+    rows = conn.execute(
+        f'SELECT * FROM ho_so WHERE {where_sql} ORDER BY maxa_cu_tru, tt',
+        args).fetchall()
+    if not rows:
+        raise ValueError('Không có hồ sơ nào khớp phạm vi đã chọn')
+    if not include_errors:
+        red_sql, red_args = _red_flag_where()
+        red_set = {r['ma_ho_so'] for r in conn.execute(
+            f'SELECT ma_ho_so FROM ho_so WHERE {where_sql} AND {red_sql}',
+            args + red_args)}
+        rows = [r for r in rows if r['ma_ho_so'] not in red_set]
+        if not rows:
+            raise ValueError('Toàn bộ hồ sơ trong phạm vi đều còn cờ đỏ — '
+                             'bật "Xuất kèm cả hồ sơ lỗi" nếu vẫn muốn xuất')
+    return _plain_xlsx_bytes(rows)
 
 
 # ============================= XÂY BẢN GHI =============================
