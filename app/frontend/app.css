@@ -191,6 +191,17 @@ tr.row-vang { background: #fff8e1; }
   background: #2563eb; color: #fff; border: none; padding: 6px 12px;
   border-radius: 4px; cursor: pointer; font-size: 12px;
 }
+/* Hàng 4 checkbox "Đã rà soát xong:" ngay trên nút Hoàn thành */
+.detail-rasoat {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px;
+  background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px;
+  padding: 8px 10px; margin-bottom: 8px; font-size: 13px;
+}
+.detail-rasoat-label { font-weight: 700; color: #1e40af; }
+.detail-rasoat-item {
+  display: inline-flex; align-items: center; gap: 4px; cursor: pointer; font-weight: 600;
+}
+.detail-rasoat-item input { cursor: pointer; }
 
 details { margin-bottom: 6px; border: 1px solid #e5e7eb; border-radius: 6px; }
 details summary {
@@ -430,6 +441,14 @@ details summary {
 .dash-role { color: #94a3b8; font-size: 11px; }
 .sparkline { vertical-align: middle; }
 .spark-dot { fill: #2563eb; }
+/* Tiến độ "rà soát xong" theo mục (thanh ngang) + ô RS xong trong bảng */
+.dash-rs-chart { display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; }
+.dash-rs-row { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.dash-rs-name { flex: 0 0 160px; color: #334155; font-weight: 600; }
+.dash-rs-track { flex: 1; background: #e2e8f0; border-radius: 6px; height: 14px; overflow: hidden; }
+.dash-rs-fill { height: 100%; background: #0891b2; border-radius: 6px; }
+.dash-rs-num { flex: 0 0 120px; text-align: right; color: #0e7490; font-weight: 600; }
+.dash-rs-cell { color: #0e7490; font-weight: 600; }
 
 .dash-flag-chart { display: flex; flex-direction: column; gap: 8px; }
 .dash-flag-row { display: flex; align-items: center; gap: 10px; }

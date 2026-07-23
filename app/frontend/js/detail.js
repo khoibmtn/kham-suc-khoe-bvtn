@@ -166,6 +166,53 @@ const DetailView = (() => {
     return `${diaChi} · Khám: ${kham}`;
   }
 
+  // Hàng 4 checkbox "Đã rà soát xong:" ngay trên nút Hoàn thành. Mỗi ô tự
+  // lưu (PATCH cột rs_*), lỗi thì hoàn trạng thái + báo. Không đụng cờ QC.
+  const RS_ITEMS = [
+    ['rs_hanh_chinh', 'Thông tin hành chính'],
+    ['rs_sinh_ton', 'Chỉ số sinh tồn'],
+    ['rs_the_luc', 'Thể lực'],
+    ['rs_canh_bao_khac', 'Tất cả cảnh báo khác'],
+  ];
+
+  function renderRaSoatXong() {
+    const wrap = document.createElement('div');
+    wrap.className = 'detail-rasoat';
+    const lab = document.createElement('span');
+    lab.className = 'detail-rasoat-label';
+    lab.textContent = 'Đã rà soát xong:';
+    wrap.appendChild(lab);
+    RS_ITEMS.forEach(([code, label]) => {
+      const item = document.createElement('label');
+      item.className = 'detail-rasoat-item';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = !!Number(current[code]);
+      cb.addEventListener('change', async () => {
+        const target = cb.checked ? 1 : 0;
+        cb.disabled = true;
+        try {
+          const res = await Api.patchHoSo(current.ma_ho_so, {
+            [code]: target, _base: { [code]: current[code] },
+          });
+          Object.assign(current, res.updated);
+          if (typeof res.so_loi !== 'undefined') current.so_loi = res.so_loi;
+          if (res.co_qc) { current.co_qc = res.co_qc.join(';'); current.co_qc_list = res.co_qc; }
+          toast('Đã lưu');
+        } catch (e) {
+          cb.checked = !cb.checked;
+          toast('Lỗi: ' + (e.message || 'không lưu được'));
+        } finally {
+          cb.disabled = false;
+        }
+      });
+      item.appendChild(cb);
+      item.appendChild(document.createTextNode(' ' + label));
+      wrap.appendChild(item);
+    });
+    return wrap;
+  }
+
   function render() {
     root.innerHTML = '';
 
@@ -201,6 +248,7 @@ const DetailView = (() => {
 
     const actions = document.createElement('div');
     actions.className = 'detail-actions';
+    actions.appendChild(renderRaSoatXong());
     const doneBtn = document.createElement('button');
     doneBtn.textContent = 'Hoàn thành (Ctrl+S)';
     doneBtn.addEventListener('click', () => AppShell.markHoanThanh());

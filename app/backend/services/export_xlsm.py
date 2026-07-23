@@ -33,6 +33,16 @@ EXPORTS_DIR = os.path.join(config.DATA_DIR, 'exports')
 
 SCOPE_TYPES = ('toan_bo', 'xa', 'can_bo', 'trang_thai', 'chon_tay')
 
+# Cờ "đã rà soát xong" (checkbox panel chi tiết). "chi_rs_xong" ở tuỳ chọn
+# xuất => chỉ lấy hồ sơ đã tick ĐỦ 4 mục.
+_RS_XONG_COLS = ('rs_hanh_chinh', 'rs_sinh_ton', 'rs_the_luc', 'rs_canh_bao_khac')
+_RS_XONG_SQL = ' AND '.join(f'{c}=1' for c in _RS_XONG_COLS)
+
+
+def _apply_rs_xong(where_sql, chi_rs_xong):
+    """Bọc điều kiện phạm vi + (tuỳ chọn) AND đã-rà-soát-xong-đủ-4-mục."""
+    return f'({where_sql}) AND {_RS_XONG_SQL}' if chi_rs_xong else where_sql
+
 TRANG_THAI_NHAN = {
     'chua_ra_soat': 'Chưa rà soát', 'dang_ra_soat': 'Đang rà soát',
     'hoan_thanh': 'Hoàn thành', 'can_doi_chieu_giay': 'Cần đối chiếu giấy',
@@ -103,10 +113,11 @@ def _red_flag_where():
     return '(' + ' OR '.join(parts) + ')', args
 
 
-def preview(conn, pham_vi, gia_tri, include_errors):
+def preview(conn, pham_vi, gia_tri, include_errors, chi_rs_xong=False):
     """Đếm trước khi xuất (§7.2): tổng trong phạm vi, số còn cờ 🔴, sẽ xuất,
     sẽ loại trừ (nếu include_errors=False, các ca cờ đỏ bị loại)."""
     where_sql, args = resolve_scope_where(pham_vi, gia_tri)
+    where_sql = _apply_rs_xong(where_sql, chi_rs_xong)
     tong = conn.execute(f'SELECT COUNT(*) FROM ho_so WHERE {where_sql}', args).fetchone()[0]
     red_sql, red_args = _red_flag_where()
     do_flag_count = conn.execute(
@@ -200,11 +211,12 @@ def _plain_xlsx_bytes(rows):
     return bio.getvalue(), len(rows)
 
 
-def build_plain_xlsx(conn, pham_vi, gia_tri, include_errors):
+def build_plain_xlsx(conn, pham_vi, gia_tri, include_errors, chi_rs_xong=False):
     """Xuất .xlsx đơn thuần cho phạm vi đã chọn (gộp mọi hồ sơ vào 1 sheet).
     Loại hồ sơ còn cờ đỏ khi include_errors=False, hệt logic .xlsm. Ném
     ValueError nếu phạm vi rỗng — router chuyển thành 400."""
     where_sql, args = resolve_scope_where(pham_vi, gia_tri)
+    where_sql = _apply_rs_xong(where_sql, chi_rs_xong)
     rows = conn.execute(
         f'SELECT * FROM ho_so WHERE {where_sql} ORDER BY maxa_cu_tru, tt',
         args).fetchall()
@@ -273,12 +285,14 @@ def _log(job, msg):
     _save_job(job)
 
 
-def create_job(pham_vi, gia_tri, include_errors, extended, admin_id):
+def create_job(pham_vi, gia_tri, include_errors, extended, admin_id,
+               chi_rs_xong=False):
     """Chuẩn bị job (đọc DB, gom theo xã, đếm cờ đỏ) rồi khởi động thread nền.
     Ném ValueError nếu phạm vi rỗng/không hợp lệ — router chuyển thành 400."""
     conn = db.get_connection()
     try:
         where_sql, args = resolve_scope_where(pham_vi, gia_tri)
+        where_sql = _apply_rs_xong(where_sql, chi_rs_xong)
         rows = conn.execute(
             f'SELECT * FROM ho_so WHERE {where_sql} ORDER BY maxa_cu_tru, tt',
             args).fetchall()
@@ -316,7 +330,7 @@ def create_job(pham_vi, gia_tri, include_errors, extended, admin_id):
         'created_at': datetime.datetime.now().isoformat(),
         'admin_id': admin_id,
         'params': {'pham_vi': pham_vi, 'gia_tri': gia_tri,
-                    'include_errors': include_errors,
+                    'include_errors': include_errors, 'chi_rs_xong': chi_rs_xong,
                     'extended': {'enabled': ext_enabled, 'columns': ext_columns}},
         'tong_pham_vi': len(rows), 'do_flag_count': do_flag_count,
         'se_xuat': len(rows) - se_loai_tru, 'se_loai_tru': se_loai_tru,

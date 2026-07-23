@@ -54,6 +54,11 @@ const ExportView = (() => {
       </div>
 
       <div class="xf-block">
+        <label class="xf-toggle"><input type="checkbox" id="xf-chi-rs-xong">
+          Chỉ xuất hồ sơ đã rà soát xong (đủ 4 mục ở panel chi tiết) — mặc định TẮT</label>
+      </div>
+
+      <div class="xf-block">
         <label class="xf-toggle"><input type="checkbox" id="xf-include-errors">
           Xuất kèm cả hồ sơ lỗi (còn cờ 🔴) — mặc định TẮT</label>
       </div>
@@ -168,8 +173,7 @@ TURSO_AUTH_TOKEN="$(turso db tokens create ksk)" \
     box.textContent = 'Đang tính ...';
     try {
       const scope = currentScope();
-      const include_errors = panel.querySelector('#xf-include-errors').checked;
-      const res = await Api.xuatFilePreview({ ...scope, include_errors });
+      const res = await Api.xuatFilePreview({ ...scope, ...currentOptions() });
       box.innerHTML = `
         <div class="xf-preview-stats">
           Tổng trong phạm vi: <b>${res.tong}</b> &nbsp;|&nbsp;
@@ -182,9 +186,15 @@ TURSO_AUTH_TOKEN="$(turso db tokens create ksk)" \
     }
   }
 
+  function currentOptions() {
+    return {
+      include_errors: panel.querySelector('#xf-include-errors').checked,
+      chi_rs_xong: panel.querySelector('#xf-chi-rs-xong').checked,
+    };
+  }
+
   async function doStart() {
     const scope = currentScope();
-    const include_errors = panel.querySelector('#xf-include-errors').checked;
     const extEnabled = panel.querySelector('#xf-extended-enabled').checked;
     const columns = extEnabled
       ? Array.from(panel.querySelectorAll('.ext-col-check:checked')).map((c) => c.value)
@@ -193,7 +203,7 @@ TURSO_AUTH_TOKEN="$(turso db tokens create ksk)" \
     startBtn.disabled = true;
     try {
       const job = await Api.xuatFileStart({
-        ...scope, include_errors, extended: { enabled: extEnabled, columns },
+        ...scope, ...currentOptions(), extended: { enabled: extEnabled, columns },
       });
       renderJob(job);
       startPolling(job.id);
@@ -206,14 +216,13 @@ TURSO_AUTH_TOKEN="$(turso db tokens create ksk)" \
 
   async function doExportPlain() {
     const scope = currentScope();
-    const include_errors = panel.querySelector('#xf-include-errors').checked;
     const btn = panel.querySelector('#xf-plain-btn');
     const status = panel.querySelector('#xf-plain-status');
     btn.disabled = true;
     status.textContent = ' Đang tạo file .xlsx ...';
     status.className = 'xf-plain-status';
     try {
-      const { blob, name } = await Api.xuatFileXlsxDonThuan({ ...scope, include_errors });
+      const { blob, name } = await Api.xuatFileXlsxDonThuan({ ...scope, ...currentOptions() });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

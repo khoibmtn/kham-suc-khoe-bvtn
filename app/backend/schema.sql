@@ -84,6 +84,11 @@ CREATE TABLE IF NOT EXISTS ho_so (
   so_loi        INTEGER DEFAULT 0,
   ghi_chu_ra_soat TEXT,
   ghi_chu_can_bo  TEXT,
+  -- cờ "đã rà soát xong" từng mục (checkbox panel chi tiết) — 0/1, mặc định 0
+  rs_hanh_chinh   INTEGER DEFAULT 0,   -- Thông tin hành chính
+  rs_sinh_ton     INTEGER DEFAULT 0,   -- Chỉ số sinh tồn
+  rs_the_luc      INTEGER DEFAULT 0,   -- Thể lực
+  rs_canh_bao_khac INTEGER DEFAULT 0,  -- Tất cả cảnh báo khác (trong ghi chú)
   thoi_diem_hoan_thanh TEXT,
   da_xuat_file  INTEGER DEFAULT 0,
   lan_xuat_cuoi TEXT

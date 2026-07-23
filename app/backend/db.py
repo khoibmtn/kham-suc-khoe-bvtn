@@ -275,6 +275,16 @@ def _migrate_search_cols(conn):
             # cột đã được instance khác thêm đồng thời (đua serverless), hoặc
             # lỗi tạm — không chặn khởi động server vì việc này.
             pass
+    # Cờ "đã rà soát xong" từng mục (checkbox panel chi tiết) — thêm cho DB đã
+    # tồn tại trước khi schema.sql có 4 cột này. INTEGER DEFAULT 0.
+    for col in ('rs_hanh_chinh', 'rs_sinh_ton', 'rs_the_luc', 'rs_canh_bao_khac'):
+        if col in cols:
+            continue
+        try:
+            conn.execute(f'ALTER TABLE ho_so ADD COLUMN {col} INTEGER DEFAULT 0')
+            changed = True
+        except Exception:
+            pass
     if changed:
         conn.commit()
 

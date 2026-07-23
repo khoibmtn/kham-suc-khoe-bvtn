@@ -34,6 +34,10 @@ MAN_TINH_DINH_NGHIA = [
 
 TONG_HO_SO_MAU = 13326  # §8.5: % tính trên tổng số liệu nền cố định
 
+# 4 cột cờ "đã rà soát xong" (checkbox panel chi tiết) + biểu thức "đủ 4 mục".
+RS_XONG_COLS = ('rs_hanh_chinh', 'rs_sinh_ton', 'rs_the_luc', 'rs_canh_bao_khac')
+RS_XONG_SQL = ' AND '.join(f'{c}=1' for c in RS_XONG_COLS)
+
 
 def _ma_tran_expr():
     """Biểu thức mã ICD đã bỏ hậu tố †/* — ưu tiên dm_icd.ma_tran (đã tra
@@ -63,6 +67,13 @@ def tong_quan(user=Depends(auth.get_current_user)):
         red_sql, red_args = qc.red_flag_where()
         tong_co_do = conn.execute(
             f'SELECT COUNT(*) FROM ho_so WHERE {red_sql}', red_args).fetchone()[0]
+        # Rà soát xong từng mục (checkbox panel chi tiết) + đủ cả 4 mục
+        rs = {}
+        for c in RS_XONG_COLS:
+            rs[c] = conn.execute(
+                f'SELECT COUNT(*) FROM ho_so WHERE {c}=1').fetchone()[0]
+        rs_tat_ca = conn.execute(
+            f'SELECT COUNT(*) FROM ho_so WHERE {RS_XONG_SQL}').fetchone()[0]
     finally:
         conn.close()
     return {
@@ -73,6 +84,12 @@ def tong_quan(user=Depends(auth.get_current_user)):
         'can_doi_chieu_giay': can_doi_chieu,
         'da_xuat_file': da_xuat,
         'tong_co_do': tong_co_do,
+        'ra_soat_xong': {
+            'hanh_chinh': rs['rs_hanh_chinh'], 'sinh_ton': rs['rs_sinh_ton'],
+            'the_luc': rs['rs_the_luc'], 'canh_bao_khac': rs['rs_canh_bao_khac'],
+            'tat_ca': rs_tat_ca,
+            'ty_le_tat_ca': round(rs_tat_ca / tong * 100, 1) if tong else 0,
+        },
     }
 
 
@@ -102,10 +119,14 @@ def theo_xa(user=Depends(auth.get_current_user)):
             co_do = conn.execute(
                 f'SELECT COUNT(*) FROM ho_so WHERE maxa_cu_tru=? AND {red_sql}',
                 [xa] + red_args).fetchone()[0]
+            rs_xong = conn.execute(
+                f'SELECT COUNT(*) FROM ho_so WHERE maxa_cu_tru=? AND {RS_XONG_SQL}',
+                (xa,)).fetchone()[0]
             pct = round(xong / tong * 100, 1) if tong else 0
             out.append({
                 'xa': xa, 'tong': tong, 'xong': xong, 'dang': dang, 'chua': chua,
                 'can_doi_chieu_giay': can_doi_chieu, 'co_do': co_do, 'ty_le': pct,
+                'rs_xong': rs_xong,
             })
     finally:
         conn.close()
@@ -141,6 +162,9 @@ def theo_can_bo(user=Depends(auth.get_current_user)):
             gan_nhat = conn.execute(
                 'SELECT MAX(thoi_diem) FROM nhat_ky WHERE nguoi_dung_id=?',
                 (u['id'],)).fetchone()[0]
+            rs_xong = conn.execute(
+                f'SELECT COUNT(*) FROM ho_so WHERE nguoi_ra_soat_id=? AND {RS_XONG_SQL}',
+                (u['id'],)).fetchone()[0]
             series = []
             for d in seven_days:
                 c = conn.execute(
@@ -151,6 +175,7 @@ def theo_can_bo(user=Depends(auth.get_current_user)):
                 'nguoi_dung_id': u['id'], 'ho_ten': u['ho_ten'], 'vai_tro': u['vai_tro'],
                 'giao': giao, 'hoan_thanh': hoan_thanh,
                 'ty_le': round(hoan_thanh / giao * 100, 1) if giao else 0,
+                'rs_xong': rs_xong,
                 'so_luot_sua': so_luot_sua, 'hoat_dong_gan_nhat': gan_nhat,
                 'nang_suat_7_ngay': series,
             })

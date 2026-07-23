@@ -34,6 +34,8 @@ class PreviewBody(BaseModel):
     pham_vi: str
     gia_tri: List[str] = []
     include_errors: bool = False
+    # chỉ xuất hồ sơ đã tick ĐỦ 4 mục "đã rà soát xong" ở panel chi tiết
+    chi_rs_xong: bool = False
 
 
 class StartBody(PreviewBody):
@@ -52,7 +54,7 @@ def preview(body: PreviewBody, admin=Depends(auth.require_admin)):
     try:
         try:
             result = export_xlsm.preview(conn, body.pham_vi, body.gia_tri,
-                                          body.include_errors)
+                                          body.include_errors, body.chi_rs_xong)
         except ValueError as e:
             raise HTTPException(400, str(e))
     finally:
@@ -74,7 +76,8 @@ def xuat_xlsx_don_thuan(body: PreviewBody, admin=Depends(auth.require_admin)):
     try:
         try:
             data, count = export_xlsm.build_plain_xlsx(
-                conn, body.pham_vi, body.gia_tri, body.include_errors)
+                conn, body.pham_vi, body.gia_tri, body.include_errors,
+                body.chi_rs_xong)
         except ValueError as e:
             raise HTTPException(400, str(e))
     finally:
@@ -103,7 +106,8 @@ def start_export(body: StartBody, admin=Depends(auth.require_admin)):
     extended = body.extended.model_dump() if body.extended else {'enabled': False, 'columns': []}
     try:
         job = export_xlsm.create_job(body.pham_vi, body.gia_tri,
-                                      body.include_errors, extended, admin['id'])
+                                      body.include_errors, extended, admin['id'],
+                                      body.chi_rs_xong)
     except ValueError as e:
         raise HTTPException(400, str(e))
     return _job_public(job)

@@ -51,6 +51,7 @@ const DashboardView = (() => {
 
   // ---------------- 8.1 Thẻ tổng quan ----------------
   function renderTongQuan(d) {
+    const rsx = d.ra_soat_xong || {};
     const cards = [
       ['Tổng hồ sơ', d.tong_ho_so, ''],
       ['Đã rà soát', `${d.da_ra_soat.so_luong} (${d.da_ra_soat.ty_le}%)`, 'ok'],
@@ -59,7 +60,27 @@ const DashboardView = (() => {
       ['Cần đối chiếu giấy', d.can_doi_chieu_giay, 'warn'],
       ['Đã xuất file', d.da_xuat_file, ''],
       ['Tổng số cờ 🔴 còn lại', d.tong_co_do, 'do'],
+      ['RS xong đủ 4 mục', `${rsx.tat_ca || 0} (${rsx.ty_le_tat_ca || 0}%)`, 'ok'],
     ];
+    // Tiến độ rà soát xong theo TỪNG mục (4 thanh) — % trên tổng hồ sơ.
+    const tong = d.tong_ho_so || 1;
+    const rsItems = [
+      ['Thông tin hành chính', rsx.hanh_chinh || 0],
+      ['Chỉ số sinh tồn', rsx.sinh_ton || 0],
+      ['Thể lực', rsx.the_luc || 0],
+      ['Tất cả cảnh báo khác', rsx.canh_bao_khac || 0],
+    ];
+    const rsBars = rsItems.map(([label, val]) => {
+      const pct = (val / tong * 100).toFixed(1);
+      return `
+        <div class="dash-rs-row">
+          <div class="dash-rs-name">${esc(label)}</div>
+          <div class="dash-rs-track">
+            <div class="dash-rs-fill" style="width:${pct}%"></div>
+          </div>
+          <div class="dash-rs-num">${val} <span class="dash-role">(${pct}%)</span></div>
+        </div>`;
+    }).join('');
     return `
       <section class="dash-section">
         <div class="dash-cards">
@@ -69,6 +90,8 @@ const DashboardView = (() => {
               <div class="dash-card-label">${esc(label)}</div>
             </div>`).join('')}
         </div>
+        <h4>Tiến độ rà soát xong theo mục</h4>
+        <div class="dash-rs-chart">${rsBars}</div>
       </section>`;
   }
 
@@ -93,7 +116,9 @@ const DashboardView = (() => {
       <tr>
         <td>${esc(r.xa)}</td><td>${r.tong}</td><td>${r.xong}</td><td>${r.dang}</td>
         <td>${r.chua}</td><td>${r.can_doi_chieu_giay}</td>
-        <td class="xf-red">${r.co_do}</td><td>${r.ty_le}%</td>
+        <td class="xf-red">${r.co_do}</td>
+        <td class="dash-rs-cell">${r.rs_xong == null ? '—' : r.rs_xong}</td>
+        <td>${r.ty_le}%</td>
       </tr>`).join('');
     return `
       <section class="dash-section">
@@ -107,7 +132,7 @@ const DashboardView = (() => {
         <div class="dash-xa-chart">${bars}</div>
         <table class="dash-table">
           <thead><tr><th>Xã</th><th>Tổng</th><th>Xong</th><th>Đang</th><th>Chưa</th>
-            <th>Cần đối chiếu</th><th>Cờ đỏ</th><th>%</th></tr></thead>
+            <th>Cần đối chiếu</th><th>Cờ đỏ</th><th>RS xong đủ 4 mục</th><th>%</th></tr></thead>
           <tbody>${tableRows}</tbody>
         </table>
       </section>`;
@@ -133,6 +158,7 @@ const DashboardView = (() => {
       <tr>
         <td>${esc(r.ho_ten)} <span class="dash-role">(${r.vai_tro === 'admin' ? 'Quản trị' : 'Nhân viên'})</span></td>
         <td>${r.giao}</td><td>${r.hoan_thanh}</td><td>${r.ty_le}%</td>
+        <td class="dash-rs-cell">${r.rs_xong == null ? '—' : r.rs_xong}</td>
         <td>${r.so_luot_sua}</td>
         <td>${r.hoat_dong_gan_nhat ? esc(r.hoat_dong_gan_nhat) : '—'}</td>
         <td>${sparklineSvg(r.nang_suat_7_ngay)}</td>
@@ -142,8 +168,8 @@ const DashboardView = (() => {
         <h3>Tiến độ theo nhân viên</h3>
         <table class="dash-table">
           <thead><tr><th>Nhân viên</th><th>Giao</th><th>Hoàn thành</th><th>%</th>
-            <th>Lượt sửa</th><th>Hoạt động gần nhất</th><th>Năng suất 7 ngày</th></tr></thead>
-          <tbody>${trs || '<tr><td colspan="7">Chưa có nhân viên</td></tr>'}</tbody>
+            <th>RS xong đủ 4 mục</th><th>Lượt sửa</th><th>Hoạt động gần nhất</th><th>Năng suất 7 ngày</th></tr></thead>
+          <tbody>${trs || '<tr><td colspan="8">Chưa có nhân viên</td></tr>'}</tbody>
         </table>
       </section>`;
   }
