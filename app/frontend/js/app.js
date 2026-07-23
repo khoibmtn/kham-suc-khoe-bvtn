@@ -77,6 +77,7 @@ const AppShell = (() => {
     DetailView.init(document.getElementById('detail-panel'), danhMuc, user);
     DashboardView.init(document.getElementById('dashboard-panel'), danhMuc);
     SinhHieuView.init(document.getElementById('sinh-hieu-panel'), danhMuc);
+    TraCuuView.init(document.getElementById('tra-cuu-panel')); // mọi người dùng
 
     if (user.vai_tro === 'admin') {
       document.getElementById('nav-phan-cong').hidden = false;
@@ -162,6 +163,7 @@ const AppShell = (() => {
     document.getElementById('nav-danh-sach').addEventListener('click', () => showScreen('danh-sach'));
     document.getElementById('nav-sinh-hieu').addEventListener('click', () => showScreen('sinh-hieu'));
     document.getElementById('nav-dashboard').addEventListener('click', () => showScreen('dashboard'));
+    document.getElementById('nav-tra-cuu').addEventListener('click', () => showScreen('tra-cuu'));
     const pc = document.getElementById('nav-phan-cong');
     if (pc) pc.addEventListener('click', () => showScreen('phan-cong'));
     const xf = document.getElementById('nav-xuat-file');
@@ -174,11 +176,13 @@ const AppShell = (() => {
 
   const NAV_BTN_BY_SCREEN = {
     'danh-sach': 'nav-danh-sach', 'sinh-hieu': 'nav-sinh-hieu', dashboard: 'nav-dashboard',
+    'tra-cuu': 'nav-tra-cuu',
     'phan-cong': 'nav-phan-cong', 'xuat-file': 'nav-xuat-file', 'nguoi-dung': 'nav-nguoi-dung',
     'cai-dat': 'nav-cai-dat',
   };
   const PANEL_BY_SCREEN = {
     'sinh-hieu': 'sinh-hieu-panel', dashboard: 'dashboard-panel',
+    'tra-cuu': 'tra-cuu-panel',
     'phan-cong': 'phan-cong-panel', 'xuat-file': 'xuat-file-panel',
     'nguoi-dung': 'nguoi-dung-panel', 'cai-dat': 'cai-dat-panel',
   };
@@ -195,6 +199,7 @@ const AppShell = (() => {
     if (name === 'phan-cong') refreshPhanCongList();
     if (name === 'xuat-file') ExportView.show();
     if (name === 'dashboard') DashboardView.show();
+    if (name === 'tra-cuu') TraCuuView.show();
     if (name === 'sinh-hieu') SinhHieuView.show();
     if (name === 'nguoi-dung') NguoiDungView.show();
     if (name === 'cai-dat') CaiDatView.show();

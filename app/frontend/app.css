@@ -596,3 +596,25 @@ details summary {
 .search-status .dots::after { content: ''; display: inline-block; width: 14px; text-align: left;
   animation: dots 1.2s steps(1, end) infinite; }
 @keyframes dots { 0%{content:''} 25%{content:'.'} 50%{content:'..'} 75%{content:'...'} }
+
+/* ---------- Tab Tra cứu (Đợt 12) ---------- */
+#tra-cuu-panel { height: calc(100vh - 48px); box-sizing: border-box; display: flex; flex-direction: column; padding: 8px 12px; }
+.tc-tabs { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; border-bottom: 1px solid #e5e7eb; }
+.tc-tab { padding: 8px 16px; border: none; background: transparent; cursor: pointer; font-size: 14px; border-bottom: 2px solid transparent; color: #475569; }
+.tc-tab:hover { color: #1e293b; }
+.tc-tab.active { color: #2563eb; border-bottom-color: #2563eb; font-weight: 600; }
+.tc-open { margin-left: auto; font-size: 12px; color: #2563eb; text-decoration: none; }
+.tc-open:hover { text-decoration: underline; }
+.tc-body { flex: 1 1 auto; min-height: 0; }
+.tc-iframe { width: 100%; height: 100%; border: 1px solid #e5e7eb; border-radius: 6px; background: #fff; }
+#tc-pl { display: flex; flex-direction: column; }
+.tc-pl-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.tc-pl-toolbar input { flex: 1 1 auto; max-width: 480px; padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
+.tc-pl-count { font-size: 12px; color: #64748b; white-space: nowrap; }
+.tc-pl-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; padding: 14px 18px; font-size: 13px; line-height: 1.5; }
+.tc-blk { margin: 0 0 2px; }
+.tc-head { margin: 14px 0 6px; font-size: 14px; color: #1e293b; font-weight: 700; }
+.tc-para { margin: 2px 0; color: #334155; }
+.tc-doc-table { border-collapse: collapse; margin: 6px 0; font-size: 12.5px; }
+.tc-doc-table td { border: 1px solid #d1d5db; padding: 4px 8px; vertical-align: top; }
+.tc-pl-content mark { background: #fde68a; padding: 0 1px; border-radius: 2px; }
