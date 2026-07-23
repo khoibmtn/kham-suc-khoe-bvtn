@@ -21,31 +21,83 @@ const DashboardView = (() => {
     await refresh();
   }
 
+  // 5 luồng dữ liệu dashboard (mỗi cái = 1 query gộp ở backend). Tải SONG SONG
+  // nhưng hiển thị tiến trình từng luồng: chờ -> xong (kèm thời gian + số dòng)
+  // hoặc lỗi. Giúp người dùng thấy dashboard đang chạy tới đâu thay vì 1 spinner
+  // câm — nhất là trên bản online (mỗi luồng về ở thời điểm khác nhau).
+  const DASH_TASKS = [
+    { key: 'tongQuan', label: 'Tổng quan (thẻ + tiến độ rà soát xong)', fn: () => Api.dashTongQuan(), render: (d) => renderTongQuan(d), count: () => '' },
+    { key: 'theoXa', label: 'Tiến độ theo xã/phường', fn: () => Api.dashTheoXa(), render: (d) => renderTheoXa(d), count: (d) => `${d.length} xã` },
+    { key: 'theoCanBo', label: 'Tiến độ theo nhân viên', fn: () => Api.dashTheoCanBo(), render: (d) => renderTheoCanBo(d), count: (d) => `${d.length} nhân viên` },
+    { key: 'chatLuong', label: 'Chất lượng dữ liệu (cờ)', fn: () => Api.dashChatLuong(), render: (d) => renderChatLuong(d), count: (d) => `${d.co_qc.length} loại cờ` },
+    { key: 'chuyenMon', label: 'Thống kê chuyên môn', fn: () => Api.dashChuyenMon(), render: (d) => renderChuyenMon(d), count: (d) => `${d.top20_icd.length} mã ICD` },
+  ];
+
   async function refresh() {
     panel.innerHTML = `
       <div class="dash-header">
         <h2>Dashboard</h2>
         <button id="dash-refresh-btn" type="button">Làm mới</button>
       </div>
-      <div id="dash-body"><div class="dash-loading">Đang tải...</div></div>
+      <div id="dash-body"></div>
     `;
     panel.querySelector('#dash-refresh-btn').addEventListener('click', refresh);
     const body = panel.querySelector('#dash-body');
+
+    const total = DASH_TASKS.length;
+    body.innerHTML = `
+      <div class="dash-progress">
+        <div class="dash-progress-head">Đang tải dashboard... <b id="dash-prog-count">0/${total} (0%)</b></div>
+        <div class="dash-progress-bar"><div id="dash-prog-fill" class="dash-progress-fill" style="width:0%"></div></div>
+        ${DASH_TASKS.map((t) => `
+          <div class="dash-prog-row" id="prog-${t.key}">
+            <span class="dash-prog-ico">⏳</span>
+            <span class="dash-prog-label">${esc(t.label)}</span>
+            <span class="dash-prog-status">đang chờ...</span>
+          </div>`).join('')}
+      </div>`;
+
+    const results = {};
+    let done = 0;
+    const setCount = () => {
+      const pct = Math.round(done / total * 100);
+      const c = body.querySelector('#dash-prog-count');
+      const f = body.querySelector('#dash-prog-fill');
+      if (c) c.textContent = `${done}/${total} (${pct}%)`;
+      if (f) f.style.width = pct + '%';
+    };
+
     try {
-      const [tongQuan, theoXa, theoCanBo, chatLuong, chuyenMon] = await Promise.all([
-        Api.dashTongQuan(), Api.dashTheoXa(), Api.dashTheoCanBo(),
-        Api.dashChatLuong(), Api.dashChuyenMon(),
-      ]);
-      body.innerHTML = [
-        renderTongQuan(tongQuan),
-        renderTheoXa(theoXa),
-        renderTheoCanBo(theoCanBo),
-        renderChatLuong(chatLuong),
-        renderChuyenMon(chuyenMon),
-      ].join('');
+      await Promise.all(DASH_TASKS.map(async (t) => {
+        const rowEl = body.querySelector(`#prog-${t.key}`);
+        const st = rowEl && rowEl.querySelector('.dash-prog-status');
+        const ico = rowEl && rowEl.querySelector('.dash-prog-ico');
+        const t0 = performance.now();
+        try {
+          results[t.key] = await t.fn();
+          const ms = Math.round(performance.now() - t0);
+          done += 1;
+          if (rowEl) rowEl.classList.add('done');
+          if (ico) ico.textContent = '✅';
+          if (st) {
+            const extra = t.count(results[t.key]);
+            st.textContent = `xong · ${ms} ms${extra ? ' · ' + extra : ''}`;
+          }
+          setCount();
+        } catch (err) {
+          if (rowEl) rowEl.classList.add('err');
+          if (ico) ico.textContent = '❌';
+          if (st) st.textContent = 'lỗi: ' + (err.message || '');
+          throw err;
+        }
+      }));
+      // Tất cả xong -> vẽ dashboard đầy đủ.
+      body.innerHTML = DASH_TASKS.map((t) => t.render(results[t.key])).join('');
       wireAfterRender(body);
     } catch (err) {
-      body.innerHTML = `<div class="xf-error">Lỗi tải dashboard: ${esc(err.message)}</div>`;
+      // Giữ nguyên danh sách tiến trình (để thấy luồng nào lỗi) + báo dòng lỗi.
+      const head = body.querySelector('.dash-progress-head');
+      if (head) head.innerHTML = `<span class="xf-error">Lỗi tải dashboard: ${esc(err.message)}</span>`;
     }
   }
 

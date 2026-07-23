@@ -413,6 +413,17 @@ details summary {
 .dash-header h2 { margin: 0; }
 .dash-header button { padding: 6px 14px; background: #2563eb; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
 .dash-loading { padding: 20px; color: #64748b; }
+/* Đợt 12: tiến trình tải dashboard theo từng luồng query */
+.dash-progress { background: #fff; border-radius: 6px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.06); max-width: 640px; }
+.dash-progress-head { font-size: 14px; margin-bottom: 10px; color: #334155; }
+.dash-progress-bar { height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin-bottom: 12px; }
+.dash-progress-fill { height: 100%; background: #2563eb; width: 0; transition: width .25s ease; }
+.dash-prog-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 13px; border-top: 1px solid #f1f5f9; }
+.dash-prog-ico { width: 18px; text-align: center; }
+.dash-prog-label { flex: 1 1 auto; color: #334155; }
+.dash-prog-status { color: #94a3b8; font-size: 12px; white-space: nowrap; }
+.dash-prog-row.done .dash-prog-status { color: #15803d; }
+.dash-prog-row.err .dash-prog-status { color: #c0392b; }
 .dash-section { background: #fff; border-radius: 6px; padding: 14px 16px; margin-bottom: 14px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
 .dash-section h3 { margin-top: 0; }
 .dash-section h4 { margin: 16px 0 6px; font-size: 13px; color: #334155; }
