@@ -62,6 +62,9 @@ const Api = (() => {
     setBenhChinh: (ma, benh_id) => req('POST', `/api/ho-so/${encodeURIComponent(ma)}/benh/set-benh-chinh`, { benh_id }),
 
     searchIcd: (q) => req('GET', '/api/icd?q=' + encodeURIComponent(q)),
+    // Đợt 11: nạp toàn bộ danh mục ICD 1 lần (client-side cache) — dùng để
+    // lọc cục bộ trong ô gõ ICD thay vì gọi /api/icd mỗi lần gõ phím.
+    getAllIcd: () => req('GET', '/api/icd/all'),
 
     phanCong: (body) => req('POST', '/api/phan-cong', body),
     listPhanCong: () => req('GET', '/api/phan-cong'),

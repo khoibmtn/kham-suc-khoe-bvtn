@@ -280,9 +280,11 @@ details summary {
 .date-picker-native { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
 
 .icd-input { position: relative; }
+.icd-input-wrap { position: relative; flex: 2; }
 .icd-suggestions {
   position: absolute; z-index: 20; background: #fff; border: 1px solid #cbd5e1;
   max-height: 200px; overflow-y: auto; width: 100%; box-shadow: 0 2px 8px rgba(0,0,0,.15);
+  top: 100%; left: 0; margin-top: 2px;
 }
 .icd-item { padding: 4px 8px; font-size: 12px; cursor: pointer; }
 .icd-item:hover, .icd-item.active { background: #dbeafe; }
@@ -296,7 +298,7 @@ details summary {
 .benh-table-wrap { padding: 10px; }
 .benh-table { width: 100%; font-size: 12px; }
 .benh-add-form { display: flex; gap: 6px; margin-top: 8px; position: relative; align-items: center; }
-.benh-add-form input { flex: 2; padding: 4px; }
+.icd-input-wrap input { width: 100%; padding: 4px; }
 .benh-add-form select { flex: 1; }
 
 /* ---------- Bảng lệnh Ctrl+K ---------- */

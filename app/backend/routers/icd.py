@@ -69,3 +69,19 @@ def search_icd(q: str = '', limit: int = 20,
     out = [{'ma': ma, 'ten': ten, 'label': f'{ma} — {ten}'}
            for ma, ten in results.items()]
     return out[:limit]
+
+
+@router.get('/icd/all')
+def get_all_icd(user=Depends(auth.get_current_user)):
+    """Toàn bộ danh mục dm_icd (~12.239 dòng) — dùng để frontend nạp 1 lần
+    và lọc cục bộ (client-side), thay vì gọi /api/icd mỗi lần gõ phím.
+    Route MỚI, HOÀN TOÀN TÁCH BIỆT với search_icd() ở trên — không đổi
+    hành vi endpoint /api/icd hiện có.
+    """
+    conn = db.get_connection()
+    try:
+        rows = conn.execute('SELECT ma, ma_tran, ten FROM dm_icd').fetchall()
+    finally:
+        conn.close()
+    return [{'ma': r['ma'], 'ma_tran': r['ma_tran'], 'ten': r['ten']}
+            for r in rows]

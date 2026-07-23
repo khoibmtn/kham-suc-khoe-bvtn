@@ -17,15 +17,104 @@ const CONFIRMABLE_SUY_FIELDS = new Set([
   'nguon_chi_tra', 'ly_do_vv', 'ma_loai_kcb',
 ]);
 
+// Đợt 11: bảng mã chương ICD-10 (chữ cái đầu + khoảng số) -> mã cơ quan
+// (dùng chung vocabulary TEN_CQ/qc.TEN_CQ: TH, HH, TIEUHOA, THAN, NOITIET,
+// CXK, TK, TT, NGOAI, DALIEU, SAN, MAT, TMH, RHM). Best-effort — không phủ
+// hết mọi chương (vd A-D, Q, R, S-T, Z không map -> để trống, người dùng tự
+// chọn cơ quan).
+const ICD_CHUONG_CO_QUAN = [
+  { letter: 'E', from: 0, to: 90, organ: 'NOITIET' },
+  { letter: 'F', from: 0, to: 99, organ: 'TT' },
+  { letter: 'G', from: 0, to: 99, organ: 'TK' },
+  { letter: 'H', from: 0, to: 59, organ: 'MAT' },
+  { letter: 'H', from: 60, to: 95, organ: 'TMH' },
+  { letter: 'I', from: 0, to: 99, organ: 'TH' },
+  { letter: 'J', from: 0, to: 99, organ: 'HH' },
+  { letter: 'K', from: 0, to: 14, organ: 'RHM' },
+  { letter: 'K', from: 20, to: 93, organ: 'TIEUHOA' },
+  { letter: 'L', from: 0, to: 99, organ: 'DALIEU' },
+  { letter: 'M', from: 0, to: 99, organ: 'CXK' },
+  { letter: 'N', from: 0, to: 53, organ: 'THAN' },
+  { letter: 'N', from: 60, to: 99, organ: 'SAN' },
+  { letter: 'O', from: 0, to: 99, organ: 'SAN' },
+];
+function icdMaToCoQuan(ma) {
+  const m = /^([A-Za-z])(\d{2})/.exec((ma || '').trim());
+  if (!m) return null;
+  const letter = m[1].toUpperCase();
+  const num = parseInt(m[2], 10);
+  const found = ICD_CHUONG_CO_QUAN.find(
+    (r) => r.letter === letter && num >= r.from && num <= r.to);
+  return found ? found.organ : null;
+}
+
 const DetailView = (() => {
   let root, danhMuc, user;
   let current = null; // dữ liệu hồ sơ hiện tại (từ GET)
   let openFlag = false;
 
+  // Đợt 11 criterion 3: cache toàn bộ dm_icd nạp 1 lần/phiên (module-level,
+  // KHÔNG re-fetch mỗi lần renderBenhTable/mở combobox — icdAllPromise nhớ
+  // lại lời gọi mạng đã chạy, các lần sau dùng chung promise đó).
+  let icdAllCache = null;
+  let icdAllPromise = null;
+  function preloadIcdAll() {
+    if (!icdAllPromise) {
+      icdAllPromise = Api.getAllIcd().then((list) => {
+        icdAllCache = list || [];
+        return icdAllCache;
+      }).catch((e) => {
+        icdAllPromise = null; // cho phép thử lại lần gọi kế tiếp nếu lỗi mạng
+        throw e;
+      });
+    }
+    return icdAllPromise;
+  }
+
+  // Đợt 11 criterion 4: lọc cục bộ trên icdAllCache, mô phỏng thứ tự ưu
+  // tiên của search_icd() (icd.py:23-71) — khớp MÃ (ma_tran/ma) trước, xếp
+  // theo độ dài mã tăng dần; nếu chưa đủ `limit`, bổ sung khớp TÊN bệnh
+  // (mọi token >=2 ký tự đều phải xuất hiện trong `ten`, AND như FTS5).
+  function filterIcdLocal(q, limit) {
+    limit = limit || 20;
+    const list = icdAllCache || [];
+    const results = new Map(); // ma -> {ma, ten}
+    const likeQ = q.toUpperCase();
+    list
+      .filter((it) => (it.ma_tran || '').toUpperCase().startsWith(likeQ)
+        || (it.ma || '').toUpperCase().startsWith(likeQ))
+      .sort((a, b) => (a.ma || '').length - (b.ma || '').length)
+      .slice(0, limit)
+      .forEach((it) => results.set(it.ma, it.ten));
+
+    if (results.size < limit) {
+      const tokens = (q.match(/[\p{L}\p{N}]+/gu) || []).filter((t) => t.length >= 2);
+      if (tokens.length) {
+        const lowerTokens = tokens.map((t) => t.toLowerCase());
+        for (const it of list) {
+          if (results.size >= limit) break;
+          if (results.has(it.ma)) continue;
+          const tenLower = (it.ten || '').toLowerCase();
+          if (lowerTokens.every((t) => tenLower.includes(t))) {
+            results.set(it.ma, it.ten);
+          }
+        }
+      }
+    }
+
+    return Array.from(results.entries())
+      .slice(0, limit)
+      .map(([ma, ten]) => ({ ma, ten, label: `${ma} — ${ten}` }));
+  }
+
   function init(container, dm, u) {
     root = container;
     danhMuc = dm;
     user = u;
+    // Đợt 11 criterion 3: nạp danh mục ICD ngay khi app khởi động (không
+    // chờ user mở màn hình chi tiết) — nhưng không chặn render UI (fire &
+    // forget, lỗi bỏ qua vì input handler sẽ tự gọi lại nếu cần).
+    preloadIcdAll().catch(() => {});
   }
 
   function isOpen() { return openFlag; }
@@ -427,17 +516,27 @@ const DetailView = (() => {
 
     const addForm = document.createElement('div');
     addForm.className = 'benh-add-form';
+
+    // Wrapper để position:relative cho popup dưới input (không che lấn)
+    const icdInputWrap = document.createElement('div');
+    icdInputWrap.className = 'icd-input-wrap';
+
     const icdInput = document.createElement('input');
     icdInput.type = 'text'; icdInput.placeholder = 'Gõ để tìm ICD...';
     const suggBox = document.createElement('div'); suggBox.className = 'icd-suggestions';
     let chosen = null;
     let dTimer = null;
+    // Đợt 11 criterion 3: đảm bảo cache sẵn sàng khi user mở ô ICD của bảng
+    // bệnh này (idempotent — không gây thêm request nếu init() đã nạp xong).
+    preloadIcdAll().catch(() => {});
     icdInput.addEventListener('input', () => {
       clearTimeout(dTimer);
       const q = icdInput.value.trim();
       if (!q) { suggBox.innerHTML = ''; suggBox.hidden = true; return; }
-      dTimer = setTimeout(async () => {
-        const items = await Api.searchIcd(q);
+      // Đợt 11 criterion 5: lọc cục bộ (không gọi mạng) -> debounce chỉ còn
+      // để gộp phím gõ liên tiếp trong 1 khung hình, không phải chờ round-trip.
+      dTimer = setTimeout(() => {
+        const items = icdAllCache ? filterIcdLocal(q, 20) : [];
         suggBox.innerHTML = '';
         items.forEach((it) => {
           const row = document.createElement('div');
@@ -446,11 +545,19 @@ const DetailView = (() => {
           row.addEventListener('mousedown', (e) => {
             e.preventDefault();
             chosen = it; icdInput.value = it.label; suggBox.hidden = true;
+            toast('Đã chọn: ' + it.label);
+            // Đợt 11 criterion 6: tự chọn cơ quan theo chương ICD của mã
+            // vừa chọn (nếu map được) — coQuanSel vẫn là select bình
+            // thường, user đổi tay tự do sau đó (criterion 7).
+            const organ = icdMaToCoQuan(it.ma);
+            if (organ && Array.from(coQuanSel.options).some((o) => o.value === organ)) {
+              coQuanSel.value = organ;
+            }
           });
           suggBox.appendChild(row);
         });
         suggBox.hidden = items.length === 0;
-      }, 200);
+      }, 50);
     });
     const coQuanSel = document.createElement('select');
     (danhMuc.co_quan_benh_chinh || []).forEach((c) => {
@@ -465,12 +572,18 @@ const DetailView = (() => {
       });
       current.benh = current.benh || [];
       current.benh.push(row);
+      // Xóa flag "Còn chẩn đoán chưa ánh xạ" nếu có ma_icd
+      if (row.ma_icd) {
+        current.co_qc_list = current.co_qc_list || [];
+        current.co_qc_list = current.co_qc_list.filter((f) => f !== 'CON_CHAN_DOAN_CHUA_ANH_XA');
+      }
       drawRows();
       icdInput.value = ''; chosen = null;
       toast('Đã lưu');
     });
-    addForm.appendChild(icdInput);
-    addForm.appendChild(suggBox);
+    icdInputWrap.appendChild(icdInput);
+    icdInputWrap.appendChild(suggBox);
+    addForm.appendChild(icdInputWrap);
     addForm.appendChild(coQuanSel);
     addForm.appendChild(addBtn);
     wrap.appendChild(addForm);
