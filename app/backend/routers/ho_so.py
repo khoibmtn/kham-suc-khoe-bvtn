@@ -442,21 +442,12 @@ def patch_ho_so(ma_ho_so: str, body: PatchBody,
                          f'WHERE ma_ho_so = ?', args)
             conn.commit()
 
-        # THIEU_CCCD (§4) là cờ "còn thiếu dữ liệu", không phải cờ "suy" cần
-        # xác nhận thủ công (§3.4.5) — tự gỡ ngay khi CCCD được bổ sung, tự
-        # thêm lại nếu bị xoá trắng.
+        # Sửa CCCD -> tính lại cờ THIEU_CCCD (bản này) + CCCD_TRUNG (cờ quan hệ:
+        # cả nhóm cccd cũ lẫn mới; hết trùng thì gỡ cờ ở mọi bản liên quan).
+        # Phản hồi anh Khôi. (row['so_cccd'] là giá trị CŨ; DB đã cập nhật mới.)
         if 'so_cccd' in changes:
-            before = row['co_qc']
-            if changes['so_cccd']:
-                after = qc.remove_flags(conn, ma_ho_so, ['THIEU_CCCD'])
-            else:
-                after = qc.add_flag(conn, ma_ho_so, 'THIEU_CCCD')
-            if after is not None and after != before:
-                conn.execute(
-                    'INSERT INTO nhat_ky(ma_ho_so, nguoi_dung_id, ten_truong, '
-                    'gia_tri_cu, gia_tri_moi) VALUES (?,?,?,?,?)',
-                    (ma_ho_so, user['id'], 'co_qc', before or '', after or ''))
-                conn.commit()
+            qc.recompute_cccd_flags(conn, ma_ho_so, row['so_cccd'],
+                                    changes['so_cccd'], user['id'])
 
         # Đợt 5 criterion 1/3: chiều cao/cân nặng vừa đổi + đủ dữ liệu -> tự
         # tính lại và GHI ĐÈ kham_the_luc_pl (kể cả đè giá trị nhân viên đã chỉnh

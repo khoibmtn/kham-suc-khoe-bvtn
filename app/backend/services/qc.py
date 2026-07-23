@@ -159,6 +159,44 @@ def remove_flags(conn, ma_ho_so, flags_to_remove):
     return new_co_qc
 
 
+def recompute_cccd_flags(conn, ma_ho_so, old_cccd, new_cccd, user_id):
+    """Tính lại cờ CCCD khi sửa so_cccd (phản hồi anh Khôi). THIEU_CCCD cho
+    chính bản này; CCCD_TRUNG là cờ QUAN HỆ nên cập nhật cả NHÓM cccd CŨ (bản
+    kia có thể hết trùng) lẫn nhóm MỚI. Ghi nhat_ky co_qc cho MỌI bản bị đổi
+    cờ. Trả co_qc mới của ma_ho_so. (Giả định so_cccd trong DB ĐÃ được cập nhật
+    sang new_cccd trước khi gọi.)"""
+    def _log(ma, before, after):
+        if after is not None and after != before:
+            conn.execute(
+                'INSERT INTO nhat_ky(ma_ho_so, nguoi_dung_id, ten_truong, '
+                'gia_tri_cu, gia_tri_moi) VALUES (?,?,?,?,?)',
+                (ma, user_id, 'co_qc', before or '', after or ''))
+
+    # 1) THIEU_CCCD cho bản hiện tại
+    b = conn.execute('SELECT co_qc FROM ho_so WHERE ma_ho_so=?', (ma_ho_so,)).fetchone()['co_qc']
+    a = remove_flags(conn, ma_ho_so, ['THIEU_CCCD']) if new_cccd \
+        else add_flag(conn, ma_ho_so, 'THIEU_CCCD')
+    _log(ma_ho_so, b, a)
+
+    # 2) CCCD_TRUNG cho các NHÓM cccd cũ + mới (bỏ rỗng)
+    for cccd in {c for c in (old_cccd, new_cccd) if c}:
+        rows = conn.execute(
+            'SELECT ma_ho_so, co_qc FROM ho_so WHERE so_cccd=?', (cccd,)).fetchall()
+        is_dup = len(rows) > 1
+        for r in rows:
+            aa = add_flag(conn, r['ma_ho_so'], 'CCCD_TRUNG') if is_dup \
+                else remove_flags(conn, r['ma_ho_so'], ['CCCD_TRUNG'])
+            _log(r['ma_ho_so'], r['co_qc'], aa)
+
+    # bản hiện tại giờ rỗng CCCD -> chắc chắn không thể CCCD_TRUNG
+    if not new_cccd:
+        b2 = conn.execute('SELECT co_qc FROM ho_so WHERE ma_ho_so=?', (ma_ho_so,)).fetchone()['co_qc']
+        _log(ma_ho_so, b2, remove_flags(conn, ma_ho_so, ['CCCD_TRUNG']))
+
+    conn.commit()
+    return conn.execute('SELECT co_qc FROM ho_so WHERE ma_ho_so=?', (ma_ho_so,)).fetchone()['co_qc']
+
+
 def check_invariant(row):
     """row: dict-like (sqlite3.Row hoặc dict) có đủ 14 cột *_pl + phan_loai_sk.
 
