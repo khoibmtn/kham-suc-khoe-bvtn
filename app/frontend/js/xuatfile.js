@@ -86,6 +86,24 @@ const ExportView = (() => {
         <span id="xf-plain-status" class="xf-plain-status"></span>
       </div>
 
+      <div class="xf-block xf-roundtrip-block">
+        <div class="xf-label">Xuất để chỉnh sửa &amp; nhập lại (.xlsx có mã định danh)</div>
+        <p class="xf-hint">Giống .xlsx đơn thuần nhưng có thêm <b>cột MÃ ĐỊNH DANH</b>
+          (tô vàng, ở đầu). Tải về, bổ sung/sửa dữ liệu còn thiếu ở các dòng/trường
+          (GIỮ NGUYÊN cột mã định danh), rồi <b>chọn file bên dưới để nhập lại</b> —
+          hệ thống đối soát, bổ sung dữ liệu mới và xin phép trước khi ghi đè.</p>
+        <button id="xf-edit-btn" type="button">Tải .xlsx để chỉnh sửa</button>
+        <span id="xf-edit-status" class="xf-plain-status"></span>
+
+        <div class="xf-ds-import">
+          <label class="xf-ds-filelbl">Nhập lại file đã sửa:
+            <input type="file" id="xf-ds-file" accept=".xlsx">
+          </label>
+          <span class="xf-hint">Ô để trống = bỏ qua (không xóa dữ liệu cũ).</span>
+          <div id="xf-ds-result" class="xf-ds-result"></div>
+        </div>
+      </div>
+
       <div class="xf-block xf-cmd-block">
         <div class="xf-label">Xuất .xlsm chính thức trên máy cá nhân</div>
         <p class="xf-hint">File .xlsm nộp Bộ (kèm dropdown &amp; VBA) chỉ tạo
@@ -143,6 +161,8 @@ TURSO_AUTH_TOKEN="$(turso db tokens create ksk)" \
     panel.querySelector('#xf-preview-btn').addEventListener('click', doPreview);
     panel.querySelector('#xf-start-btn').addEventListener('click', doStart);
     panel.querySelector('#xf-plain-btn').addEventListener('click', doExportPlain);
+    panel.querySelector('#xf-edit-btn').addEventListener('click', doExportChinhSua);
+    panel.querySelector('#xf-ds-file').addEventListener('change', doDoiSoatPreview);
 
     const copyBtn = panel.querySelector('#xf-cmd-copy');
     copyBtn.addEventListener('click', () => {
@@ -237,6 +257,107 @@ TURSO_AUTH_TOKEN="$(turso db tokens create ksk)" \
       status.textContent = ' ' + err.message;
       status.className = 'xf-plain-status error';
     } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function doExportChinhSua() {
+    const scope = currentScope();
+    const btn = panel.querySelector('#xf-edit-btn');
+    const status = panel.querySelector('#xf-edit-status');
+    btn.disabled = true;
+    status.textContent = ' Đang tạo file ...';
+    status.className = 'xf-plain-status';
+    try {
+      const { blob, name } = await Api.xuatFileXlsxChinhSua({ ...scope, ...currentOptions() });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      status.textContent = ` Đã tải: ${name}`;
+      status.className = 'xf-plain-status ok';
+    } catch (err) {
+      status.textContent = ' ' + err.message;
+      status.className = 'xf-plain-status error';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, (c) => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  }
+
+  // Chọn file -> XEM TRƯỚC đối soát (không ghi). Giữ file để bấm "Áp dụng".
+  async function doDoiSoatPreview(e) {
+    const file = e.target.files[0];
+    const box = panel.querySelector('#xf-ds-result');
+    if (!file) { box.innerHTML = ''; return; }
+    box.innerHTML = '<div class="xf-hint">Đang đối soát ...</div>';
+    try {
+      const r = await Api.nhapDoiSoat(file, false, false);
+      renderDoiSoat(r, file);
+    } catch (err) {
+      box.innerHTML = `<div class="xf-error">${esc(err.message)}</div>`;
+    }
+  }
+
+  function renderDoiSoat(r, file) {
+    const box = panel.querySelector('#xf-ds-result');
+    const rows = (r.chi_tiet || []).slice(0, 100).map((row) => {
+      const ch = row.changes.map((c) => `
+        <div class="xf-ds-ch xf-ds-${c.loai}">
+          <span class="xf-ds-tag">${c.loai === 'bo_sung' ? 'Bổ sung' : 'Ghi đè'}</span>
+          <b>${esc(c.nhan)}</b>:
+          ${c.loai === 'ghi_de' ? `<span class="xf-ds-old">${esc(c.cu) || '(trống)'}</span> → ` : ''}
+          <span class="xf-ds-new">${esc(c.moi)}</span>
+        </div>`).join('');
+      return `<div class="xf-ds-row"><div class="xf-ds-ma">${esc(row.ma_ho_so)} — ${esc(row.ho_ten)}</div>${ch}</div>`;
+    }).join('');
+    const coThayDoi = (r.so_bo_sung + r.so_ghi_de) > 0;
+    const khongKhopBox = r.so_khong_khop
+      ? `<div class="xf-ds-warn">⚠ ${r.so_khong_khop} dòng KHÔNG khớp mã định danh — sẽ bỏ qua${r.khong_khop.length ? ' (vd: ' + esc(r.khong_khop.slice(0, 3).join(', ')) + ')' : ''}.</div>`
+      : '';
+    box.innerHTML = `
+      <div class="xf-ds-summary">
+        Khớp <b>${r.so_khop}</b> dòng · Bổ sung <b class="xf-ok">${r.so_bo_sung}</b> ô ·
+        Ghi đè <b class="xf-red">${r.so_ghi_de}</b> ô${r.so_khong_khop ? ` · Không khớp <b>${r.so_khong_khop}</b>` : ''}
+      </div>
+      ${khongKhopBox}
+      ${coThayDoi ? `
+        <div class="xf-ds-detail">${rows}${r.chi_tiet.length > 100 ? '<div class="xf-hint">... (chỉ hiện 100 dòng đầu)</div>' : ''}</div>
+        <div class="xf-ds-apply">
+          ${r.so_ghi_de ? `<label class="xf-toggle"><input type="checkbox" id="xf-ds-ghide"> Cho phép <b>ghi đè ${r.so_ghi_de} ô đã có dữ liệu</b> (thao tác ghi đè được ghi nhật ký)</label>` : ''}
+          <button id="xf-ds-apply-btn" type="button">Áp dụng thay đổi</button>
+          <span id="xf-ds-apply-status" class="xf-plain-status"></span>
+        </div>`
+        : '<div class="xf-hint">Không có thay đổi nào để áp dụng.</div>'}
+    `;
+    if (coThayDoi) {
+      panel.querySelector('#xf-ds-apply-btn').addEventListener('click', () => doDoiSoatApply(file));
+    }
+  }
+
+  async function doDoiSoatApply(file) {
+    const btn = panel.querySelector('#xf-ds-apply-btn');
+    const status = panel.querySelector('#xf-ds-apply-status');
+    const ghideEl = panel.querySelector('#xf-ds-ghide');
+    const choGhiDe = !!(ghideEl && ghideEl.checked);
+    if (!confirm(`Áp dụng thay đổi?\n\n- Bổ sung dữ liệu mới cho các ô đang trống.\n- ${choGhiDe ? 'CÓ ghi đè các ô đã có dữ liệu (khác giá trị).' : 'KHÔNG ghi đè ô đã có dữ liệu.'}\n\nThao tác được ghi nhật ký.`)) return;
+    btn.disabled = true;
+    status.textContent = ' Đang ghi ...';
+    status.className = 'xf-plain-status';
+    try {
+      const r = await Api.nhapDoiSoat(file, true, choGhiDe);
+      status.textContent = ` Đã ghi: ${r.da_ghi_bo_sung} bổ sung, ${r.da_ghi_ghi_de} ghi đè.`
+        + (r.loi_validate && r.loi_validate.length ? ` (${r.loi_validate.length} ô bị bỏ do sai ngưỡng)` : '');
+      status.className = 'xf-plain-status ok';
+      btn.textContent = 'Đã áp dụng ✓';
+    } catch (err) {
+      status.textContent = ' ' + err.message;
+      status.className = 'xf-plain-status error';
       btn.disabled = false;
     }
   }

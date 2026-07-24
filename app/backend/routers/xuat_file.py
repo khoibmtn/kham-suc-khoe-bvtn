@@ -14,11 +14,12 @@ from typing import List, Optional
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import db  # noqa: E402
 import auth  # noqa: E402
-from services import export_xlsm  # noqa: E402
+from services import export_xlsm, nhap_doi_soat  # noqa: E402
 
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import (APIRouter, Depends, File, Form, HTTPException, Query,
+                     UploadFile)
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 
@@ -89,6 +90,51 @@ def xuat_xlsx_don_thuan(body: PreviewBody, admin=Depends(auth.require_admin)):
         media_type=('application/vnd.openxmlformats-officedocument'
                     '.spreadsheetml.sheet'),
         headers={'Content-Disposition': f"attachment; filename*=UTF-8''{quote(fn)}"})
+
+
+@router.post('/xuat-file/xlsx-chinh-sua')
+def xuat_xlsx_chinh_sua(body: PreviewBody, admin=Depends(auth.require_admin)):
+    """Xuất .xlsx như đơn thuần NHƯNG kèm cột MÃ ĐỊNH DANH (ma_ho_so) ở đầu —
+    tải về, bổ sung/sửa dữ liệu, rồi nhập lại qua /nhap-doi-soat."""
+    conn = db.get_connection()
+    try:
+        try:
+            data, count = export_xlsm.build_plain_xlsx(
+                conn, body.pham_vi, body.gia_tri, body.include_errors,
+                body.chi_rs_xong, with_id=True)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+    finally:
+        conn.close()
+    import datetime
+    fn = f'KSK_ChinhSua_{count}ca_{datetime.datetime.now():%Y%m%d_%H%M}.xlsx'
+    return Response(
+        content=data,
+        media_type=('application/vnd.openxmlformats-officedocument'
+                    '.spreadsheetml.sheet'),
+        headers={'Content-Disposition': f"attachment; filename*=UTF-8''{quote(fn)}"})
+
+
+@router.post('/xuat-file/nhap-doi-soat')
+async def nhap_doi_soat_ep(file: UploadFile = File(...),
+                           ap_dung: bool = Form(False),
+                           cho_ghi_de: bool = Form(False),
+                           admin=Depends(auth.require_admin)):
+    """Nhập lại file .xlsx đã chỉnh sửa, đối soát với DB. ap_dung=False -> chỉ
+    XEM TRƯỚC (không ghi). ap_dung=True -> ghi (bổ sung luôn; ghi đè chỉ khi
+    cho_ghi_de=True). Trả tóm tắt + mẫu chi tiết thay đổi."""
+    content = await file.read()
+    conn = db.get_connection()
+    try:
+        try:
+            result = nhap_doi_soat.doi_soat(
+                conn, content, apply=ap_dung, cho_ghi_de=cho_ghi_de,
+                user_id=admin['id'])
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+    finally:
+        conn.close()
+    return result
 
 
 @router.post('/xuat-file')

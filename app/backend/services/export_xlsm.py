@@ -164,24 +164,40 @@ def _template_header():
     return _TPL_HEADER_CACHE
 
 
-def _plain_xlsx_bytes(rows):
+# Cột định danh (khóa nhập lại) đặt TRƯỚC 103 cột mẫu khi with_id=True.
+ID_COL_LABEL = 'MÃ ĐỊNH DANH (khóa — KHÔNG sửa/xóa)'
+ID_COL_CODE = 'MA_HO_SO'
+ID_COL_INSTR = 'Cột để đối soát khi nhập lại. Giữ nguyên, không sửa/xóa.'
+
+
+def _plain_xlsx_bytes(rows, with_id=False):
     """Dựng .xlsx write_only: 1 sheet 'Trên 18' (3 dòng header giống mẫu +
-    dữ liệu từ dòng 4). Trả (bytes, số_dòng)."""
+    dữ liệu từ dòng 4). with_id=True chèn cột MÃ ĐỊNH DANH (ma_ho_so) ở ĐẦU để
+    nhập lại đối soát. Trả (bytes, số_dòng)."""
     import openpyxl
     from openpyxl.cell import WriteOnlyCell
-    from openpyxl.styles import Alignment, Font
+    from openpyxl.styles import Alignment, Font, PatternFill
 
     header_rows, code2col = _template_header()
     text_cols = {code2col[c] for c in _PLAIN_TEXT_CODES if c in code2col}
 
     wb = openpyxl.Workbook(write_only=True)
     ws = wb.create_sheet('Trên 18')
-    ws.freeze_panes = 'B4'
+    ws.freeze_panes = 'C4' if with_id else 'B4'
     bold = Font(bold=True)
     wrap = Alignment(wrap_text=True, vertical='top')
+    id_fill = PatternFill('solid', fgColor='FFF2CC')  # tô vàng cột khóa
 
+    id_head = [ID_COL_LABEL, ID_COL_CODE, ID_COL_INSTR]
     for ri, hrow in enumerate(header_rows, 1):
         cells = []
+        if with_id:
+            c = WriteOnlyCell(ws, value=id_head[ri - 1])
+            if ri == 1:
+                c.font = bold
+            c.alignment = wrap
+            c.fill = id_fill
+            cells.append(c)
         for v in hrow:
             c = WriteOnlyCell(ws, value=(v if v not in (None, '') else None))
             if ri == 1:
@@ -198,6 +214,11 @@ def _plain_xlsx_bytes(rows):
             if code in rec and rec[code] not in (None, ''):
                 line[col - 1] = rec[code]
         cells = []
+        if with_id:
+            c = WriteOnlyCell(ws, value=row['ma_ho_so'])
+            c.number_format = '@'
+            c.fill = id_fill
+            cells.append(c)
         for ci, v in enumerate(line, 1):
             c = WriteOnlyCell(ws, value=v)
             if ci in text_cols and v not in (None, ''):
@@ -211,10 +232,12 @@ def _plain_xlsx_bytes(rows):
     return bio.getvalue(), len(rows)
 
 
-def build_plain_xlsx(conn, pham_vi, gia_tri, include_errors, chi_rs_xong=False):
+def build_plain_xlsx(conn, pham_vi, gia_tri, include_errors, chi_rs_xong=False,
+                     with_id=False):
     """Xuất .xlsx đơn thuần cho phạm vi đã chọn (gộp mọi hồ sơ vào 1 sheet).
-    Loại hồ sơ còn cờ đỏ khi include_errors=False, hệt logic .xlsm. Ném
-    ValueError nếu phạm vi rỗng — router chuyển thành 400."""
+    Loại hồ sơ còn cờ đỏ khi include_errors=False, hệt logic .xlsm. with_id=True
+    thêm cột MÃ ĐỊNH DANH để chỉnh sửa rồi nhập lại. Ném ValueError nếu phạm vi
+    rỗng — router chuyển thành 400."""
     where_sql, args = resolve_scope_where(pham_vi, gia_tri)
     where_sql = _apply_rs_xong(where_sql, chi_rs_xong)
     rows = conn.execute(
@@ -231,7 +254,7 @@ def build_plain_xlsx(conn, pham_vi, gia_tri, include_errors, chi_rs_xong=False):
         if not rows:
             raise ValueError('Toàn bộ hồ sơ trong phạm vi đều còn cờ đỏ — '
                              'bật "Xuất kèm cả hồ sơ lỗi" nếu vẫn muốn xuất')
-    return _plain_xlsx_bytes(rows)
+    return _plain_xlsx_bytes(rows, with_id=with_id)
 
 
 # ============================= XÂY BẢN GHI =============================
