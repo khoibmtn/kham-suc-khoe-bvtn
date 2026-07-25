@@ -210,11 +210,9 @@ def theo_khoa_phong(user=Depends(auth.get_current_user)):
         }
 
     out = [_row(k['id'], k['ten']) for k in khoa_rows]
-    # Dòng gộp "Chưa phân khoa/phòng" — chỉ thêm nếu có dữ liệu (mục tiêu
-    # hoặc hồ sơ được giao) để không làm rối bảng khi mọi nhân viên đã có khoa.
-    chua_phan = _row(0, 'Chưa phân khoa/phòng')
-    if chua_phan['duoc_giao'] or chua_phan['muc_tieu']:
-        out.append(chua_phan)
+    # Dòng gộp "Chưa phân khoa/phòng" (criterion 7) — LUÔN có mặt trong mảng
+    # trả về, kể cả khi 0 nhân viên/0 hồ sơ (frontend hiển thị 0 là đúng).
+    out.append(_row(0, 'Chưa phân khoa/phòng'))
     return out
 
 
