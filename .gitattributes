@@ -1,0 +1,21 @@
+# Đợt 17 (phản hồi anh Khôi): thiếu file này là rủi ro thật khi repo chạy
+# CẢ trên Mac lẫn Windows — không có .gitattributes, Git tự đoán file nào
+# là "text" để chuyển đổi xuống dòng (CRLF<->LF) lúc checkout. File Office
+# (.xlsm/.xlsx/.docx/.doc) là ZIP nhị phân — nếu bị coi nhầm là text và
+# Windows Git có core.autocrlf=true (mặc định phổ biến khi cài Git for
+# Windows), file sẽ bị HỎNG ngay lúc checkout mà không có cảnh báo gì, dẫn
+# tới openpyxl không mở được template lúc xuất .xlsm (lỗi xảy ra âm thầm
+# trong tiến trình con, đúng dạng "bấm nút nhưng không rõ có chạy hay
+# không"). Khai báo tường minh `binary` (= -text -diff -merge) để loại bỏ
+# rủi ro này, không phụ thuộc suy đoán của Git hay cấu hình máy từng người.
+*.xlsm binary
+*.xlsx binary
+*.xltx binary
+*.docx binary
+*.doc binary
+*.db binary
+*.db.bak binary
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary

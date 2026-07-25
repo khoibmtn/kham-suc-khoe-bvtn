@@ -414,7 +414,7 @@ details summary {
 .xf-job-stats { font-size: 12px; color: #475569; margin-bottom: 6px; }
 .xf-xa-list { display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; }
 .xf-xa-line {
-  display: flex; gap: 12px; font-size: 12px; padding: 4px 8px; border-radius: 4px;
+  display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; padding: 4px 8px; border-radius: 4px;
   background: #f8fafc; align-items: center;
 }
 .xf-xa-line .xf-xa-name { flex: 1; font-weight: 600; }
@@ -422,6 +422,12 @@ details summary {
 .xf-xa-dang_chay { background: #dbeafe; color: #1e40af; }
 .xf-xa-xong { background: #dcfce7; color: #15803d; }
 .xf-xa-loi { background: #fdecea; color: #c0392b; }
+.xf-xa-loi-detail { flex: 1 1 100%; font-size: 11px; font-family: monospace;
+  white-space: pre-wrap; word-break: break-word; color: #7f1d1d; }
+
+.xf-error-big { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5;
+  border-radius: 6px; padding: 10px 14px; font-size: 14px; font-weight: 600;
+  margin-bottom: 10px; }
 .xf-files ul { margin: 4px 0; padding-left: 18px; font-size: 12px; }
 .xf-log {
   background: #0f172a; color: #e2e8f0; padding: 10px; border-radius: 6px;

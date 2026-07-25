@@ -246,10 +246,14 @@ const ExportView = (() => {
       startPolling(job.id);
       startBtn.textContent = nhanCu;
     } catch (err) {
-      progressBox.innerHTML = `<div class="xf-error">${esc(err.message)}</div>`;
+      progressBox.innerHTML = `<div class="xf-error xf-error-big">❌ Lỗi khi bắt đầu xuất file: ${esc(err.message)}</div>`;
       startBtn.textContent = nhanCu;
     } finally {
       startBtn.disabled = false;
+      // Phản hồi anh Khôi: nút quay lại bình thường KHÔNG có nghĩa là không
+      // có gì xảy ra — khung tiến độ/lỗi nằm NGAY BÊN DƯỚI, tự cuộn tới đó
+      // để không ai tưởng nhầm là "bấm không phản hồi" rồi bỏ qua.
+      progressBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }
 
@@ -499,20 +503,28 @@ const ExportView = (() => {
     const box = panel.querySelector('#xf-job-progress');
     const xaLines = (job.xa_progress || []).map((p) => `
       <div class="xf-xa-line xf-xa-${p.status}">
-        <span class="xf-xa-name">${p.xa}</span>
+        <span class="xf-xa-name">${esc(p.xa)}</span>
         <span class="xf-xa-status">${statusLabel(p.status)}</span>
         <span class="xf-xa-count">${p.so_ca || 0} ca</span>
+        ${p.loi ? `<div class="xf-xa-loi-detail">${esc(p.loi)}</div>` : ''}
       </div>`).join('');
     const files = (job.files || []).map((f) => `
-      <li><a href="/api/xuat-file/download?path=${encodeURIComponent(f.duong_dan)}" target="_blank">${f.ten}</a></li>
+      <li><a href="/api/xuat-file/download?path=${encodeURIComponent(f.duong_dan)}" target="_blank">${esc(f.ten)}</a></li>
     `).join('');
     const logLines = (job.log || []).slice(-30).join('\n');
+    // Đợt 17 (phản hồi anh Khôi): "quay lại nút ban đầu, không thấy gì xảy
+    // ra" — thực ra CÓ báo lỗi nhưng nằm lẫn, chữ nhỏ, dễ bỏ qua. Job lỗi
+    // (status='error') giờ có banner đỏ TO, không thể không thấy.
+    const banner = job.status === 'error'
+      ? `<div class="xf-error xf-error-big">❌ Xuất file THẤT BẠI — xem chi tiết lỗi bên dưới (dòng "Lỗi" màu đỏ và log cuối trang). Báo lại nội dung lỗi này để được hỗ trợ.</div>`
+      : '';
     box.innerHTML = `
-      <h3>Job ${job.id} — ${statusLabel(job.status)}</h3>
+      ${banner}
+      <h3>Job ${esc(job.id)} — ${statusLabel(job.status)}</h3>
       <div class="xf-job-stats">Sẽ xuất ${job.se_xuat}/${job.tong_pham_vi} (cờ đỏ ${job.do_flag_count}, loại trừ ${job.se_loai_tru})</div>
       <div class="xf-xa-list">${xaLines}</div>
       ${files ? `<div class="xf-files"><b>File đã tạo:</b><ul>${files}</ul></div>` : ''}
-      <pre class="xf-log">${logLines}</pre>
+      <pre class="xf-log">${esc(logLines)}</pre>
     `;
   }
 
