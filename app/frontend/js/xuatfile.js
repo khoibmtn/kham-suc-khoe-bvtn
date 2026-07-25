@@ -189,9 +189,15 @@ const ExportView = (() => {
     panel.querySelector('#xf-val-chon-tay').hidden = pham_vi !== 'chon_tay';
   }
 
+  function xfLoadingHtml(text) {
+    return `<div class="xf-loading"><span class="spinner"></span> ${esc(text)}</div>`;
+  }
+
   async function doPreview() {
     const box = panel.querySelector('#xf-preview-box');
-    box.textContent = 'Đang tính ...';
+    const btn = panel.querySelector('#xf-preview-btn');
+    box.innerHTML = xfLoadingHtml('Đang tính...');
+    btn.disabled = true;
     try {
       const scope = currentScope();
       const res = await Api.xuatFilePreview({ ...scope, ...currentOptions() });
@@ -203,7 +209,9 @@ const ExportView = (() => {
           Sẽ loại trừ: <b>${res.se_loai_tru}</b>
         </div>`;
     } catch (err) {
-      box.innerHTML = `<div class="xf-error">${err.message}</div>`;
+      box.innerHTML = `<div class="xf-error">${esc(err.message)}</div>`;
+    } finally {
+      btn.disabled = false;
     }
   }
 
@@ -221,15 +229,25 @@ const ExportView = (() => {
       ? Array.from(panel.querySelectorAll('.ext-col-check:checked')).map((c) => c.value)
       : [];
     const startBtn = panel.querySelector('#xf-start-btn');
+    const progressBox = panel.querySelector('#xf-job-progress');
+    // Phản hồi anh Khôi: bấm nút KHÔNG có hiệu ứng gì trong lúc server đang
+    // đọc/tính toán phạm vi (có thể mất vài giây với "Toàn bộ" ~13000 hồ sơ)
+    // trước khi job thật sự bắt đầu chạy nền — dễ tưởng nhầm là bị treo/lỗi.
+    // Hiện spinner + đổi nhãn nút NGAY khi bấm, trước khi chờ phản hồi.
     startBtn.disabled = true;
+    const nhanCu = startBtn.textContent;
+    startBtn.textContent = '⏳ Đang chuẩn bị...';
+    progressBox.innerHTML = xfLoadingHtml('Đang đọc dữ liệu & chuẩn bị job xuất file — với phạm vi lớn có thể mất vài giây...');
     try {
       const job = await Api.xuatFileStart({
         ...scope, ...currentOptions(), extended: { enabled: extEnabled, columns },
       });
       renderJob(job);
       startPolling(job.id);
+      startBtn.textContent = nhanCu;
     } catch (err) {
-      panel.querySelector('#xf-job-progress').innerHTML = `<div class="xf-error">${err.message}</div>`;
+      progressBox.innerHTML = `<div class="xf-error">${esc(err.message)}</div>`;
+      startBtn.textContent = nhanCu;
     } finally {
       startBtn.disabled = false;
     }

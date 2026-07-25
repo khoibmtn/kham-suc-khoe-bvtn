@@ -623,6 +623,14 @@ details summary {
   animation: dots 1.2s steps(1, end) infinite; }
 @keyframes dots { 0%{content:''} 25%{content:'.'} 50%{content:'..'} 75%{content:'...'} }
 
+/* Trang Xuất file — hiệu ứng "đang xử lý" dùng chung (spinner tái dùng
+   @keyframes spin đã có ở trên) — phản hồi anh Khôi: bấm nút phải thấy
+   ngay là đang chạy, không phải chờ im lặng tưởng bị treo. */
+.xf-loading { display: flex; align-items: center; gap: 8px; font-size: 13px;
+  color: #2563eb; font-style: italic; padding: 10px 0; }
+.xf-loading .spinner { width: 14px; height: 14px; border: 2px solid #bfdbfe;
+  border-top-color: #2563eb; border-radius: 50%; animation: spin .7s linear infinite; flex: 0 0 auto; }
+
 /* ---------- Tab Tra cứu (Đợt 12) ---------- */
 #tra-cuu-panel { height: calc(100vh - 48px); box-sizing: border-box; display: flex; flex-direction: column; padding: 8px 12px; }
 .tc-tabs { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; border-bottom: 1px solid #e5e7eb; }
