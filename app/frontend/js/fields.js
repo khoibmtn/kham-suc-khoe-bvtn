@@ -101,10 +101,14 @@ const FIELD_DEFS = [
   { code: 'kham_da_lieu_pl', label: 'Phân loại Da liễu', widget: 'radio5', group: 'D', nguon: 'data' },
   { code: 'ket_qua_kham_san_phu_khoa', label: 'Khám Sản phụ khoa', widget: 'text', group: 'D', nguon: 'data' },
   { code: 'kham_san_phu_khoa_pl', label: 'Phân loại Sản phụ khoa', widget: 'radio5', group: 'D', nguon: 'data' },
-  { code: 'khong_kinh_mat_phai', label: 'Không kính - mắt phải', widget: 'dropdown', catalog: 'thi_luc', group: 'D', nguon: 'trong' },
-  { code: 'khong_kinh_mat_trai', label: 'Không kính - mắt trái', widget: 'dropdown', catalog: 'thi_luc', group: 'D', nguon: 'trong' },
-  { code: 'co_kinh_mat_phai', label: 'Có kính - mắt phải', widget: 'dropdown', catalog: 'thi_luc', group: 'D', nguon: 'trong' },
-  { code: 'co_kinh_mat_trai', label: 'Có kính - mắt trái', widget: 'dropdown', catalog: 'thi_luc', group: 'D', nguon: 'trong' },
+  // freeText: true — phản hồi anh Khôi: có ca ghi ĐNT (đếm ngón tay) thay vì
+  // x/10 — vẫn gợi ý/lọc theo danh mục x/10 và Enter tự chọn kết quả đầu
+  // như cũ, nhưng gõ chữ KHÔNG khớp danh mục nào thì LƯU NGUYÊN VĂN thay vì
+  // bị combobox.js hoàn tác (xem combobox.js commitCustom).
+  { code: 'khong_kinh_mat_phai', label: 'Không kính - mắt phải', widget: 'dropdown', catalog: 'thi_luc', group: 'D', nguon: 'trong', freeText: true },
+  { code: 'khong_kinh_mat_trai', label: 'Không kính - mắt trái', widget: 'dropdown', catalog: 'thi_luc', group: 'D', nguon: 'trong', freeText: true },
+  { code: 'co_kinh_mat_phai', label: 'Có kính - mắt phải', widget: 'dropdown', catalog: 'thi_luc', group: 'D', nguon: 'trong', freeText: true },
+  { code: 'co_kinh_mat_trai', label: 'Có kính - mắt trái', widget: 'dropdown', catalog: 'thi_luc', group: 'D', nguon: 'trong', freeText: true },
   { code: 'benh_khac_mat', label: 'Bệnh về mắt', widget: 'text', group: 'D', nguon: 'data' },
   { code: 'kham_mat_pl', label: 'Phân loại Mắt', widget: 'radio5', group: 'D', nguon: 'data' },
   { code: 'tai_trai_noi_thuong', label: 'Tai trái nói thường (m)', widget: 'number', group: 'D', nguon: 'trong' },

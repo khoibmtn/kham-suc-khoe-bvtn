@@ -106,6 +106,20 @@ const Combobox = (() => {
       closeMenu();
     }
 
+    // def.freeText (phản hồi anh Khôi — thị lực có ca ghi "ĐNT" thay vì
+    // x/10): khi gõ KHÔNG khớp mục nào trong danh mục, LƯU NGUYÊN VĂN thay
+    // vì hoàn tác như revertNoMatch(). Logic "khớp danh mục -> Enter tự
+    // chọn kết quả đầu" (nhánh `pick(filtered[...])`) không đổi.
+    function commitCustom(q) {
+      el.value = q;
+      closeMenu();
+      save(q);
+    }
+    function noMatch(q) {
+      if (def.freeText && q) commitCustom(q);
+      else revertNoMatch();
+    }
+
     // Đợt 10 criterion 3: ô để TRỐNG lúc blur/Enter/Tab/Esc là XÓA CÓ CHỦ Ý
     // — lưu null (gỡ giá trị khỏi hồ sơ), KHÔNG revert về giá trị cũ. save('')
     // đi qua autosaveTracker (widgets.js): '' -> null trước khi PATCH.
@@ -144,7 +158,7 @@ const Combobox = (() => {
           // chọn KẾT QUẢ ĐẦU TIÊN của danh sách đã lọc (§4).
           pick(filtered[activeIdx >= 0 ? activeIdx : 0]);
         } else {
-          revertNoMatch();
+          noMatch(el.value.trim());
         }
         FocusFlow.advance(el);
       } else if (e.key === 'Escape') {
@@ -169,7 +183,7 @@ const Combobox = (() => {
         const q = el.value.trim();
         if (q === '') { commitClear(); return; } // Đợt 10 criterion 3: trống -> xóa có chủ ý
         const matched = allOptions.find((o) => o.ten === q);
-        if (!matched) revertNoMatch(); // Tab/click ra ngoài không khớp -> khôi phục, không lưu rác
+        if (!matched) noMatch(q); // Tab/click ra ngoài không khớp -> freeText thì lưu nguyên văn, còn lại khôi phục
         else closeMenu();
       }, 150);
     });
