@@ -182,23 +182,43 @@ class ConnWrapper:
     với cách dùng `conn.execute(sql, args).fetchone()` VÀ
     `for r in conn.execute(sql, args)` trong toàn bộ router hiện có."""
 
-    def __init__(self, raw_conn):
+    def __init__(self, raw_conn, shared=False):
         self._raw = raw_conn
+        # shared=True: kết nối DÙNG CHUNG theo instance serverless (tái dùng
+        # qua nhiều request để KHÔNG mở kết nối Turso mới mỗi request — chính là
+        # nguyên nhân 500 dưới tải 25 người). close() thành no-op; lỗi query =>
+        # reset để request sau kết nối lại (chống stale).
+        self._shared = shared
 
     def execute(self, sql, params=()):
-        raw_cursor = self._raw.execute(sql, _to_tuple(params))
+        try:
+            raw_cursor = self._raw.execute(sql, _to_tuple(params))
+        except Exception:
+            if self._shared:
+                _reset_serverless_conn()
+            raise
         return CursorWrapper(raw_cursor)
 
     def executemany(self, sql, seq_of_params):
         seq = [_to_tuple(p) for p in seq_of_params]
-        self._raw.executemany(sql, seq)
+        try:
+            self._raw.executemany(sql, seq)
+        except Exception:
+            if self._shared:
+                _reset_serverless_conn()
+            raise
         return None
 
     def executescript(self, sql_script):
         self._raw.executescript(sql_script)
 
     def commit(self):
-        self._raw.commit()
+        try:
+            self._raw.commit()
+        except Exception:
+            if self._shared:
+                _reset_serverless_conn()
+            raise
 
     def rollback(self):
         rb = getattr(self._raw, 'rollback', None)
@@ -206,6 +226,8 @@ class ConnWrapper:
             rb()
 
     def close(self):
+        if self._shared:
+            return  # kết nối dùng chung theo instance — KHÔNG đóng
         close = getattr(self._raw, 'close', None)
         if close:
             close()
@@ -214,19 +236,28 @@ class ConnWrapper:
         return CursorWrapper(self._raw.cursor())
 
 
+_SL_CONN = None  # kết nối Turso dùng chung theo instance serverless (tái dùng)
+
+
+def _reset_serverless_conn():
+    """Xóa kết nối dùng chung để request sau tạo mới (khi kết nối stale/lỗi)."""
+    global _SL_CONN
+    _SL_CONN = None
+
+
 def _get_connection_serverless():
-    import libsql_experimental as libsql  # import trễ — máy dev sqlite3
-    # không cần cài gói này (chỉ Vercel Linux py3.12 mới có wheel).
-    # PLAN_PERF.md §1 — REMOTE-ONLY: KHÔNG file /tmp, KHÔNG .sync() (embedded
-    # replica trước đây .sync() qua mạng MỖI request -> ~3.7s/request kể cả
-    # warm, và mỗi instance giữ bản sao riêng có thể STALE giữa nhiều người
-    # dùng cùng lúc). Mỗi query đi thẳng Turso primary -> nhất quán mạnh
-    # (mọi người luôn thấy dữ liệu mới nhất) + không tải 33MB lúc cold-start.
-    raw = libsql.connect(
-        database=os.environ['TURSO_URL'],
-        auth_token=os.environ.get('TURSO_AUTH_TOKEN'),
-    )
-    return ConnWrapper(raw)
+    # TÁI DÙNG 1 kết nối/instance thay vì mở MỚI mỗi request. Vercel serverless
+    # xử lý 1 request/instance tại một thời điểm nên an toàn; giảm số kết nối
+    # đồng thời tới Turso từ ~25 (gây 500) xuống ~số instance ấm.
+    global _SL_CONN
+    if _SL_CONN is None:
+        import libsql_experimental as libsql  # import trễ (chỉ có trên Vercel)
+        raw = libsql.connect(
+            database=os.environ['TURSO_URL'],
+            auth_token=os.environ.get('TURSO_AUTH_TOKEN'),
+        )
+        _SL_CONN = ConnWrapper(raw, shared=True)
+    return _SL_CONN
 
 
 # =====================================================================
