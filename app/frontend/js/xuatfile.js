@@ -517,12 +517,16 @@ const ExportView = (() => {
   function renderJob(job, opts) {
     opts = opts || {};
     const box = panel.querySelector('#xf-job-progress');
-    const xlsm = (job.files || []).find((f) => f.loai === 'xlsm');
+    // Phòng trường hợp server đang chạy CODE CŨ chưa kịp khởi động lại (vẫn
+    // tách nhiều file .xlsm theo xã) trong khi trình duyệt đã tải JS mới —
+    // tải HẾT mọi file .xlsm trả về, không chỉ file đầu tiên (tránh chỉ
+    // nhận được 1 phường/xã).
+    const xlsmList = (job.files || []).filter((f) => f.loai === 'xlsm');
     const ke = (job.files || []).find((f) => f.loai === 'file_ke');
 
-    if (opts.autoDownload && job.status === 'done' && xlsm && !autoDownloaded.has(job.id)) {
+    if (opts.autoDownload && job.status === 'done' && xlsmList.length && !autoDownloaded.has(job.id)) {
       autoDownloaded.add(job.id);
-      triggerDownload(xlsm.duong_dan, xlsm.ten);
+      xlsmList.forEach((f, i) => setTimeout(() => triggerDownload(f.duong_dan, f.ten), i * 400));
     }
 
     let body;
@@ -541,11 +545,10 @@ const ExportView = (() => {
         <pre class="xf-log">${esc(logLines)}</pre>
       `;
     } else {
+      const xlsmLinks = xlsmList.map((f) => `<a href="/api/xuat-file/download?path=${encodeURIComponent(f.duong_dan)}">${esc(f.ten)}</a>`).join(', ');
       body = `
-        <div class="xf-done">✅ Đã xuất xong — ${job.se_xuat} ca trong 1 file.
-          ${xlsm ? 'File đang tải xuống (nếu trình duyệt không tự tải, bấm '
-            + `<a href="/api/xuat-file/download?path=${encodeURIComponent(xlsm.duong_dan)}">vào đây</a>).`
-            : ''}</div>
+        <div class="xf-done">✅ Đã xuất xong — ${job.se_xuat} ca${xlsmList.length > 1 ? ` trong ${xlsmList.length} file (server chưa cập nhật bản mới nhất — hãy khởi động lại server)` : ' trong 1 file'}.
+          ${xlsmList.length ? `File đang tải xuống (nếu trình duyệt không tự tải, bấm: ${xlsmLinks}).` : ''}</div>
         ${ke ? `<div class="xf-hint">File kê danh sách (không phải file nộp Bộ):
           <a href="/api/xuat-file/download?path=${encodeURIComponent(ke.duong_dan)}" target="_blank">${esc(ke.ten)}</a></div>` : ''}
       `;
