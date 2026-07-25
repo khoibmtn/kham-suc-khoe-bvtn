@@ -158,12 +158,14 @@ def theo_xa(user=Depends(auth.get_current_user)):
 def theo_khoa_phong(user=Depends(auth.get_current_user)):
     """Tiến độ theo khoa/phòng (tương tự §8.3 theo_can_bo nhưng gộp theo
     khoa/phòng thay vì từng nhân viên): mục tiêu (tổng so_luong_muc_tieu từ
-    phan_cong_khoa), được giao (COUNT ho_so có nguoi_ra_soat_id thuộc nhân
-    viên của khoa đó), hoàn thành, chưa hoàn thành, tỷ lệ. Có thêm 1 dòng gộp
-    "Chưa phân khoa/phòng" cho nhân viên có khoa_phong_id NULL. Giống
-    theo_can_bo: KHÔNG loại trừ admin khỏi tập nhân viên/hồ sơ được giao
-    (theo_can_bo chỉ loại admin khỏi thống kê nhật ký, còn hs_by/giao vẫn
-    tính cả admin nếu có hồ sơ giao) — áp dụng nhất quán ở đây."""
+    phan_cong_khoa), được giao/hoàn thành/chưa hoàn thành/tỷ lệ tính theo
+    HỒ SƠ CÓ DẤU VẾT nhân viên của khoa đó THAM GIA SỬA (nhat_ky) — ĐÚNG
+    định nghĩa "được giao" đang dùng ở theo_can_bo (Đợt 12: phân công không
+    còn theo nguoi_ra_soat_id nữa nên field đó gần như luôn trống, dùng nó
+    sẽ ra 0 hết — phản hồi anh Khôi). Loại admin khỏi thống kê nhật ký
+    (sửa TEST, không phải rà soát thật), nhất quán với theo_can_bo. Có
+    thêm 1 dòng gộp "Chưa phân khoa/phòng" cho nhân viên có khoa_phong_id
+    NULL."""
     conn = db.get_connection()
     try:
         khoa_rows = conn.execute(
@@ -176,20 +178,25 @@ def theo_khoa_phong(user=Depends(auth.get_current_user)):
                 'FROM phan_cong_khoa GROUP BY khoa_phong_id'):
             muc_tieu_by[r['kid']] = r['mt'] or 0
 
-        # Gộp ho_so theo khoa/phòng của nhân viên được giao (join nguoi_dung),
-        # gộp cả nhân viên khoa_phong_id NULL vào 1 nhóm "Chưa phân khoa/phòng"
-        # (COALESCE(khoa_phong_id, 0), 0 không trùng id thật vì INTEGER PRIMARY
-        # KEY bắt đầu từ 1).
+        # Gộp theo khoa/phòng SỐ HỒ SƠ (distinct) có nhân viên của khoa đó
+        # từng sửa (nhat_ky) — 1 hồ sơ do NHIỀU người CÙNG khoa sửa chỉ tính
+        # 1 lần (subquery DISTINCT theo (khoa, ma_ho_so) trước khi gộp SUM).
+        # COALESCE(khoa_phong_id, 0) gộp nhân viên chưa gán khoa vào 1 nhóm.
         hs_by = {}
         for r in conn.execute(
                 """
-                SELECT COALESCE(nd.khoa_phong_id, 0) AS kid,
-                  COUNT(*) AS duoc_giao,
-                  SUM(CASE WHEN ho.trang_thai='hoan_thanh' THEN 1 ELSE 0 END) AS hoan_thanh
-                FROM ho_so ho
-                JOIN nguoi_dung nd ON nd.id = ho.nguoi_ra_soat_id
-                WHERE ho.nguoi_ra_soat_id IS NOT NULL
-                GROUP BY COALESCE(nd.khoa_phong_id, 0)
+                SELECT kid, COUNT(*) AS duoc_giao,
+                  SUM(CASE WHEN trang_thai='hoan_thanh' THEN 1 ELSE 0 END) AS hoan_thanh
+                FROM (
+                  SELECT DISTINCT COALESCE(nd.khoa_phong_id, 0) AS kid,
+                    nk.ma_ho_so AS ma_ho_so, ho.trang_thai AS trang_thai
+                  FROM nhat_ky nk
+                  JOIN nguoi_dung nd ON nd.id = nk.nguoi_dung_id
+                  JOIN ho_so ho ON ho.ma_ho_so = nk.ma_ho_so
+                  WHERE nd.id NOT IN
+                    (SELECT id FROM nguoi_dung WHERE vai_tro='admin')
+                ) t
+                GROUP BY kid
                 """):
             hs_by[r['kid']] = r
     finally:
