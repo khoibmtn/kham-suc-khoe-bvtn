@@ -208,8 +208,24 @@ const DashboardView = (() => {
 
   // ---------------- Tiến độ theo khoa/phòng ----------------
   function renderTheoKhoaPhong(rows) {
-    const maxDuocGiao = Math.max(1, ...rows.map((r) => r.duoc_giao));
-    const bars = rows.map((r) => {
+    // Đợt 15 (phản hồi anh Khôi): đổi cách đọc — "Được giao" = chỉ tiêu đã
+    // giao ở màn Phân công (field muc_tieu API cũ), "Hoàn thành" = số hồ sơ
+    // khoa đó đã động vào (field duoc_giao API cũ, đổi TÊN HIỂN THỊ chứ
+    // không đổi API), "Chưa hoàn thành" = Được giao - Hoàn thành (không âm),
+    // Tỷ lệ = Hoàn thành/Được giao. Gộp về 1 cách đọc duy nhất, khớp cả biểu
+    // đồ lẫn bảng (trước đây có 2 kiểu tính song song gây rối).
+    const rows2 = rows.map((r) => {
+      const duocGiao = r.muc_tieu || 0;
+      const hoanThanh = r.duoc_giao || 0;
+      const chuaHoanThanh = Math.max(0, duocGiao - hoanThanh);
+      return {
+        ten_khoa: r.ten_khoa, duoc_giao: duocGiao, hoan_thanh: hoanThanh,
+        chua_hoan_thanh: chuaHoanThanh,
+        ty_le: duocGiao ? Math.round(hoanThanh / duocGiao * 100) : null,
+      };
+    });
+    const maxDuocGiao = Math.max(1, ...rows2.map((r) => r.duoc_giao));
+    const bars = rows2.map((r) => {
       const w = (v) => (r.duoc_giao ? (v / r.duoc_giao * 100) : 0);
       return `
         <div class="dash-xa-row">
@@ -218,20 +234,14 @@ const DashboardView = (() => {
             <div class="dash-stack-seg seg-xong" style="width:${w(r.hoan_thanh)}%" title="Hoàn thành: ${r.hoan_thanh}"></div>
             <div class="dash-stack-seg seg-chua" style="width:${w(r.chua_hoan_thanh)}%" title="Chưa hoàn thành: ${r.chua_hoan_thanh}"></div>
           </div>
-          <div class="dash-xa-pct">${r.ty_le}%</div>
+          <div class="dash-xa-pct">${r.ty_le == null ? '—' : r.ty_le + '%'}</div>
         </div>`;
     }).join('');
-    // Đợt 14 (phản hồi anh Khôi): 2 cột tỷ lệ — "Tỷ lệ/Được giao" (trong số
-    // hồ sơ đã có người động vào, xong bao nhiêu — thường rất cao) khác hẳn
-    // "Tỷ lệ/Mục tiêu" (so với chỉ tiêu đã giao ở màn Phân công — sát với %
-    // tổng thể ở đầu trang Dashboard hơn). Không gộp làm 1 để tránh hiểu nhầm
-    // (số liệu 90% ở khoa nhưng tổng thể 41% KHÔNG mâu thuẫn, chỉ khác mẫu số).
-    const tableRows = rows.map((r) => `
+    const tableRows = rows2.map((r) => `
       <tr>
-        <td>${esc(r.ten_khoa)}</td><td>${r.muc_tieu}</td><td>${r.duoc_giao}</td>
+        <td>${esc(r.ten_khoa)}</td><td>${r.duoc_giao}</td>
         <td>${r.hoan_thanh}</td><td>${r.chua_hoan_thanh}</td>
-        <td>${r.ty_le}%</td>
-        <td>${r.ty_le_muc_tieu == null ? '—' : r.ty_le_muc_tieu + '%'}</td>
+        <td>${r.ty_le == null ? '—' : r.ty_le + '%'}</td>
       </tr>`).join('');
     return `
       <section class="dash-section">
@@ -241,15 +251,10 @@ const DashboardView = (() => {
           <span class="leg"><i class="sw seg-chua"></i>Chưa hoàn thành</span>
         </div>
         <div class="dash-xa-chart">${bars}</div>
-        <p class="dash-hint">Thanh trên tính trên số hồ sơ ĐÃ CÓ NGƯỜI ĐỘNG VÀO
-          (không phải toàn bộ khối lượng) — nên phần trăm thường cao hơn hẳn %
-          tổng thể ở đầu trang. Xem thêm cột <b>"Tỷ lệ / Mục tiêu"</b> bên dưới
-          để so với chỉ tiêu đã giao ở màn Phân công.</p>
         <table class="dash-table">
-          <thead><tr><th>Khoa/phòng</th><th>Mục tiêu</th><th>Được giao</th>
-            <th>Hoàn thành</th><th>Chưa hoàn thành</th>
-            <th>Tỷ lệ / Được giao</th><th>Tỷ lệ / Mục tiêu</th></tr></thead>
-          <tbody>${tableRows || '<tr><td colspan="7">Chưa có khoa/phòng</td></tr>'}</tbody>
+          <thead><tr><th>Khoa/phòng</th><th>Được giao</th>
+            <th>Hoàn thành</th><th>Chưa hoàn thành</th><th>Tỷ lệ</th></tr></thead>
+          <tbody>${tableRows || '<tr><td colspan="5">Chưa có khoa/phòng</td></tr>'}</tbody>
         </table>
       </section>`;
   }
