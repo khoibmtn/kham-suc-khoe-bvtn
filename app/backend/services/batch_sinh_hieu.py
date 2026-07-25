@@ -10,9 +10,11 @@ nhân viên tự chỉnh tay):
      điền khi đang TRỐNG — không đụng giá trị đã có.
   1) Phân loại CSST (Mạch + Huyết áp theo băng tuổi, QĐ1613 mục 45/46) ->
      NÂNG cơ quan Tuần hoàn (noi_khoa_tuan_hoan_pl) nếu đang thấp hơn.
-  2) Tự thêm bệnh chính theo sinh hiệu (HA cao->I10, mạch nhanh->R00.0,
-     mạch chậm->R00.1) khi hồ sơ CHƯA có bệnh chính; gỡ cờ đỏ
-     'CO_PHAN_LOAI_NHUNG_KHONG_CO_CHAN_DOAN'.
+  2) Tự thêm chẩn đoán theo sinh hiệu (HA cao->I10, mạch nhanh->R00.0, mạch
+     chậm->R00.1) — CHẠY dù hồ sơ đã có bệnh chính khác. Chỉ ĐẶT làm bệnh
+     chính khi Tuần hoàn (cơ quan của các mã này) đang là cơ quan NẶNG NHẤT
+     trong hồ sơ (kể cả Thể lực) — không ghi đè bệnh chính của cơ quan nặng
+     hơn. Gỡ cờ đỏ 'CO_PHAN_LOAI_NHUNG_KHONG_CO_CHAN_DOAN' khi vừa đặt.
   3) NÂNG Phân loại sức khỏe chung (phan_loai_sk) lên bằng cơ quan nặng nhất
      (bất biến QĐ1613 §6.1) — chỉ nâng, KHÔNG hạ.
 
@@ -147,7 +149,7 @@ def chay(conn, apply, nguoi_dung_id):
         "OR (chieu_cao IS NOT NULL AND chieu_cao<>'' "
         "    AND can_nang IS NOT NULL AND can_nang<>'')").fetchall()
 
-    n_bmi = n_plth = n_th = n_dx = n_sk = n_flag = 0
+    n_bmi = n_plth = n_th = n_dx = n_dx_chinh = n_sk = n_flag = 0
     dx_dem = {'I10': 0, 'R00.0': 0, 'R00.1': 0}
     done = 0
     for r in rows:
@@ -190,48 +192,65 @@ def chay(conn, apply, nguoi_dung_id):
                 log(ma, 'noi_khoa_tuan_hoan_pl', cur_th, csst)
             n_th += 1
 
-        # 2) Tự thêm bệnh chính theo sinh hiệu khi CHƯA có bệnh chính
-        if not r['ma_benh_chinh']:
-            muon = chan_doan_tu_sinh_hieu(sys_val, dia, mach)
-            if muon:
-                co_san = {b['ma_icd']: b['id'] for b in conn.execute(
-                    'SELECT id, ma_icd FROM benh WHERE ma_ho_so=?', (ma,)).fetchall()}
-                id_theo_ma = {}
-                added_here = []
-                for mi in muon:
-                    if mi in co_san:
-                        id_theo_ma[mi] = co_san[mi]
-                        continue
-                    micd, ten = _resolve_icd(conn, mi)
-                    if not micd:
-                        continue
-                    if apply:
-                        stt = conn.execute(
-                            'SELECT COALESCE(MAX(stt_benh),0)+1 FROM benh '
-                            'WHERE ma_ho_so=?', (ma,)).fetchone()[0]
-                        cur = conn.execute(
-                            'INSERT INTO benh(ma_ho_so, stt_benh, la_benh_chinh, '
-                            'ma_icd, ten_icd, co_quan, muc_do_nang, chuoi_goc, '
-                            'nguon_anh_xa, dien_giai_bs, can_ra_soat) '
-                            'VALUES (?,?,0,?,?,?,?,?,?,?,0)',
-                            (ma, stt, micd, ten, 'TH', None,
-                             'Tự gán theo chỉ số sinh tồn (batch)',
-                             'sinh_hieu_tu_dong', None))
-                        id_theo_ma[mi] = cur.lastrowid
-                        log(ma, f'benh:add:{cur.lastrowid}', None,
-                            f'{micd} — {ten} (batch sinh hiệu)')
-                    added_here.append(mi)
-                    dx_dem[mi] = dx_dem.get(mi, 0) + 1
+        # Trạng thái cơ quan SAU bước 1 (Tuần hoàn có thể đã nâng) — dùng
+        # chung cho quyết định bệnh chính (bước 2) VÀ nâng phan_loai_sk (bước
+        # 3), tính 1 lần duy nhất.
+        fresh = dict(r)
+        fresh['noi_khoa_tuan_hoan_pl'] = max(cur_th_i, csst) if csst > 0 else cur_th
+        inv = qc.check_invariant(fresh)
 
-                if added_here:
-                    main_ma = muon[0]
-                    n_dx += 1
+        # 2) Tự thêm chẩn đoán theo sinh hiệu — CHẠY dù hồ sơ đã có bệnh
+        # chính khác (phản hồi anh Khôi, đổi từ "chỉ khi chưa có bệnh
+        # chính"). Chỉ ĐẶT làm bệnh chính khi Tuần hoàn đang là cơ quan nặng
+        # nhất (kể cả Thể lực) — không ghi đè bệnh chính của cơ quan nặng hơn.
+        muon = chan_doan_tu_sinh_hieu(sys_val, dia, mach)
+        if muon:
+            co_san_rows = {b['ma_icd']: b for b in conn.execute(
+                'SELECT id, ma_icd, ten_icd, co_quan FROM benh WHERE ma_ho_so=?',
+                (ma,)).fetchall()}
+            id_theo_ma = {}
+            info_theo_ma = {}   # mi -> (ma_icd, ten_icd, co_quan), kể cả chưa insert (dry-run)
+            added_here = []
+            for mi in muon:
+                if mi in co_san_rows:
+                    b = co_san_rows[mi]
+                    id_theo_ma[mi] = b['id']
+                    info_theo_ma[mi] = (b['ma_icd'], b['ten_icd'], b['co_quan'])
+                    continue
+                micd, ten = _resolve_icd(conn, mi)
+                if not micd:
+                    continue
+                info_theo_ma[mi] = (micd, ten, 'TH')
+                if apply:
+                    stt = conn.execute(
+                        'SELECT COALESCE(MAX(stt_benh),0)+1 FROM benh '
+                        'WHERE ma_ho_so=?', (ma,)).fetchone()[0]
+                    cur = conn.execute(
+                        'INSERT INTO benh(ma_ho_so, stt_benh, la_benh_chinh, '
+                        'ma_icd, ten_icd, co_quan, muc_do_nang, chuoi_goc, '
+                        'nguon_anh_xa, dien_giai_bs, can_ra_soat) '
+                        'VALUES (?,?,0,?,?,?,?,?,?,?,0)',
+                        (ma, stt, micd, ten, 'TH', None,
+                         'Tự gán theo chỉ số sinh tồn (batch)',
+                         'sinh_hieu_tu_dong', None))
+                    id_theo_ma[mi] = cur.lastrowid
+                    log(ma, f'benh:add:{cur.lastrowid}', None,
+                        f'{micd} — {ten} (batch sinh hiệu)')
+                added_here.append(mi)
+                dx_dem[mi] = dx_dem.get(mi, 0) + 1
+
+            if added_here:
+                n_dx += 1
+
+            main_ma = muon[0]
+            if main_ma in info_theo_ma:
+                main_icd, main_ten, main_coquan = info_theo_ma[main_ma]
+                if inv['co_quan_max'] == 'TH' and r['ma_benh_chinh'] != main_icd:
+                    n_dx_chinh += 1
                     if 'CO_PHAN_LOAI_NHUNG_KHONG_CO_CHAN_DOAN' in qc.flags_of(r['co_qc']):
                         n_flag += 1
                     if apply and main_ma in id_theo_ma:
                         mid = id_theo_ma[main_ma]
-                        mrow = conn.execute('SELECT * FROM benh WHERE id=?',
-                                            (mid,)).fetchone()
                         conn.execute('UPDATE benh SET la_benh_chinh=0 '
                                      'WHERE ma_ho_so=?', (ma,))
                         conn.execute('UPDATE benh SET la_benh_chinh=1 WHERE id=?',
@@ -239,8 +258,8 @@ def chay(conn, apply, nguoi_dung_id):
                         conn.execute(
                             'UPDATE ho_so SET ma_benh_chinh=?, ket_luan_benh=?, '
                             'co_quan_benh_chinh=? WHERE ma_ho_so=?',
-                            (mrow['ma_icd'], mrow['ten_icd'], mrow['co_quan'], ma))
-                        log(ma, 'ma_benh_chinh', '', mrow['ma_icd'])
+                            (main_icd, main_ten, main_coquan, ma))
+                        log(ma, 'ma_benh_chinh', r['ma_benh_chinh'] or '', main_icd)
                         old_qc = conn.execute(
                             'SELECT co_qc FROM ho_so WHERE ma_ho_so=?',
                             (ma,)).fetchone()['co_qc']
@@ -250,9 +269,6 @@ def chay(conn, apply, nguoi_dung_id):
                             log(ma, 'co_qc', old_qc or '', new_qc or '')
 
         # 3) NÂNG Phân loại sức khỏe chung lên = cơ quan nặng nhất (chỉ nâng)
-        fresh = dict(r)
-        fresh['noi_khoa_tuan_hoan_pl'] = max(cur_th_i, csst) if csst > 0 else cur_th
-        inv = qc.check_invariant(fresh)
         gmax = inv['gia_tri_max']
         pl = fresh['phan_loai_sk']
         pl_i = int(pl) if pl not in (None, '') else 0
@@ -300,6 +316,7 @@ def chay(conn, apply, nguoi_dung_id):
         'dien_bmi': n_bmi, 'dien_pl_the_luc': n_plth,
         'nang_tuan_hoan': n_th,
         'them_benh_chinh': n_dx, 'them_benh_chinh_theo_ma': dx_dem,
+        'dat_benh_chinh': n_dx_chinh,
         'go_co': n_flag, 'nang_suc_khoe_chung': n_sk,
         'them_co_vi_pham': n_vipham_them, 'go_co_vi_pham': n_vipham_go,
     }

@@ -311,12 +311,18 @@ def set_benh_chinh(ma_ho_so: str, body: SetBenhChinhBody,
 
 @router.post('/ho-so/{ma_ho_so}/tu-chan-doan-sinh-ton')
 def tu_chan_doan_sinh_ton(ma_ho_so: str, user=Depends(auth.get_current_user)):
-    """Tự thêm chẩn đoán chính theo sinh hiệu (HA cao->I10, mạch nhanh->R00.0)
-    khi hồ sơ CHƯA có bệnh chính; gỡ cờ CO_PHAN_LOAI_NHUNG_KHONG_CO_CHAN_DOAN.
-    Idempotent: không thêm trùng mã đã có; không đụng khi đã có bệnh chính.
+    """Tự thêm chẩn đoán theo sinh hiệu (HA cao->I10, mạch nhanh->R00.0, mạch
+    chậm->R00.1) — CHẠY LUÔN kể cả khi hồ sơ ĐÃ có bệnh chính khác (phản hồi
+    anh Khôi, đổi từ hành vi cũ "chỉ chạy khi chưa có bệnh chính"). Sau khi
+    thêm, CHỈ đặt làm bệnh chính nếu Tuần hoàn (cơ quan của các mã này) ĐANG
+    LÀ cơ quan nặng nhất trong toàn hồ sơ (kể cả Thể lực) — nếu không, giữ
+    nguyên bệnh chính hiện tại (KHÔNG ghi đè bừa lên chẩn đoán của cơ quan
+    thật sự nặng hơn). Gỡ cờ CO_PHAN_LOAI_NHUNG_KHONG_CO_CHAN_DOAN nếu cuối
+    cùng đã có bệnh chính (dù do bước này đặt hay đã có từ trước).
+    Idempotent: không thêm trùng mã đã có; không đổi bệnh chính nếu đã đúng.
 
     Trả về {added, benh, ma_benh_chinh, ket_luan_benh, co_quan_benh_chinh,
-    co_qc, so_loi, qd1613}. added=[] nghĩa là không thay đổi gì."""
+    co_qc, so_loi, qd1613}. added=[] nghĩa là không thêm mã mới nào."""
     def _payload(conn, added):
         rows = conn.execute(
             'SELECT * FROM benh WHERE ma_ho_so=? ORDER BY la_benh_chinh DESC, '
@@ -345,9 +351,6 @@ def tu_chan_doan_sinh_ton(ma_ho_so: str, user=Depends(auth.get_current_user)):
     conn = db.get_connection()
     try:
         hs = _load_ho_so_or_404(conn, ma_ho_so, user)
-        # Chỉ chạy khi CHƯA có bệnh chính (tôn trọng dữ liệu sẵn có, không ghi đè)
-        if hs['ma_benh_chinh']:
-            return _payload(conn, [])
 
         sys_ha, dia_ha = _parse_ha(hs['huyet_ap'])
         mach = _mach_bpm(hs['mach'])
@@ -355,7 +358,8 @@ def tu_chan_doan_sinh_ton(ma_ho_so: str, user=Depends(auth.get_current_user)):
         if not muon:
             return _payload(conn, [])
 
-        # mã ICD -> id dòng benh đã có (idempotent, không thêm trùng)
+        # mã ICD -> id dòng benh đã có (idempotent, không thêm trùng) — CHẠY
+        # DÙ hồ sơ đã có bệnh chính khác (không còn early-return như trước).
         co_san = {r['ma_icd']: r['id'] for r in conn.execute(
             'SELECT id, ma_icd FROM benh WHERE ma_ho_so=?', (ma_ho_so,)).fetchall()}
         added = []
@@ -379,41 +383,55 @@ def tu_chan_doan_sinh_ton(ma_ho_so: str, user=Depends(auth.get_current_user)):
                  f'{ma} — {ten} (tự động theo sinh hiệu)')
             added.append({'ma_icd': ma, 'ten_icd': ten})
 
-        # Đặt bệnh chính = mã ưu tiên đầu (I10 nếu có, ngược lại R00.0)
+        # Mã ưu tiên đầu (I10 nếu có, ngược lại R00.0/R00.1) = đại diện Tuần
+        # hoàn. Phản hồi anh Khôi: CHỈ đặt làm bệnh chính khi Tuần hoàn ĐANG
+        # LÀ cơ quan nặng nhất trong toàn hồ sơ (so mọi cơ quan + Thể lực,
+        # qc.check_invariant) — không ghi đè lên bệnh chính của cơ quan nặng
+        # hơn. Tính TRÊN TRẠNG THÁI HIỆN TẠI (đã thêm benh ở trên, nhưng
+        # thêm 1 dòng bảng benh không đổi *_pl nên inv_now cũng đúng để tái
+        # dùng cho bước nâng phan_loai_sk bên dưới, khỏi truy vấn lại).
         main_ma = muon[0]
         main_id = id_theo_ma[main_ma]
         main_row = conn.execute('SELECT * FROM benh WHERE id=?',
                                 (main_id,)).fetchone()
-        conn.execute('UPDATE benh SET la_benh_chinh=0 WHERE ma_ho_so=?',
-                     (ma_ho_so,))
-        conn.execute('UPDATE benh SET la_benh_chinh=1 WHERE id=?', (main_id,))
-        conn.execute(
-            'UPDATE ho_so SET ma_benh_chinh=?, ket_luan_benh=?, '
-            'co_quan_benh_chinh=? WHERE ma_ho_so=?',
-            (main_row['ma_icd'], main_row['ten_icd'], main_row['co_quan'],
-             ma_ho_so))
-        for field, new_v in (('ma_benh_chinh', main_row['ma_icd']),
-                             ('ket_luan_benh', main_row['ten_icd']),
-                             ('co_quan_benh_chinh', main_row['co_quan'])):
-            _log(conn, ma_ho_so, user['id'], field, '', new_v)
+        row_now = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?',
+                               (ma_ho_so,)).fetchone()
+        inv_now = qc.check_invariant(row_now)
+        if inv_now['co_quan_max'] == 'TH' and row_now['ma_benh_chinh'] != main_row['ma_icd']:
+            old_ma_bc = row_now['ma_benh_chinh']
+            old_ket_luan = row_now['ket_luan_benh']
+            old_co_quan = row_now['co_quan_benh_chinh']
+            conn.execute('UPDATE benh SET la_benh_chinh=0 WHERE ma_ho_so=?',
+                         (ma_ho_so,))
+            conn.execute('UPDATE benh SET la_benh_chinh=1 WHERE id=?', (main_id,))
+            conn.execute(
+                'UPDATE ho_so SET ma_benh_chinh=?, ket_luan_benh=?, '
+                'co_quan_benh_chinh=? WHERE ma_ho_so=?',
+                (main_row['ma_icd'], main_row['ten_icd'], main_row['co_quan'],
+                 ma_ho_so))
+            for field, old_v, new_v in (('ma_benh_chinh', old_ma_bc, main_row['ma_icd']),
+                                        ('ket_luan_benh', old_ket_luan, main_row['ten_icd']),
+                                        ('co_quan_benh_chinh', old_co_quan, main_row['co_quan'])):
+                _log(conn, ma_ho_so, user['id'], field, old_v, new_v)
 
-        # Đã có chẩn đoán chính -> gỡ cờ đỏ "Có phân loại nhưng không có chẩn đoán"
-        old_co_qc = conn.execute('SELECT co_qc FROM ho_so WHERE ma_ho_so=?',
-                                 (ma_ho_so,)).fetchone()['co_qc']
-        if 'CO_PHAN_LOAI_NHUNG_KHONG_CO_CHAN_DOAN' in qc.flags_of(old_co_qc):
-            new_co_qc = qc.remove_flags(
-                conn, ma_ho_so, ['CO_PHAN_LOAI_NHUNG_KHONG_CO_CHAN_DOAN'])
-            _log(conn, ma_ho_so, user['id'], 'co_qc', old_co_qc or '',
-                 new_co_qc or '')
+        # Đã có chẩn đoán chính (dù do bước trên đặt hay có sẵn từ trước) ->
+        # gỡ cờ đỏ "Có phân loại nhưng không có chẩn đoán".
+        hs_sau = conn.execute('SELECT ma_benh_chinh, co_qc FROM ho_so WHERE ma_ho_so=?',
+                              (ma_ho_so,)).fetchone()
+        if hs_sau['ma_benh_chinh']:
+            old_co_qc = hs_sau['co_qc']
+            if 'CO_PHAN_LOAI_NHUNG_KHONG_CO_CHAN_DOAN' in qc.flags_of(old_co_qc):
+                new_co_qc = qc.remove_flags(
+                    conn, ma_ho_so, ['CO_PHAN_LOAI_NHUNG_KHONG_CO_CHAN_DOAN'])
+                _log(conn, ma_ho_so, user['id'], 'co_qc', old_co_qc or '',
+                     new_co_qc or '')
 
         # Phản hồi anh Khôi: sau khi tự thêm chẩn đoán -> tự NÂNG Phân loại
         # sức khỏe chung lên mức nặng nhất trong các cơ quan nếu đang thấp
         # hơn (vd Tuần hoàn đã được CSST nâng lên III trước đó nhưng chưa
         # có chẩn đoán -> giờ có R00.0 rồi -> phan_loai_sk cũng phải theo
-        # kịp). Chỉ nâng, không hạ — cùng nguyên tắc routers/ho_so.py.
-        row_now = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?',
-                               (ma_ho_so,)).fetchone()
-        inv_now = qc.check_invariant(row_now)
+        # kịp). Chỉ nâng, không hạ — cùng nguyên tắc routers/ho_so.py. Dùng
+        # lại inv_now đã tính ở trên (organ *_pl không đổi bởi các bước trên).
         gmax = inv_now['gia_tri_max']
         pl_hien_tai = row_now['phan_loai_sk']
         pl_hien_tai_i = int(pl_hien_tai) if pl_hien_tai not in (None, '') else 0

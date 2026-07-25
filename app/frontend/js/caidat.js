@@ -224,10 +224,11 @@ const CaiDatView = (() => {
       + `Điền BMI còn trống: <b>${kq.dien_bmi}</b><br>`
       + `Điền Phân loại thể lực còn trống: <b>${kq.dien_pl_the_luc}</b><br>`
       + `Nâng Tuần hoàn (theo Mạch/HA): <b>${kq.nang_tuan_hoan}</b><br>`
-      + `Tự thêm bệnh chính: <b>${kq.them_benh_chinh}</b> `
+      + `Tự thêm chẩn đoán theo sinh hiệu (I10/R00.0/R00.1): <b>${kq.them_benh_chinh}</b> `
       + `(I10: ${kq.them_benh_chinh_theo_ma['I10']}, `
       + `R00.0: ${kq.them_benh_chinh_theo_ma['R00.0']}, `
       + `R00.1: ${kq.them_benh_chinh_theo_ma['R00.1']})<br>`
+      + `— trong đó ĐẶT làm bệnh chính (Tuần hoàn đang nặng nhất): <b>${kq.dat_benh_chinh}</b><br>`
       + `Gỡ cờ "Có phân loại nhưng không có chẩn đoán": <b>${kq.go_co}</b><br>`
       + `Nâng Phân loại sức khỏe chung: <b>${kq.nang_suc_khoe_chung}</b><br>`
       + `Thêm cờ "Vi phạm bất biến QĐ1613" (quét TOÀN BỘ hồ sơ): <b>${kq.them_co_vi_pham}</b><br>`
