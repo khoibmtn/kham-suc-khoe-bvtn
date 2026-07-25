@@ -28,6 +28,7 @@ const DashboardView = (() => {
   const DASH_TASKS = [
     { key: 'tongQuan', label: 'Tổng quan (thẻ + tiến độ rà soát xong)', fn: () => Api.dashTongQuan(), render: (d) => renderTongQuan(d), count: () => '' },
     { key: 'theoXa', label: 'Tiến độ theo xã/phường', fn: () => Api.dashTheoXa(), render: (d) => renderTheoXa(d), count: (d) => `${d.length} xã` },
+    { key: 'theoKhoaPhong', label: 'Tiến độ theo khoa/phòng', fn: () => Api.dashTheoKhoaPhong(), render: (d) => renderTheoKhoaPhong(d), count: (d) => `${d.length} khoa/phòng` },
     { key: 'theoCanBo', label: 'Tiến độ theo nhân viên', fn: () => Api.dashTheoCanBo(), render: (d) => renderTheoCanBo(d), count: (d) => `${d.length} nhân viên` },
     { key: 'chatLuong', label: 'Chất lượng dữ liệu (cờ)', fn: () => Api.dashChatLuong(), render: (d) => renderChatLuong(d), count: (d) => `${d.co_qc.length} loại cờ` },
     { key: 'chuyenMon', label: 'Thống kê chuyên môn', fn: () => Api.dashChuyenMon(), render: (d) => renderChuyenMon(d), count: (d) => `${d.top20_icd.length} mã ICD` },
@@ -201,6 +202,42 @@ const DashboardView = (() => {
           <thead><tr><th>Xã</th><th>Tổng</th><th>Xong</th><th>Đang</th><th>Chưa</th>
             <th>Cần đối chiếu</th><th>Cờ đỏ</th><th>RS xong đủ 4 mục</th><th>%</th></tr></thead>
           <tbody>${tableRows}</tbody>
+        </table>
+      </section>`;
+  }
+
+  // ---------------- Tiến độ theo khoa/phòng ----------------
+  function renderTheoKhoaPhong(rows) {
+    const maxDuocGiao = Math.max(1, ...rows.map((r) => r.duoc_giao));
+    const bars = rows.map((r) => {
+      const w = (v) => (r.duoc_giao ? (v / r.duoc_giao * 100) : 0);
+      return `
+        <div class="dash-xa-row">
+          <div class="dash-xa-name">${esc(r.ten_khoa)}</div>
+          <div class="dash-stack" style="width:${(r.duoc_giao / maxDuocGiao * 100).toFixed(1)}%">
+            <div class="dash-stack-seg seg-xong" style="width:${w(r.hoan_thanh)}%" title="Hoàn thành: ${r.hoan_thanh}"></div>
+            <div class="dash-stack-seg seg-chua" style="width:${w(r.chua_hoan_thanh)}%" title="Chưa hoàn thành: ${r.chua_hoan_thanh}"></div>
+          </div>
+          <div class="dash-xa-pct">${r.ty_le}%</div>
+        </div>`;
+    }).join('');
+    const tableRows = rows.map((r) => `
+      <tr>
+        <td>${esc(r.ten_khoa)}</td><td>${r.muc_tieu}</td><td>${r.duoc_giao}</td>
+        <td>${r.hoan_thanh}</td><td>${r.chua_hoan_thanh}</td><td>${r.ty_le}%</td>
+      </tr>`).join('');
+    return `
+      <section class="dash-section">
+        <h3>Tiến độ theo khoa/phòng</h3>
+        <div class="dash-legend">
+          <span class="leg"><i class="sw seg-xong"></i>Hoàn thành</span>
+          <span class="leg"><i class="sw seg-chua"></i>Chưa hoàn thành</span>
+        </div>
+        <div class="dash-xa-chart">${bars}</div>
+        <table class="dash-table">
+          <thead><tr><th>Khoa/phòng</th><th>Mục tiêu</th><th>Được giao</th>
+            <th>Hoàn thành</th><th>Chưa hoàn thành</th><th>Tỷ lệ</th></tr></thead>
+          <tbody>${tableRows || '<tr><td colspan="6">Chưa có khoa/phòng</td></tr>'}</tbody>
         </table>
       </section>`;
   }

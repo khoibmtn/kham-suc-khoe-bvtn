@@ -101,6 +101,15 @@ const Api = (() => {
     kichHoatNguoiDung: (id, dang_hoat_dong) => req('POST', `/api/nguoi-dung/${id}/kich-hoat`, { dang_hoat_dong }),
     deleteNguoiDung: (id) => req('DELETE', `/api/nguoi-dung/${id}`),
 
+    listKhoaPhong: () => req('GET', '/api/khoa-phong'),
+    createKhoaPhong: (body) => req('POST', '/api/khoa-phong', body),
+    patchKhoaPhong: (id, body) => req('PATCH', `/api/khoa-phong/${id}`, body),
+
+    listPhanCongKhoa: () => req('GET', '/api/phan-cong-khoa'),
+    phanCongKhoa: (body) => req('POST', '/api/phan-cong-khoa', body),
+    patchPhanCongKhoa: (id, body) => req('PATCH', `/api/phan-cong-khoa/${id}`, body),
+    deletePhanCongKhoa: (id) => req('DELETE', `/api/phan-cong-khoa/${id}`),
+
     xuatFileCotMoRong: () => req('GET', '/api/xuat-file/cot-mo-rong'),
     xuatFilePreview: (body) => req('POST', '/api/xuat-file/preview', body),
     xuatFileStart: (body) => req('POST', '/api/xuat-file', body),
@@ -163,6 +172,7 @@ const Api = (() => {
 
     dashTongQuan: () => req('GET', '/api/dashboard/tong-quan'),
     dashTheoXa: () => req('GET', '/api/dashboard/theo-xa'),
+    dashTheoKhoaPhong: () => req('GET', '/api/dashboard/theo-khoa-phong'),
     dashTheoCanBo: () => req('GET', '/api/dashboard/theo-can-bo'),
     dashChatLuong: () => req('GET', '/api/dashboard/chat-luong'),
     dashChuyenMon: () => req('GET', '/api/dashboard/chuyen-mon'),

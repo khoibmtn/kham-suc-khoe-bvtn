@@ -196,7 +196,7 @@ const AppShell = (() => {
     Object.entries(PANEL_BY_SCREEN).forEach(([screen, panelId]) => {
       document.getElementById(panelId).hidden = screen !== name;
     });
-    if (name === 'phan-cong') refreshPhanCongList();
+    if (name === 'phan-cong') { refreshPhanCongList(); refreshPhanCongKhoaList(); }
     if (name === 'xuat-file') ExportView.show();
     if (name === 'dashboard') DashboardView.show();
     if (name === 'tra-cuu') TraCuuView.show();
@@ -355,7 +355,53 @@ const AppShell = (() => {
         <thead><tr><th>Nhân viên</th><th>Loại</th><th>Giá trị</th><th>Ngày giao</th><th>Thao tác</th></tr></thead>
         <tbody id="pc-list-body"></tbody>
       </table>
+
+      <h2>Phân công số lượng hồ sơ theo khoa/phòng</h2>
+      <form id="pck-form" class="phan-cong-form">
+        <label>Khoa/phòng
+          <select id="pck-khoa-phong"></select>
+        </label>
+        <label>Số lượng mục tiêu
+          <input type="number" id="pck-so-luong" min="0" step="1" required>
+        </label>
+        <label>Ghi chú
+          <input type="text" id="pck-ghi-chu" placeholder="tùy chọn">
+        </label>
+        <button type="submit">Giao chỉ tiêu</button>
+      </form>
+      <div id="pck-result"></div>
+      <table class="phan-cong-table">
+        <thead><tr><th>Khoa/phòng</th><th>Số lượng mục tiêu</th><th>Ngày giao</th><th>Ghi chú</th><th>Thao tác</th></tr></thead>
+        <tbody id="pck-list-body"></tbody>
+      </table>
     `;
+    Api.listKhoaPhong().then((all) => {
+      const sel = document.getElementById('pck-khoa-phong');
+      all.filter((k) => k.dang_hoat_dong).forEach((k) => {
+        const o = document.createElement('option'); o.value = k.id; o.textContent = k.ten;
+        sel.appendChild(o);
+      });
+    });
+    document.getElementById('pck-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const resultBox = document.getElementById('pck-result');
+      try {
+        await Api.phanCongKhoa({
+          khoa_phong_id: Number(document.getElementById('pck-khoa-phong').value),
+          so_luong_muc_tieu: Number(document.getElementById('pck-so-luong').value),
+          ghi_chu: document.getElementById('pck-ghi-chu').value.trim() || null,
+        });
+        resultBox.textContent = 'Đã giao chỉ tiêu.';
+        resultBox.className = 'ok';
+        document.getElementById('pck-so-luong').value = '';
+        document.getElementById('pck-ghi-chu').value = '';
+        refreshPhanCongKhoaList();
+      } catch (err) {
+        resultBox.textContent = err.message;
+        resultBox.className = 'error';
+      }
+    });
+    refreshPhanCongKhoaList();
     Api.listNguoiDung().then((users) => {
       pcRaSoatUsers = users.filter((u) => u.vai_tro === 'ra_soat');
       const sel = document.getElementById('pc-nguoi-dung');
@@ -423,6 +469,61 @@ const AppShell = (() => {
     tbody.querySelectorAll('.pc-del-btn').forEach((btn) => {
       btn.addEventListener('click', onPcDeleteClick);
     });
+  }
+
+  // ---------------- Phân công số lượng hồ sơ theo khoa/phòng (admin) ----------------
+  async function refreshPhanCongKhoaList() {
+    const rows = await Api.listPhanCongKhoa();
+    const tbody = document.getElementById('pck-list-body');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    rows.forEach((r) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${pcEsc(r.ten_khoa)}</td>
+        <td>${pcEsc(r.so_luong_muc_tieu)}</td>
+        <td>${pcEsc(r.ngay_giao)}</td>
+        <td>${pcEsc(r.ghi_chu || '')}</td>
+        <td>
+          <button type="button" class="pck-edit-btn" data-id="${r.id}">Sửa</button>
+          <button type="button" class="pck-del-btn" data-id="${r.id}">Xóa</button>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+    tbody.querySelectorAll('.pck-edit-btn').forEach((btn) => {
+      btn.addEventListener('click', () => onPckEditClick(btn.dataset.id, rows));
+    });
+    tbody.querySelectorAll('.pck-del-btn').forEach((btn) => {
+      btn.addEventListener('click', onPckDeleteClick);
+    });
+  }
+
+  async function onPckEditClick(id, rows) {
+    const r = rows.find((x) => String(x.id) === String(id));
+    if (!r) return;
+    const soLuongMoi = prompt(`Số lượng mục tiêu mới cho "${r.ten_khoa}":`, r.so_luong_muc_tieu);
+    if (soLuongMoi === null) return;
+    const so = Number(soLuongMoi);
+    if (!Number.isInteger(so) || so < 0) { alert('Số lượng mục tiêu phải là số nguyên >= 0'); return; }
+    const ghiChuMoi = prompt('Ghi chú:', r.ghi_chu || '');
+    if (ghiChuMoi === null) return;
+    try {
+      await Api.patchPhanCongKhoa(id, { so_luong_muc_tieu: so, ghi_chu: ghiChuMoi.trim() || null });
+      await refreshPhanCongKhoaList();
+    } catch (err) {
+      alert('Lỗi: ' + err.message);
+    }
+  }
+
+  async function onPckDeleteClick(e) {
+    const id = e.target.dataset.id;
+    if (!confirm(`Xóa phân công khoa/phòng #${id}?`)) return;
+    try {
+      await Api.deletePhanCongKhoa(id);
+      await refreshPhanCongKhoaList();
+    } catch (err) {
+      alert('Lỗi: ' + err.message);
+    }
   }
 
   // Đợt 9 criterion 4: "Sửa" — đổi nhân viên được giao qua dropdown; xác

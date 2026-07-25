@@ -4,6 +4,7 @@
 
 const NguoiDungView = (() => {
   let panel;
+  let khoaPhongList = [];
 
   function init(panelEl) {
     panel = panelEl;
@@ -22,7 +23,10 @@ const NguoiDungView = (() => {
   async function render() {
     let users = [];
     try {
-      users = await Api.listNguoiDung();
+      [users, khoaPhongList] = await Promise.all([
+        Api.listNguoiDung(),
+        Api.listKhoaPhong(),
+      ]);
     } catch (err) {
       panel.innerHTML = `<div class="xf-error">Lỗi tải danh sách người dùng: ${esc(err.message)}</div>`;
       return;
@@ -44,7 +48,7 @@ const NguoiDungView = (() => {
       <div id="nd-create-result"></div>
       <table class="nd-table">
         <thead><tr>
-          <th>Họ tên</th><th>Tên đăng nhập</th><th>Vai trò</th>
+          <th>Họ tên</th><th>Tên đăng nhập</th><th>Vai trò</th><th>Khoa/phòng</th>
           <th>Trạng thái</th><th>Thao tác</th>
         </tr></thead>
         <tbody id="nd-table-body"></tbody>
@@ -57,6 +61,15 @@ const NguoiDungView = (() => {
   function renderRows(users) {
     const tbody = document.getElementById('nd-table-body');
     tbody.innerHTML = '';
+    const khoaOptions = (selectedId) => {
+      const opts = ['<option value="">— Chưa gán —</option>'];
+      khoaPhongList
+        .filter((k) => k.dang_hoat_dong || k.id === selectedId)
+        .forEach((k) => {
+          opts.push(`<option value="${k.id}" ${k.id === selectedId ? 'selected' : ''}>${esc(k.ten)}</option>`);
+        });
+      return opts.join('');
+    };
     users.forEach((u) => {
       const tr = document.createElement('tr');
       const vaiTroNhan = u.vai_tro === 'admin' ? 'Quản trị' : 'Nhân viên rà soát';
@@ -65,9 +78,11 @@ const NguoiDungView = (() => {
         <td>${esc(u.ho_ten)}</td>
         <td>${esc(u.ten_dang_nhap)}</td>
         <td>${esc(vaiTroNhan)}</td>
+        <td><select class="nd-khoa-phong-select" data-id="${u.id}">${khoaOptions(u.khoa_phong_id)}</select></td>
         <td class="${u.dang_hoat_dong ? 'nd-active' : 'nd-inactive'}">${esc(trangThaiNhan)}</td>
         <td class="nd-actions"></td>
       `;
+      tr.querySelector('.nd-khoa-phong-select').addEventListener('change', (e) => suaKhoaPhong(u, e.target));
       const actions = tr.querySelector('.nd-actions');
 
       const btnSua = document.createElement('button');
@@ -138,6 +153,16 @@ const NguoiDungView = (() => {
       alert(`Mật khẩu mới của "${u.ho_ten}": ${res.mat_khau_moi}`);
     } catch (err) {
       alert(err.message);
+    }
+  }
+
+  async function suaKhoaPhong(u, selectEl) {
+    const gia_tri = selectEl.value;
+    try {
+      await Api.patchNguoiDung(u.id, { khoa_phong_id: gia_tri ? Number(gia_tri) : null });
+    } catch (err) {
+      alert(err.message);
+      await render();
     }
   }
 

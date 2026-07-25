@@ -4,6 +4,7 @@
 
 const CaiDatView = (() => {
   let panel;
+  let khoaPhongList = [];
 
   const FIELDS = [
     { key: 'chieu_cao', label: 'Chiều cao', unit: 'cm' },
@@ -31,6 +32,7 @@ const CaiDatView = (() => {
       tuDong = res.tu_dong || {};
       saoLuuGanNhat = res.sao_luu_gan_nhat;
       NguongCheck.setNguong(nguong);
+      khoaPhongList = await Api.listKhoaPhong();
     } catch (err) {
       panel.innerHTML = `<div class="xf-error">Lỗi tải cài đặt: ${esc(err.message)}</div>`;
       return;
@@ -111,11 +113,110 @@ const CaiDatView = (() => {
         <button type="button" id="cd-rasoat-apply" disabled>Áp dụng</button>
       </div>
       <div id="cd-rasoat-result"></div>
+
+      <h2>Danh mục khoa/phòng</h2>
+      <p class="cd-hint">Dùng để gán nhân viên và giao chỉ tiêu số lượng hồ sơ
+        theo khoa/phòng (màn Phân công). Không xóa cứng — chỉ vô hiệu hóa.</p>
+      <form id="cd-kp-create-form" class="cd-form">
+        <div class="cd-row">
+          <label>Tên khoa/phòng mới
+            <input type="text" id="cd-kp-ten-moi" placeholder="vd: Khám bệnh" required>
+          </label>
+          <button type="submit">Thêm khoa/phòng</button>
+        </div>
+      </form>
+      <div id="cd-kp-result"></div>
+      <table class="nd-table" id="cd-kp-table">
+        <thead><tr><th>Tên khoa/phòng</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+        <tbody id="cd-kp-table-body"></tbody>
+      </table>
     `;
     panel.querySelector('#cd-form').addEventListener('submit', onSubmit);
     panel.querySelector('#cd-tudong-form').addEventListener('submit', onSubmitTuDong);
     panel.querySelector('#cd-rasoat-preview').addEventListener('click', () => onRaSoat(false));
     panel.querySelector('#cd-rasoat-apply').addEventListener('click', () => onRaSoat(true));
+    panel.querySelector('#cd-kp-create-form').addEventListener('submit', onKhoaPhongCreate);
+    renderKhoaPhongRows();
+  }
+
+  // ---------------- Danh mục khoa/phòng (criterion 3) ----------------
+  function renderKhoaPhongRows() {
+    const tbody = panel.querySelector('#cd-kp-table-body');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    khoaPhongList.forEach((k) => {
+      const tr = document.createElement('tr');
+      const trangThaiNhan = k.dang_hoat_dong ? 'Đang hoạt động' : 'Đã vô hiệu hóa';
+      tr.innerHTML = `
+        <td>${esc(k.ten)}</td>
+        <td class="${k.dang_hoat_dong ? 'nd-active' : 'nd-inactive'}">${esc(trangThaiNhan)}</td>
+        <td class="nd-actions"></td>
+      `;
+      const actions = tr.querySelector('.nd-actions');
+
+      const btnSua = document.createElement('button');
+      btnSua.type = 'button';
+      btnSua.textContent = 'Sửa tên';
+      btnSua.addEventListener('click', () => onKhoaPhongSuaTen(k));
+      actions.appendChild(btnSua);
+
+      const btnToggle = document.createElement('button');
+      btnToggle.type = 'button';
+      btnToggle.textContent = k.dang_hoat_dong ? 'Vô hiệu hóa' : 'Kích hoạt';
+      btnToggle.addEventListener('click', () => onKhoaPhongToggle(k));
+      actions.appendChild(btnToggle);
+
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function onKhoaPhongCreate(e) {
+    e.preventDefault();
+    const resultBox = panel.querySelector('#cd-kp-result');
+    const input = panel.querySelector('#cd-kp-ten-moi');
+    const ten = input.value.trim();
+    if (!ten) return;
+    try {
+      await Api.createKhoaPhong({ ten });
+      input.value = '';
+      resultBox.textContent = 'Đã thêm khoa/phòng.';
+      resultBox.className = 'ok';
+      khoaPhongList = await Api.listKhoaPhong();
+      renderKhoaPhongRows();
+    } catch (err) {
+      resultBox.textContent = err.message;
+      resultBox.className = 'error';
+    }
+  }
+
+  async function onKhoaPhongSuaTen(k) {
+    const tenMoi = prompt('Tên khoa/phòng mới:', k.ten);
+    if (tenMoi === null) return;
+    const trimmed = tenMoi.trim();
+    if (!trimmed) { alert('Tên khoa/phòng không được để trống'); return; }
+    try {
+      await Api.patchKhoaPhong(k.id, { ten: trimmed });
+      khoaPhongList = await Api.listKhoaPhong();
+      renderKhoaPhongRows();
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  async function onKhoaPhongToggle(k) {
+    const target = k.dang_hoat_dong ? 0 : 1;
+    const msg = target
+      ? `Kích hoạt lại khoa/phòng "${k.ten}"?`
+      : `Vô hiệu hóa khoa/phòng "${k.ten}"? Khoa/phòng này sẽ không còn hiển thị `
+        + 'ở các dropdown chọn khoa/phòng đang hoạt động.';
+    if (!confirm(msg)) return;
+    try {
+      await Api.patchKhoaPhong(k.id, { dang_hoat_dong: target });
+      khoaPhongList = await Api.listKhoaPhong();
+      renderKhoaPhongRows();
+    } catch (err) {
+      alert(err.message);
+    }
   }
 
   function fmtRaSoat(kq) {
