@@ -197,11 +197,11 @@ def danh_muc(user=Depends(auth.get_current_user)):
     return out
 
 
-@router.get('/co-qc-thong-ke')
 _CO_QC_CACHE = {'t': 0.0, 'data': None}
 _CO_QC_TTL = 300  # giây — số cờ đổi chậm, cache 5' để không quét 13k dòng mỗi lần
 
 
+@router.get('/co-qc-thong-ke')
 def co_qc_thong_ke(user=Depends(auth.get_current_user)):
     """Đếm SỐ HỒ SƠ theo TỪNG mã cờ (toàn bộ dữ liệu) — dùng cho bộ lọc "Cờ
     cảnh báo". Query dùng 11 LIKE '%;X;%' KHÔNG index được -> quét toàn bảng
