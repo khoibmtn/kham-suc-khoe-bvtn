@@ -221,10 +221,17 @@ const DashboardView = (() => {
           <div class="dash-xa-pct">${r.ty_le}%</div>
         </div>`;
     }).join('');
+    // Đợt 14 (phản hồi anh Khôi): 2 cột tỷ lệ — "Tỷ lệ/Được giao" (trong số
+    // hồ sơ đã có người động vào, xong bao nhiêu — thường rất cao) khác hẳn
+    // "Tỷ lệ/Mục tiêu" (so với chỉ tiêu đã giao ở màn Phân công — sát với %
+    // tổng thể ở đầu trang Dashboard hơn). Không gộp làm 1 để tránh hiểu nhầm
+    // (số liệu 90% ở khoa nhưng tổng thể 41% KHÔNG mâu thuẫn, chỉ khác mẫu số).
     const tableRows = rows.map((r) => `
       <tr>
         <td>${esc(r.ten_khoa)}</td><td>${r.muc_tieu}</td><td>${r.duoc_giao}</td>
-        <td>${r.hoan_thanh}</td><td>${r.chua_hoan_thanh}</td><td>${r.ty_le}%</td>
+        <td>${r.hoan_thanh}</td><td>${r.chua_hoan_thanh}</td>
+        <td>${r.ty_le}%</td>
+        <td>${r.ty_le_muc_tieu == null ? '—' : r.ty_le_muc_tieu + '%'}</td>
       </tr>`).join('');
     return `
       <section class="dash-section">
@@ -234,10 +241,15 @@ const DashboardView = (() => {
           <span class="leg"><i class="sw seg-chua"></i>Chưa hoàn thành</span>
         </div>
         <div class="dash-xa-chart">${bars}</div>
+        <p class="dash-hint">Thanh trên tính trên số hồ sơ ĐÃ CÓ NGƯỜI ĐỘNG VÀO
+          (không phải toàn bộ khối lượng) — nên phần trăm thường cao hơn hẳn %
+          tổng thể ở đầu trang. Xem thêm cột <b>"Tỷ lệ / Mục tiêu"</b> bên dưới
+          để so với chỉ tiêu đã giao ở màn Phân công.</p>
         <table class="dash-table">
           <thead><tr><th>Khoa/phòng</th><th>Mục tiêu</th><th>Được giao</th>
-            <th>Hoàn thành</th><th>Chưa hoàn thành</th><th>Tỷ lệ</th></tr></thead>
-          <tbody>${tableRows || '<tr><td colspan="6">Chưa có khoa/phòng</td></tr>'}</tbody>
+            <th>Hoàn thành</th><th>Chưa hoàn thành</th>
+            <th>Tỷ lệ / Được giao</th><th>Tỷ lệ / Mục tiêu</th></tr></thead>
+          <tbody>${tableRows || '<tr><td colspan="7">Chưa có khoa/phòng</td></tr>'}</tbody>
         </table>
       </section>`;
   }

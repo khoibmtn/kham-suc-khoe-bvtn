@@ -213,7 +213,16 @@ def theo_khoa_phong(user=Depends(auth.get_current_user)):
             'duoc_giao': duoc_giao,
             'hoan_thanh': hoan_thanh,
             'chua_hoan_thanh': duoc_giao - hoan_thanh,
+            # Phản hồi anh Khôi: 2 cách đọc "% xong" KHÁC NHAU, dễ nhầm nếu chỉ
+            # có 1 số — 'ty_le' = trong số hồ sơ ĐÃ CÓ NGƯỜI ĐỘNG VÀO thì bao
+            # nhiêu % xong (thường rất cao, vì nhân viên hay làm xong cái đã
+            # bắt đầu); 'ty_le_muc_tieu' = so với CHỈ TIÊU đã giao ở màn Phân
+            # công (thường thấp hơn nhiều lúc đầu — phản ánh đúng khối lượng
+            # còn lại, gần với % tổng thể ở khối "Đã hoàn thành" trên đầu
+            # trang hơn). muc_tieu=0 (chưa giao chỉ tiêu) -> None (frontend
+            # hiện "—", không phải "0%" dễ hiểu nhầm là 0% tiến độ).
             'ty_le': round(hoan_thanh / duoc_giao * 100) if duoc_giao else 0,
+            'ty_le_muc_tieu': round(hoan_thanh / muc_tieu * 100) if muc_tieu else None,
         }
 
     out = [_row(k['id'], k['ten']) for k in khoa_rows]

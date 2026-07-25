@@ -462,6 +462,8 @@ details summary {
 .dash-card-mantinh { background: #fef2f2; }
 .dash-card-pct { font-size: 12px; color: #c0392b; font-weight: 600; margin-top: 2px; }
 
+.dash-hint { font-size: 12px; color: #64748b; margin: 4px 0 10px; }
+
 .dash-legend, .dash-flag-legend { display: flex; gap: 14px; font-size: 11px; margin-bottom: 8px; color: #475569; }
 .dash-legend .leg, .dash-flag-legend .leg { display: flex; align-items: center; gap: 4px; }
 .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
