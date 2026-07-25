@@ -94,6 +94,10 @@ async def lifespan(app_: FastAPI):
                 conn.close()
         except Exception:
             raise
+        # Sao lưu định kỳ theo phút (chỉnh ở trang Cài đặt) — luồng nền riêng,
+        # khác _sao_luu_hang_ngay() ở trên (1 bản/ngày lúc khởi động).
+        from services import auto_backup
+        auto_backup.start()
     yield
 
 

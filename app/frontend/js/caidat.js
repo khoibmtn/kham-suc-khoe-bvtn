@@ -24,19 +24,28 @@ const CaiDatView = (() => {
 
   async function show() {
     panel.innerHTML = '<div class="dash-loading">Đang tải cài đặt...</div>';
-    let nguong;
+    let nguong, tuDong, saoLuuGanNhat;
     try {
       const res = await Api.caiDatGet();
       nguong = res.nguong_sinh_hieu;
+      tuDong = res.tu_dong || {};
+      saoLuuGanNhat = res.sao_luu_gan_nhat;
       NguongCheck.setNguong(nguong);
     } catch (err) {
       panel.innerHTML = `<div class="xf-error">Lỗi tải cài đặt: ${esc(err.message)}</div>`;
       return;
     }
-    render(nguong);
+    render(nguong, tuDong, saoLuuGanNhat);
   }
 
-  function render(nguong) {
+  function fmtThoiGian(iso) {
+    if (!iso) return 'chưa có';
+    const d = new Date(iso);
+    if (isNaN(d)) return iso;
+    return d.toLocaleString('vi-VN');
+  }
+
+  function render(nguong, tuDong, saoLuuGanNhat) {
     panel.innerHTML = `
       <h2>Cài đặt — Ngưỡng sinh hiệu hợp lệ</h2>
       <p class="cd-hint">
@@ -57,8 +66,71 @@ const CaiDatView = (() => {
         <div id="cd-result"></div>
         <button type="submit">Lưu</button>
       </form>
+
+      <h2>Tự động hoá (máy chủ)</h2>
+      <p class="cd-hint">Áp dụng cho máy đang chạy server (không phải máy code).
+        Đổi số ở đây có hiệu lực trong vòng chưa tới 1 phút, không cần khởi động lại.</p>
+      <form id="cd-tudong-form" class="cd-form">
+        <div class="cd-row">
+          <div class="cd-row-label">Tự động sao lưu dữ liệu</div>
+          <label><input type="checkbox" id="cd-backup-bat" ${tuDong.backup_bat ? 'checked' : ''}> Bật</label>
+          <label>Mỗi (phút)
+            <input type="number" min="1" step="1" id="cd-backup-phut" value="${esc(tuDong.backup_phut)}" required>
+          </label>
+          <label>Giữ lại (số bản)
+            <input type="number" min="1" step="1" id="cd-backup-giu" value="${esc(tuDong.backup_giu_so_ban)}" required>
+          </label>
+        </div>
+        <p class="cd-hint">Lần sao lưu tự động gần nhất: <b>${esc(fmtThoiGian(saoLuuGanNhat))}</b>.
+          File lưu ở <code>app/data/backups/auto/</code>.</p>
+
+        <div class="cd-row">
+          <div class="cd-row-label">Tự động cập nhật code (kéo bản mới từ Git)</div>
+          <label><input type="checkbox" id="cd-capnhat-bat" ${tuDong.cap_nhat_bat ? 'checked' : ''}> Bật</label>
+          <label>Mỗi (phút)
+            <input type="number" min="1" step="1" id="cd-capnhat-phut" value="${esc(tuDong.cap_nhat_phut)}" required>
+          </label>
+        </div>
+        <p class="cd-hint">Cần chạy sẵn <code>app\\auto_update.bat</code> ở máy chủ Windows
+          (cửa sổ riêng) — số phút này chỉ điều khiển KHOẢNG CÁCH giữa các lần
+          kiểm tra của cửa sổ đó, không tự bật nếu chưa chạy.</p>
+
+        <div id="cd-tudong-result"></div>
+        <button type="submit">Lưu</button>
+      </form>
     `;
     panel.querySelector('#cd-form').addEventListener('submit', onSubmit);
+    panel.querySelector('#cd-tudong-form').addEventListener('submit', onSubmitTuDong);
+  }
+
+  async function onSubmitTuDong(e) {
+    e.preventDefault();
+    const resultBox = panel.querySelector('#cd-tudong-result');
+    resultBox.textContent = '';
+    resultBox.className = '';
+
+    const tu_dong = {
+      backup_bat: panel.querySelector('#cd-backup-bat').checked,
+      backup_phut: Number(panel.querySelector('#cd-backup-phut').value),
+      backup_giu_so_ban: Number(panel.querySelector('#cd-backup-giu').value),
+      cap_nhat_bat: panel.querySelector('#cd-capnhat-bat').checked,
+      cap_nhat_phut: Number(panel.querySelector('#cd-capnhat-phut').value),
+    };
+    for (const k of ['backup_phut', 'backup_giu_so_ban', 'cap_nhat_phut']) {
+      if (!Number.isInteger(tu_dong[k]) || tu_dong[k] < 1) {
+        resultBox.textContent = 'Các ô số phút / số bản phải là số nguyên >= 1';
+        resultBox.className = 'error';
+        return;
+      }
+    }
+    try {
+      await Api.caiDatPut({ tu_dong });
+      resultBox.textContent = 'Đã lưu cài đặt tự động hoá.';
+      resultBox.className = 'ok';
+    } catch (err) {
+      resultBox.textContent = err.message;
+      resultBox.className = 'error';
+    }
   }
 
   async function onSubmit(e) {

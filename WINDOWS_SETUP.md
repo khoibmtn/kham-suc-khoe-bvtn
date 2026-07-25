@@ -1,5 +1,11 @@
 # Chuyển server sang máy Windows (truy cập qua Internet)
 
+> ✅ **Đã chuyển xong (2026-07-25).** Server đang chạy trên PC Windows,
+> nhân viên đang dùng qua tunnel. Phần dưới đây giữ lại làm tài liệu tham
+> khảo (setup lại nếu đổi máy) + mục **H** (mới) là quy trình vận hành
+> hằng ngày kể từ khi đã chuyển — bao gồm **tự động cập nhật code** và
+> **tự động sao lưu dữ liệu**.
+
 Mô hình: **MacBook code → `git push` → máy Windows chạy `update.bat` (git pull) → restart**.
 Máy Windows là server chạy-liên-tục + giữ **DB sống** (`app/data/ksk.db`). Dữ liệu
 đi 1 lần qua copy file; code đi qua git. `git pull` KHÔNG bao giờ đè DB (đã `.gitignore`).
@@ -45,7 +51,7 @@ Chép `/tmp/ksk_migrate.db` sang Windows, đặt vào `app\data\ksk.db`
 
 > ⚠️ Chỉ chạy MỘT máy tại một thời điểm. Chạy 2 nơi cùng lúc = 2 DB tách nhau, lệch dữ liệu.
 
-## E. Vòng lặp hằng ngày (sau khi đã chuyển)
+## E. Vòng lặp hằng ngày (thủ công — bản thay thế: mục H, tự động)
 
 - **Trên Mac:** sửa code → `git push`.
 - **Trên Windows:** chạy `app\update.bat` (git pull + cài lại thư viện).
@@ -65,8 +71,39 @@ cloudflared tunnel route dns ksk ksk.<ten-mien-cua-ban>
 Tạo `config.yml`: `tunnel: ksk` + `ingress: - hostname: ksk.<ten-mien>  service: http://localhost:8000` + `- service: http_status:404`.
 Chạy: `cloudflared tunnel run ksk` → URL `https://ksk.<ten-mien>` cố định, sống qua mọi lần restart.
 
-## G. Sao lưu DB định kỳ (nên có)
+## G. Sao lưu DB thủ công (bổ sung, không bắt buộc nếu đã bật mục H)
 
-Thỉnh thoảng copy `app\data\ksk.db` sang ổ khác / USB, hoặc dùng
-`app\backend`... (đã có thư mục `app\data\backups\`). Dữ liệu bệnh nhân chỉ nằm ở
-máy Windows nên **phải backup** phòng hỏng ổ cứng.
+Thỉnh thoảng copy `app\data\ksk.db` sang ổ khác / USB (đề phòng hỏng CẢ Ổ
+ĐĨA — mục H chỉ backup vào ổ đĩa hiện tại, không thay thế cho việc này).
+
+## H. Tự động hoá (khuyến nghị — đã bật sẵn giá trị mặc định)
+
+Từ commit thêm `auto_update.bat` + trang **Cài đặt** (admin), có 2 cơ chế tự
+động chạy song song với `run.bat` + `tunnel.bat`:
+
+### H.1 Tự động cập nhật code khi Mac `git push`
+Mở **cửa sổ thứ 3** trên máy Windows, chạy:
+```
+app\auto_update.bat
+```
+Cứ mỗi N phút (mặc định 5, chỉnh ở app → **Cài đặt** → *Tự động cập nhật
+code*) nó tự `git pull`. Nếu commit mới chỉ đổi **giao diện** (JS/CSS/HTML) —
+không làm gì thêm, trình duyệt nhân viên tự tải lại trong ≤30s (cơ chế sẵn
+có). Nếu đổi **backend** (`app/backend/**`, `requirements.txt`) — tự đóng
+tiến trình server cũ (cổng 8000) và mở tiến trình mới trong 1 cửa sổ tên
+**"KSK Server"** (cửa sổ `run.bat` cũ lúc này có thể đóng tay, không còn
+phục vụ gì). Tắt cơ chế này (tạm dừng git pull tự động) bằng cách bỏ tick
+"Bật" ở mục *Tự động cập nhật code* trong Cài đặt, hoặc đóng cửa sổ
+`auto_update.bat`.
+
+### H.2 Tự động sao lưu dữ liệu định kỳ
+Chạy **NGAY TRONG tiến trình server** (`run.bat`/`auto_update.bat` khởi
+động server) — không cần cửa sổ riêng. Mặc định: mỗi **10 phút**, giữ
+**100 bản** gần nhất, lưu ở `app\data\backups\auto\ksk_YYYYMMDD_HHMMSS.db`.
+Chỉnh số phút / số bản giữ lại / bật-tắt ở app → **Cài đặt** → *Tự động sao
+lưu dữ liệu* — có hiệu lực trong vòng chưa tới 1 phút, **không cần khởi động
+lại server**. Trang Cài đặt cũng hiện "Lần sao lưu tự động gần nhất".
+
+> Cả 2 mục trên đọc cấu hình từ CÙNG 1 nơi (bảng `cai_dat` trong DB), nên
+> chỉnh 1 lần ở trang Cài đặt là áp dụng cho cả `auto_update.bat` (đọc lại
+> mỗi vòng lặp) lẫn luồng backup nền trong server (đọc lại mỗi 30 giây).
