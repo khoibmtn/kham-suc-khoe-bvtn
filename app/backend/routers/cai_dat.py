@@ -12,7 +12,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import db  # noqa: E402
 import auth  # noqa: E402
-from services import sinh_hieu_valid, auto_backup, batch_sinh_hieu  # noqa: E402
+from services import sinh_hieu_valid, auto_backup, batch_sinh_hieu, git_update  # noqa: E402
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -120,3 +120,12 @@ def ra_soat_sinh_hieu(apply: bool = Query(False), admin=Depends(auth.require_adm
         return batch_sinh_hieu.chay(conn, apply, admin['id'])
     finally:
         conn.close()
+
+
+@router.post('/admin/cap-nhat-ngay')
+def cap_nhat_ngay(admin=Depends(auth.require_admin)):
+    """Kéo bản mới từ Git NGAY (thay vì chờ vòng lặp auto_update.bat hoặc gõ
+    lệnh cmd trên máy chủ) — bấm từ trang Cài đặt. Nếu code backend đổi, tự
+    khởi động lại server (chỉ trên Windows — nơi server thật sự chạy);
+    khởi động lại làm GIÁN ĐOẠN tạm thời cho MỌI người dùng đang thao tác."""
+    return git_update.pull_now()

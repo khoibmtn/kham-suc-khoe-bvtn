@@ -101,6 +101,17 @@ const CaiDatView = (() => {
         <button type="submit">Lưu</button>
       </form>
 
+      <div class="cd-row">
+        <div class="cd-row-label">Kéo bản mới ngay (không chờ, không cần gõ lệnh)</div>
+        <button type="button" id="cd-capnhat-ngay">Cập nhật ngay</button>
+      </div>
+      <p class="cd-hint">Kiểm tra GitHub và kéo bản mới NGAY LẬP TỨC (không cần
+        chờ vòng lặp <code>auto_update.bat</code> hoặc mở CMD). Nếu code
+        <b>backend</b> đổi, server Windows tự khởi động lại (~5-10s) — ảnh
+        hưởng tạm thời tới MỌI người đang thao tác. Nếu chỉ đổi giao diện
+        (JS/CSS), trình duyệt tự tải lại, không cần khởi động lại gì.</p>
+      <div id="cd-capnhat-result"></div>
+
       <h2>Rà soát & tự động phân loại (toàn bộ hồ sơ)</h2>
       <p class="cd-hint">Chạy 1 lần: điền BMI/Phân loại thể lực còn TRỐNG (khi
         đã có chiều cao+cân nặng), nâng Tuần hoàn theo Mạch/Huyết áp, tự thêm
@@ -133,6 +144,7 @@ const CaiDatView = (() => {
     `;
     panel.querySelector('#cd-form').addEventListener('submit', onSubmit);
     panel.querySelector('#cd-tudong-form').addEventListener('submit', onSubmitTuDong);
+    panel.querySelector('#cd-capnhat-ngay').addEventListener('click', onCapNhatNgay);
     panel.querySelector('#cd-rasoat-preview').addEventListener('click', () => onRaSoat(false));
     panel.querySelector('#cd-rasoat-apply').addEventListener('click', () => onRaSoat(true));
     panel.querySelector('#cd-kp-create-form').addEventListener('submit', onKhoaPhongCreate);
@@ -287,6 +299,40 @@ const CaiDatView = (() => {
     } catch (err) {
       resultBox.textContent = err.message;
       resultBox.className = 'error';
+    }
+  }
+
+  async function onCapNhatNgay() {
+    const resultBox = panel.querySelector('#cd-capnhat-result');
+    const btn = panel.querySelector('#cd-capnhat-ngay');
+    btn.disabled = true;
+    resultBox.className = '';
+    resultBox.textContent = 'Đang kiểm tra GitHub...';
+    try {
+      const r = await Api.capNhatNgay();
+      if (!r.ok) {
+        resultBox.textContent = `Lỗi: ${r.loi}`;
+        resultBox.className = 'error';
+      } else if (r.da_moi_nhat) {
+        resultBox.textContent = `Đã là bản mới nhất (${r.head}).`;
+        resultBox.className = 'ok';
+      } else if (r.da_khoi_dong_lai) {
+        resultBox.innerHTML = `✅ Đã cập nhật ${r.head_cu} → ${r.head_moi} `
+          + `(${r.so_file_doi} file đổi). Code backend đổi — server đang `
+          + `<b>khởi động lại</b> (~5-10s), trang này sẽ mất kết nối tạm `
+          + `thời rồi phục hồi. Hãy tải lại trang sau ít phút.`;
+        resultBox.className = 'ok';
+      } else {
+        resultBox.innerHTML = `✅ Đã cập nhật ${r.head_cu} → ${r.head_moi} `
+          + `(${r.so_file_doi} file đổi) — chỉ giao diện, trình duyệt tự tải `
+          + `lại, không cần khởi động lại.` + (r.ghi_chu ? `<br>${r.ghi_chu}` : '');
+        resultBox.className = 'ok';
+      }
+    } catch (err) {
+      resultBox.textContent = err.message;
+      resultBox.className = 'error';
+    } finally {
+      btn.disabled = false;
     }
   }
 
