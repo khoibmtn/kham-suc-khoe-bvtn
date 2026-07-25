@@ -3,9 +3,11 @@ uvicorn[standard]
 openpyxl
 rapidfuzz
 python-multipart
-# Vercel serverless (Linux py3.12) — dùng khi biến môi trường TURSO_URL có
-# giá trị (backend/db.py). Marker `python_version >= "3.11"` để `pip
-# install -r requirements.txt` trên máy dev (Python 3.9, KHÔNG có wheel sẵn
-# cho gói này) TỰ BỎ QUA dòng này thay vì lỗi cài đặt — run.sh vẫn bootstrap
-# .venv được bình thường, local dev không đổi gì.
-libsql-experimental; python_version >= "3.11"
+# KHÔNG liệt kê libsql-experimental ở đây: chạy local (Mac/Windows) luôn dùng
+# sqlite3 thẳng, backend/db.py chỉ `import libsql_experimental` TRỄ (bên
+# trong nhánh serverless, khi có env TURSO_URL) nên máy local không cần gói
+# này. Gói chỉ có sẵn dạng wheel cho Linux (Vercel) — trên Windows nó cố build
+# từ mã nguồn (cần Rust) và làm GÃY TOÀN BỘ `pip install -r requirements.txt`
+# giữa chừng (từng xảy ra thật: openpyxl/uvicorn không được cài theo). File
+# `requirements.txt` ở GỐC repo (Vercel dùng) vẫn giữ dòng libsql-experimental
+# riêng, không đụng tới file này.

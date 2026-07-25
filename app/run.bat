@@ -10,8 +10,24 @@ cd /d "%~dp0"
 if not exist ".venv" (
   echo Tao virtualenv...
   python -m venv .venv
+)
+
+REM Kiem tra thu vien da du chua (khong chi kiem tra .venv co ton tai) -
+REM neu lan truoc cai DO DANG (vd loi build 1 goi lam gay ca lenh pip
+REM install giua chung) thi tu cai lai o day, khong bi ket mai.
+.venv\Scripts\python -c "import fastapi, uvicorn, openpyxl, rapidfuzz" 2>nul
+if errorlevel 1 (
+  echo Thu vien chua du - dang cai dat...
   call .venv\Scripts\python -m pip install --upgrade pip
   call .venv\Scripts\pip install -r requirements.txt
+  .venv\Scripts\python -c "import fastapi, uvicorn, openpyxl, rapidfuzz" 2>nul
+  if errorlevel 1 (
+    echo.
+    echo [!] Cai thu vien that bai. Xem loi phia tren ^(thuong do thieu mang,
+    echo     hoac 1 goi khong co san cho may nay^). Sua roi chay lai run.bat.
+    pause
+    exit /b 1
+  )
 )
 
 REM Chi nap du lieu khi CHUA co DB. Tren may nay DB duoc CHEP sang san,
