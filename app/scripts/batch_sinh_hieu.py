@@ -38,6 +38,8 @@ def main(apply):
     print(f"  Thêm bệnh chính       : {kq['them_benh_chinh']}  {kq['them_benh_chinh_theo_ma']}")
     print(f"  Gỡ cờ CO_PHAN_LOAI    : {kq['go_co']}")
     print(f"  Nâng Sức khỏe chung   : {kq['nang_suc_khoe_chung']}")
+    print(f"  Thêm cờ Vi phạm QĐ1613: {kq['them_co_vi_pham']}")
+    print(f"  Gỡ cờ Vi phạm QĐ1613  : {kq['go_co_vi_pham']}")
 
 
 if __name__ == '__main__':

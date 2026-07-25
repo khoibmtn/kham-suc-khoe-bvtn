@@ -229,7 +229,9 @@ const CaiDatView = (() => {
       + `R00.0: ${kq.them_benh_chinh_theo_ma['R00.0']}, `
       + `R00.1: ${kq.them_benh_chinh_theo_ma['R00.1']})<br>`
       + `Gỡ cờ "Có phân loại nhưng không có chẩn đoán": <b>${kq.go_co}</b><br>`
-      + `Nâng Phân loại sức khỏe chung: <b>${kq.nang_suc_khoe_chung}</b>`;
+      + `Nâng Phân loại sức khỏe chung: <b>${kq.nang_suc_khoe_chung}</b><br>`
+      + `Thêm cờ "Vi phạm bất biến QĐ1613" (quét TOÀN BỘ hồ sơ): <b>${kq.them_co_vi_pham}</b><br>`
+      + `Gỡ cờ "Vi phạm bất biến QĐ1613" (đã hết vi phạm): <b>${kq.go_co_vi_pham}</b>`;
   }
 
   async function onRaSoat(apply) {

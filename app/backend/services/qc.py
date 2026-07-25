@@ -94,6 +94,18 @@ FLAG_META = {
         'ten': 'Thiếu sinh hiệu',
         'y_nghia': 'Chiều cao/cân nặng/mạch/HA/thị lực/thính lực chưa có.',
     },
+    # Phản hồi anh Khôi: banner "Vi phạm bất biến QĐ1613" (check_invariant())
+    # trước đây CHỈ tính động lúc hiển thị, KHÔNG lưu thành cờ trong co_qc ->
+    # không xuất hiện trong dải chip cảnh báo, không lọc/thống kê được như
+    # các cờ khác. Giờ đồng bộ thành cờ thật qua sync_vi_pham_flag() (gọi ở
+    # mọi endpoint ghi có tính check_invariant() trên trạng thái CUỐI CÙNG).
+    'VI_PHAM_BAT_BIEN_QD1613': {
+        'muc': 'do',
+        'ten': 'Vi phạm bất biến QĐ1613',
+        'y_nghia': 'Phân loại sức khỏe chung khác mức nặng nhất trong các '
+                    'cơ quan/thể lực. Bấm "Lấy theo mức nặng nhất" hoặc sửa '
+                    'lại phân loại cho khớp.',
+    },
 }
 RED_FLAGS = {k for k, v in FLAG_META.items() if v['muc'] == 'do'}
 
@@ -235,3 +247,24 @@ def check_invariant(row):
                             if best_code else None,
         'gia_tri_max': best_val,
     }
+
+
+def sync_vi_pham_flag(conn, ma_ho_so, inv):
+    """Đồng bộ cờ VI_PHAM_BAT_BIEN_QD1613 theo kết quả check_invariant() MỚI
+    NHẤT của hồ sơ (trạng thái ĐÃ ghi xong, không phải trạng thái giả định) —
+    add nếu inv['vi_pham']=True mà chưa có cờ, remove nếu False mà đang có.
+    Gọi ở CUỐI mọi endpoint có ghi dữ liệu ảnh hưởng phan_loai_sk/*_pl (PATCH
+    hồ sơ, thêm/sửa/đặt bệnh chính, batch rà soát). KHÔNG tự commit — caller
+    tự commit theo transaction của mình. Trả True nếu có đổi, False nếu không."""
+    row = conn.execute('SELECT co_qc FROM ho_so WHERE ma_ho_so=?',
+                        (ma_ho_so,)).fetchone()
+    if not row:
+        return False
+    dang_co = 'VI_PHAM_BAT_BIEN_QD1613' in flags_of(row['co_qc'])
+    if inv['vi_pham'] and not dang_co:
+        add_flag(conn, ma_ho_so, 'VI_PHAM_BAT_BIEN_QD1613')
+        return True
+    if not inv['vi_pham'] and dang_co:
+        remove_flags(conn, ma_ho_so, ['VI_PHAM_BAT_BIEN_QD1613'])
+        return True
+    return False

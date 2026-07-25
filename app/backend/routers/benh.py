@@ -149,9 +149,15 @@ def add_benh(ma_ho_so: str, body: BenhBody, user=Depends(auth.get_current_user))
                  new_co_qc or '')
 
         conn.commit()
-        row = conn.execute('SELECT * FROM benh WHERE id=?', (new_id,)).fetchone()
         hs2 = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?',
                            (ma_ho_so,)).fetchone()
+        # Đồng bộ cờ VI_PHAM_BAT_BIEN_QD1613 (chip cảnh báo) — bắt kịp mọi
+        # thao tác ghi lên hồ sơ, không chỉ lúc phan_loai_sk thực sự đổi.
+        if hs2 and qc.sync_vi_pham_flag(conn, ma_ho_so, qc.check_invariant(hs2)):
+            conn.commit()
+            hs2 = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?',
+                               (ma_ho_so,)).fetchone()
+        row = conn.execute('SELECT * FROM benh WHERE id=?', (new_id,)).fetchone()
     finally:
         conn.close()
     # Trả dòng bệnh + meta cờ/kết luận hiện tại của hồ sơ (để frontend cập
@@ -213,6 +219,12 @@ def patch_benh(ma_ho_so: str, benh_id: int, body: BenhBody,
                          (co_quan_benh_chinh_moi, ma_ho_so))
             _log(conn, ma_ho_so, user['id'], 'co_quan_benh_chinh',
                  old['co_quan'], co_quan_benh_chinh_moi)
+            conn.commit()
+
+        # Đồng bộ cờ VI_PHAM_BAT_BIEN_QD1613 — bắt kịp mọi thao tác ghi.
+        hs_now = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?',
+                              (ma_ho_so,)).fetchone()
+        if hs_now and qc.sync_vi_pham_flag(conn, ma_ho_so, qc.check_invariant(hs_now)):
             conn.commit()
 
         row = conn.execute('SELECT * FROM benh WHERE id=?', (benh_id,)).fetchone()
@@ -283,11 +295,17 @@ def set_benh_chinh(ma_ho_so: str, body: SetBenhChinhBody,
 
         new_row = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?',
                                 (ma_ho_so,)).fetchone()
+        # Đồng bộ cờ VI_PHAM_BAT_BIEN_QD1613 — bắt kịp mọi thao tác ghi.
+        if qc.sync_vi_pham_flag(conn, ma_ho_so, qc.check_invariant(new_row)):
+            conn.commit()
+            new_row = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?',
+                                   (ma_ho_so,)).fetchone()
     finally:
         conn.close()
     return {'ok': True, 'ma_benh_chinh': new_row['ma_benh_chinh'],
             'ket_luan_benh': new_row['ket_luan_benh'],
             'co_quan_benh_chinh': new_row['co_quan_benh_chinh'],
+            'co_qc': qc.flags_of(new_row['co_qc']), 'so_loi': new_row['so_loi'],
             'qd1613': qc.check_invariant(new_row)}
 
 
@@ -305,6 +323,13 @@ def tu_chan_doan_sinh_ton(ma_ho_so: str, user=Depends(auth.get_current_user)):
             'stt_benh', (ma_ho_so,)).fetchall()
         hs = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?',
                           (ma_ho_so,)).fetchone()
+        # Đồng bộ cờ VI_PHAM_BAT_BIEN_QD1613 — dùng chung cho cả 3 điểm
+        # return của endpoint này (chưa có bệnh chính/không cần thêm/đã
+        # thêm xong), bắt kịp mọi lần gọi kể cả khi added=[].
+        if qc.sync_vi_pham_flag(conn, ma_ho_so, qc.check_invariant(hs)):
+            conn.commit()
+            hs = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?',
+                              (ma_ho_so,)).fetchone()
         return {
             'added': added,
             'benh': [dict(r) for r in rows],

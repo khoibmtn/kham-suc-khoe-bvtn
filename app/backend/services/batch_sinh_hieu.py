@@ -266,10 +266,40 @@ def chay(conn, apply, nguoi_dung_id):
     if apply:
         conn.commit()
 
+    # 4) Đồng bộ cờ VI_PHAM_BAT_BIEN_QD1613 trên TOÀN BỘ hồ sơ (không chỉ tập
+    # `rows` ở trên — mismatch cơ quan/phân loại có thể xảy ra ở hồ sơ CHƯA
+    # có sinh hiệu, vd chỉ khám mục D "Khám theo cơ quan", nên phải quét
+    # riêng toàn bảng). Chỉ SELECT cột cần dùng cho check_invariant() +
+    # co_qc/so_loi, tránh SELECT * cho 13000+ dòng.
+    cot_pl = ', '.join(col for _, col in qc.ORGAN_PL_FIELDS)
+    n_vipham_them = n_vipham_go = 0
+    done2 = 0
+    for r in conn.execute(
+            f'SELECT ma_ho_so, co_qc, so_loi, phan_loai_sk, {cot_pl} FROM ho_so'):
+        if apply and done2 and done2 % 500 == 0:
+            conn.commit()
+        done2 += 1
+        inv = qc.check_invariant(r)
+        dang_co = 'VI_PHAM_BAT_BIEN_QD1613' in qc.flags_of(r['co_qc'])
+        if inv['vi_pham'] and not dang_co:
+            if apply:
+                new_qc = qc.add_flag(conn, r['ma_ho_so'], 'VI_PHAM_BAT_BIEN_QD1613')
+                log(r['ma_ho_so'], 'co_qc', r['co_qc'] or '', new_qc or '')
+            n_vipham_them += 1
+        elif (not inv['vi_pham']) and dang_co:
+            if apply:
+                new_qc = qc.remove_flags(conn, r['ma_ho_so'], ['VI_PHAM_BAT_BIEN_QD1613'])
+                log(r['ma_ho_so'], 'co_qc', r['co_qc'] or '', new_qc or '')
+            n_vipham_go += 1
+
+    if apply:
+        conn.commit()
+
     return {
         'apply': apply, 'tong_quet': len(rows),
         'dien_bmi': n_bmi, 'dien_pl_the_luc': n_plth,
         'nang_tuan_hoan': n_th,
         'them_benh_chinh': n_dx, 'them_benh_chinh_theo_ma': dx_dem,
         'go_co': n_flag, 'nang_suc_khoe_chung': n_sk,
+        'them_co_vi_pham': n_vipham_them, 'go_co_vi_pham': n_vipham_go,
     }

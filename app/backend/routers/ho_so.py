@@ -606,9 +606,9 @@ def patch_ho_so(ma_ho_so: str, body: PatchBody,
         # nguyên tắc scripts/batch_sinh_hieu.py). Bỏ qua khi CHÍNH request
         # này đã tự tay đổi phan_loai_sk (tôn trọng lựa chọn thủ công ngay
         # trong cùng 1 lần lưu, không tự ghi đè lên nó).
+        row_now = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?',
+                               (ma_ho_so,)).fetchone()
         if 'phan_loai_sk' not in changes:
-            row_now = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?',
-                                   (ma_ho_so,)).fetchone()
             inv_now = qc.check_invariant(row_now)
             gmax = inv_now['gia_tri_max']
             pl_hien_tai = row_now['phan_loai_sk']
@@ -623,6 +623,14 @@ def patch_ho_so(ma_ho_so: str, body: PatchBody,
                      '' if pl_hien_tai is None else str(pl_hien_tai), str(gmax)))
                 conn.commit()
                 updated['phan_loai_sk'] = gmax
+                row_now = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?',
+                                       (ma_ho_so,)).fetchone()
+
+        # Đồng bộ cờ VI_PHAM_BAT_BIEN_QD1613 (chip cảnh báo) theo trạng thái
+        # CUỐI CÙNG — trước đây banner "vi phạm bất biến" chỉ tính động lúc
+        # hiển thị, không lưu thành cờ nên không xuất hiện trong dải chip.
+        if qc.sync_vi_pham_flag(conn, ma_ho_so, qc.check_invariant(row_now)):
+            conn.commit()
 
         new_row = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?',
                                 (ma_ho_so,)).fetchone()
