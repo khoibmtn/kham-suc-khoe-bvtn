@@ -472,3 +472,44 @@ const AppShell = (() => {
 })();
 
 document.addEventListener('DOMContentLoaded', () => AppShell.boot());
+
+// ---- Tự tải lại khi có bản mới (ép mọi máy đang mở dùng bản mới) ----------
+// Poll /api/app-version mỗi 30s. Lần đầu ghi nhớ phiên bản; khi phiên bản đổi
+// (deploy/sửa frontend, hoặc admin `touch` 1 file để ép) -> hiện lớp phủ +
+// tự location.reload() sau 5s (đủ để autosave field đang gõ kịp ghi). Dùng
+// fetch thẳng, KHÔNG đi qua Api (tránh kích hoạt luồng 401 -> đăng xuất).
+(() => {
+  let known = null;
+  let reloading = false;
+  async function check() {
+    if (reloading) return;
+    try {
+      const r = await fetch('/api/app-version', { cache: 'no-store' });
+      if (!r.ok) return;
+      const { version } = await r.json();
+      if (known === null) { known = version; return; }
+      if (version !== known) triggerReload();
+    } catch (e) { /* mất mạng tạm thời: bỏ qua, lần sau thử lại */ }
+  }
+  function triggerReload() {
+    reloading = true;
+    let ov = document.getElementById('app-update-overlay');
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.id = 'app-update-overlay';
+      ov.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;'
+        + 'align-items:center;justify-content:center;background:rgba(15,23,42,.72);'
+        + 'color:#fff;font-size:18px;text-align:center;padding:24px';
+      ov.innerHTML = '<div>🔄 Đã có bản cập nhật mới.<br>Trang sẽ tự tải lại '
+        + 'trong giây lát…<br><br><button id="app-update-now" style="font-size:'
+        + '16px;padding:8px 18px;border-radius:8px;border:0;cursor:pointer">'
+        + 'Tải lại ngay</button></div>';
+      document.body.appendChild(ov);
+      document.getElementById('app-update-now')
+        .addEventListener('click', () => location.reload());
+    }
+    setTimeout(() => location.reload(), 5000);
+  }
+  check();
+  setInterval(check, 30000);
+})();

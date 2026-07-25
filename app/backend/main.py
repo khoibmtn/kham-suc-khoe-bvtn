@@ -145,6 +145,33 @@ app.include_router(sinh_hieu.router)
 app.include_router(cai_dat.router)
 
 
+_APP_VER_CACHE = {'val': None, 'at': 0.0}
+
+
+@app.get('/api/app-version')
+def app_version():
+    """Phiên bản frontend = mtime MỚI NHẤT của mọi file tĩnh (.js/.css/.html).
+    Client poll endpoint này; khi số đổi (do deploy/sửa frontend) thì tự tải
+    lại trang -> ép mọi máy đang mở dùng bản mới mà không cần bấm tay. Cache
+    10s để không quét thư mục mỗi request."""
+    import time
+    now = time.time()
+    if _APP_VER_CACHE['val'] is not None and now - _APP_VER_CACHE['at'] < 10:
+        return {'version': _APP_VER_CACHE['val']}
+    latest = 0.0
+    for root, _dirs, files in os.walk(config.FRONTEND_DIR):
+        for f in files:
+            if f.endswith(('.js', '.css', '.html')):
+                try:
+                    latest = max(latest, os.path.getmtime(os.path.join(root, f)))
+                except OSError:
+                    pass
+    ver = int(latest)
+    _APP_VER_CACHE['val'] = ver
+    _APP_VER_CACHE['at'] = now
+    return {'version': ver}
+
+
 @app.get('/api/health')
 def health():
     conn = db.get_connection()
