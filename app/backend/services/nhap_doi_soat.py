@@ -53,25 +53,59 @@ def _recompute_bmi(cao, can):
     return None
 
 
-def _read_sheet(file_bytes):
+class CanChonSheet(Exception):
+    """Ném khi file có NHIỀU sheet mà chưa chỉ định `sheet` — trước đây
+    code tự đoán ('Trên 18' nếu có, không thì lấy sheet ĐẦU TIÊN) — SAI LẦM
+    thật đã xảy ra (phản hồi anh Khôi): sheet đầu tiên có thể là 1 sheet
+    khác hẳn (bản nháp/tham chiếu cũ...) khiến đối soát đọc nhầm dữ liệu,
+    ví dụ đè "Ngày sinh" thật thành 01/01 ước lượng — người dùng KHÔNG hề
+    biết mình đang đối soát nhầm sheet. Giờ BẮT BUỘC hỏi khi có ≥2 sheet."""
+    def __init__(self, sheet_names):
+        self.sheet_names = sheet_names
+        super().__init__('File có nhiều sheet — cần chọn sheet để đối soát.')
+
+
+def _sheet_names(file_bytes):
+    import openpyxl
+    wb = openpyxl.load_workbook(io.BytesIO(file_bytes), read_only=True)
+    names = list(wb.sheetnames)
+    wb.close()
+    return names
+
+
+def _read_sheet(file_bytes, sheet=None):
     import openpyxl
     wb = openpyxl.load_workbook(io.BytesIO(file_bytes), read_only=True,
                                 data_only=True)
-    ws = wb['Trên 18'] if 'Trên 18' in wb.sheetnames else wb[wb.sheetnames[0]]
+    names = wb.sheetnames
+    if sheet:
+        if sheet not in names:
+            wb.close()
+            raise ValueError(f'Không tìm thấy sheet "{sheet}" trong file.')
+        ws = wb[sheet]
+    elif len(names) == 1:
+        ws = wb[names[0]]
+    else:
+        wb.close()
+        raise CanChonSheet(names)
     rows = [list(r) for r in ws.iter_rows(values_only=True)]
     wb.close()
     return rows
 
 
 def doi_soat(conn, file_bytes, apply=False, cho_ghi_de=False, user_id=None,
-             cot_chon=None):
-    """cot_chon: None/rỗng -> dùng TẤT CẢ cột phát hiện được (hành vi cũ,
+             cot_chon=None, sheet=None):
+    """sheet: tên sheet cần đối soát — BẮT BUỘC chỉ định nếu file có ≥2
+    sheet (ném CanChonSheet kèm danh sách tên nếu chưa chỉ định, để caller
+    hỏi user rồi gọi lại). File chỉ 1 sheet thì tự dùng, không cần hỏi.
+
+    cot_chon: None/rỗng -> dùng TẤT CẢ cột phát hiện được (hành vi cũ,
     tương thích ngược); tập hợp tên field (chữ thường, khớp schema.sql) ->
     CHỈ đối soát/ghi những cột đó — các cột khác coi như KHÔNG có trong file
     (bỏ qua hoàn toàn, kể cả nếu có giá trị). Trả kèm 'cot_phat_hien' (TOÀN
     BỘ cột hợp lệ tìm thấy trong file, không phụ thuộc cot_chon) để frontend
     liệt kê + hỏi user chọn trước khi đối soát/ghi (phản hồi anh Khôi)."""
-    rows = _read_sheet(file_bytes)
+    rows = _read_sheet(file_bytes, sheet=sheet)
     if len(rows) < 4:
         raise ValueError('File không đúng định dạng (cần 3 dòng tiêu đề + dữ liệu).')
 

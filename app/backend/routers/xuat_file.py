@@ -14,7 +14,7 @@ from typing import List, Optional
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import db  # noqa: E402
 import auth  # noqa: E402
-from services import export_xlsm, nhap_doi_soat  # noqa: E402
+from services import export_xlsm, nhap_doi_soat, auto_backup  # noqa: E402
 
 from urllib.parse import quote
 
@@ -120,13 +120,18 @@ async def nhap_doi_soat_ep(file: UploadFile = File(...),
                            ap_dung: bool = Form(False),
                            cho_ghi_de: bool = Form(False),
                            cot: str = Form(''),
+                           sheet: str = Form(''),
                            admin=Depends(auth.require_admin)):
     """Nhập lại file .xlsx đã chỉnh sửa, đối soát với DB. ap_dung=False -> chỉ
     XEM TRƯỚC (không ghi). ap_dung=True -> ghi (bổ sung luôn; ghi đè chỉ khi
     cho_ghi_de=True). `cot`: danh sách tên cột (field, chữ thường) cách nhau
-    dấu phẩy — CHỈ đối soát/ghi các cột này (do user chọn ở bước xem trước);
-    rỗng = dùng TẤT CẢ cột phát hiện được trong file (mặc định, tương thích
-    ngược). Trả tóm tắt + cot_phat_hien + mẫu chi tiết thay đổi."""
+    dấu phẩy — CHỈ đối soát/ghi các cột này; rỗng = tất cả cột phát hiện
+    được. `sheet`: tên sheet cần đối soát — BẮT BUỘC nếu file có ≥2 sheet
+    (phản hồi anh Khôi: trước đây tự đoán sheet, có thể đọc NHẦM sheet dẫn
+    tới đối soát sai — vd ghi đè Ngày sinh thật thành 01/01 ước lượng).
+    Chưa chỉ định mà file nhiều sheet -> trả 409 kèm danh sách sheet, để
+    frontend hỏi user chọn rồi gọi lại. Trả tóm tắt + cot_phat_hien + mẫu
+    chi tiết thay đổi."""
     content = await file.read()
     cot_chon = {c.strip() for c in cot.split(',') if c.strip()} if cot else None
     conn = db.get_connection()
@@ -134,7 +139,13 @@ async def nhap_doi_soat_ep(file: UploadFile = File(...),
         try:
             result = nhap_doi_soat.doi_soat(
                 conn, content, apply=ap_dung, cho_ghi_de=cho_ghi_de,
-                user_id=admin['id'], cot_chon=cot_chon)
+                user_id=admin['id'], cot_chon=cot_chon, sheet=(sheet or None))
+        except nhap_doi_soat.CanChonSheet as e:
+            raise HTTPException(409, detail={
+                'ly_do': 'can_chon_sheet',
+                'sheet_list': e.sheet_names,
+                'thong_bao': 'File có nhiều sheet — hãy chọn sheet cần đối soát.',
+            })
         except ValueError as e:
             raise HTTPException(400, str(e))
     finally:
@@ -187,3 +198,36 @@ def download(path: str = Query(...), admin=Depends(auth.require_admin)):
     if not os.path.isfile(real):
         raise HTTPException(404, 'Không tìm thấy file')
     return FileResponse(real, filename=os.path.basename(real))
+
+
+# ---- Đợt 16 (phản hồi anh Khôi): backup thủ công + liệt kê + khôi phục ----
+@router.get('/backup/danh-sach')
+def backup_danh_sach(admin=Depends(auth.require_admin)):
+    """Liệt kê mọi bản sao lưu local (tự động + thủ công + hằng ngày...),
+    mới nhất trước."""
+    return auto_backup.list_backups()
+
+
+@router.post('/backup/tao-thu-cong')
+def backup_tao_thu_cong(admin=Depends(auth.require_admin)):
+    """Sao lưu NGAY LẬP TỨC theo yêu cầu tay — lưu riêng thư mục 'manual'
+    (không bị dọn bớt theo số lượng như bản tự động)."""
+    duong_dan = auto_backup.backup_now(sub='manual')
+    return {'duong_dan': os.path.relpath(duong_dan, export_xlsm.EXPORTS_DIR + '/../backups')
+                          if False else os.path.basename(duong_dan)}
+
+
+class KhoiPhucBody(BaseModel):
+    duong_dan: str
+
+
+@router.post('/backup/khoi-phuc')
+def backup_khoi_phuc(body: KhoiPhucBody, admin=Depends(auth.require_admin)):
+    """Khôi phục DB sống từ 1 bản backup đã liệt kê — GHI ĐÈ dữ liệu hiện
+    tại của TOÀN BỘ hệ thống (ảnh hưởng mọi người dùng). Luôn tự tạo 1 bản
+    an toàn của DB hiện tại trước khi ghi đè (thư mục before_restore/)."""
+    try:
+        safety = auto_backup.restore_backup(body.duong_dan)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {'ok': True, 'ban_an_toan_truoc_khoi_phuc': os.path.basename(safety)}

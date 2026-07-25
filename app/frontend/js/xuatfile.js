@@ -283,10 +283,42 @@ const ExportView = (() => {
     box.innerHTML = '<div class="xf-hint">Đang đọc file & đối soát ...</div>';
     try {
       const r = await Api.nhapDoiSoat(file, false, false);
-      renderDoiSoat(r, file, null);
+      renderDoiSoat(r, file, null, null);
     } catch (err) {
+      // Đợt 16 (phản hồi anh Khôi): file có ≥2 sheet -> server KHÔNG tự
+      // đoán nữa (trước đây đoán nhầm sheet gây đối soát sai, vd ghi đè
+      // Ngày sinh thật thành 01/01 ước lượng) — bắt buộc hỏi user chọn.
+      if (err.status === 409 && err.data && err.data.detail && err.data.detail.sheet_list) {
+        renderChonSheet(err.data.detail.sheet_list, file, box);
+        return;
+      }
       box.innerHTML = `<div class="xf-error">${esc(err.message)}</div>`;
     }
+  }
+
+  function renderChonSheet(sheetList, file, box) {
+    box.innerHTML = `
+      <div class="xf-ds-warn">⚠ File có ${sheetList.length} sheet — chọn đúng sheet chứa
+        dữ liệu cần đối soát (chọn nhầm có thể đối soát nhầm dữ liệu):</div>
+      <div class="xf-ds-cot">
+        ${sheetList.map((s, i) => `
+          <label class="xf-ds-cot-item" style="display:block;margin-bottom:4px">
+            <input type="radio" name="xf-ds-sheet" value="${esc(s)}" ${i === 0 ? 'checked' : ''}> ${esc(s)}
+          </label>`).join('')}
+      </div>
+      <button type="button" id="xf-ds-sheet-continue">Tiếp tục</button>
+    `;
+    panel.querySelector('#xf-ds-sheet-continue').addEventListener('click', async () => {
+      const chosen = panel.querySelector('input[name="xf-ds-sheet"]:checked');
+      if (!chosen) return;
+      box.innerHTML = '<div class="xf-hint">Đang đọc file & đối soát ...</div>';
+      try {
+        const r = await Api.nhapDoiSoat(file, false, false, null, chosen.value);
+        renderDoiSoat(r, file, null, chosen.value);
+      } catch (err) {
+        box.innerHTML = `<div class="xf-error">${esc(err.message)}</div>`;
+      }
+    });
   }
 
   // Đợt 16 (phản hồi anh Khôi): liệt kê CỘT PHÁT HIỆN ĐƯỢC trong file, cho
@@ -296,7 +328,7 @@ const ExportView = (() => {
   // client) để tổng số bổ sung/ghi đè luôn chính xác cho MỌI dòng, không chỉ
   // 100 dòng mẫu hiển thị. `selected`: Set tên field đang chọn, null = lần
   // đầu (chưa ai bấm gì) -> dùng nguyên r.cot_phat_hien (tất cả).
-  function renderDoiSoat(r, file, selected) {
+  function renderDoiSoat(r, file, selected, sheetChon) {
     const box = panel.querySelector('#xf-ds-result');
     const cotList = r.cot_phat_hien || [];
     if (!selected) selected = new Set(cotList.map((c) => c.field));
@@ -349,7 +381,7 @@ const ExportView = (() => {
     `;
     if (coThayDoi) {
       panel.querySelector('#xf-ds-apply-btn').addEventListener('click',
-        () => doDoiSoatApply(file, layCotDangChon()));
+        () => doDoiSoatApply(file, layCotDangChon(), sheetChon));
     }
 
     function layCotDangChon() {
@@ -359,8 +391,8 @@ const ExportView = (() => {
       const cotMoi = new Set(layCotDangChon());
       box.innerHTML = '<div class="xf-hint">Đang đối soát lại theo cột đã chọn ...</div>';
       try {
-        const r2 = await Api.nhapDoiSoat(file, false, false, Array.from(cotMoi));
-        renderDoiSoat(r2, file, cotMoi);
+        const r2 = await Api.nhapDoiSoat(file, false, false, Array.from(cotMoi), sheetChon);
+        renderDoiSoat(r2, file, cotMoi, sheetChon);
       } catch (err) {
         box.innerHTML = `<div class="xf-error">${esc(err.message)}</div>`;
       }
@@ -378,7 +410,7 @@ const ExportView = (() => {
     }
   }
 
-  async function doDoiSoatApply(file, cot) {
+  async function doDoiSoatApply(file, cot, sheetChon) {
     const btn = panel.querySelector('#xf-ds-apply-btn');
     const status = panel.querySelector('#xf-ds-apply-status');
     const ghideEl = panel.querySelector('#xf-ds-ghide');
@@ -393,7 +425,7 @@ const ExportView = (() => {
     status.textContent = ' Đang ghi ...';
     status.className = 'xf-plain-status';
     try {
-      const r = await Api.nhapDoiSoat(file, true, choGhiDe, cot);
+      const r = await Api.nhapDoiSoat(file, true, choGhiDe, cot, sheetChon);
       status.textContent = ` Đã ghi: ${r.da_ghi_bo_sung} bổ sung, ${r.da_ghi_ghi_de} ghi đè.`
         + (r.loi_validate && r.loi_validate.length ? ` (${r.loi_validate.length} ô bị bỏ do sai ngưỡng)` : '');
       status.className = 'xf-plain-status ok';

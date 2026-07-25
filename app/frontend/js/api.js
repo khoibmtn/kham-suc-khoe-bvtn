@@ -153,19 +153,27 @@ const Api = (() => {
     },
     // Nhập lại file đã sửa để đối soát. apDung=false -> xem trước. cot: mảng
     // tên field muốn cập nhật (rỗng/undefined -> tất cả cột phát hiện được).
-    nhapDoiSoat: async (fileObj, apDung, choGhiDe, cot) => {
+    nhapDoiSoat: async (fileObj, apDung, choGhiDe, cot, sheet) => {
       const fd = new FormData();
       fd.append('file', fileObj);
       fd.append('ap_dung', apDung ? 'true' : 'false');
       fd.append('cho_ghi_de', choGhiDe ? 'true' : 'false');
       if (cot && cot.length) fd.append('cot', cot.join(','));
+      if (sheet) fd.append('sheet', sheet);
       const res = await fetch('/api/xuat-file/nhap-doi-soat', {
         method: 'POST', body: fd, credentials: 'same-origin',
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
         if (res.status === 401 && onUnauthorized) onUnauthorized();
-        throw new Error((data && data.detail) || `Lỗi ${res.status}`);
+        // 409 (cần chọn sheet) trả detail dạng OBJECT, không phải chuỗi —
+        // đính kèm nguyên data để caller tự đọc detail.sheet_list.
+        const detail = data && data.detail;
+        const msg = typeof detail === 'string' ? detail : (detail && detail.thong_bao) || `Lỗi ${res.status}`;
+        const err = new Error(msg);
+        err.status = res.status;
+        err.data = data;
+        throw err;
       }
       return data;
     },
