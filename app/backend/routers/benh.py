@@ -24,12 +24,28 @@ router = APIRouter(prefix='/api', tags=['benh'])
 # Hồ sơ CHƯA có mã bệnh chính nhưng sinh hiệu bất thường -> tự gán chẩn đoán:
 #   - Huyết áp CAO  (tâm thu ≥140 HOẶC tâm trương ≥90) -> I10  Tăng huyết áp
 #   - Mạch NHANH    (> 100 l/ph)                        -> R00.0 Nhịp nhanh tim
+#   - Mạch CHẬM     (< 55 l/ph)                         -> R00.1 Nhịp chậm tim
 # rồi gỡ cờ đỏ 'Có phân loại nhưng không có chẩn đoán'. Ngưỡng lâm sàng chuẩn,
 # đặt hằng số ở đây để bác sĩ chỉnh khi cần. Chỉ NÂNG (thêm), không xoá/ghi đè
 # bệnh sẵn có; chỉ chạy khi ma_benh_chinh đang trống (đúng cảnh CO_PHAN_LOAI).
 HA_TAM_THU_CAO = 140
 HA_TAM_TRUONG_CAO = 90
 MACH_NHANH = 100
+MACH_CHAM = 55
+
+
+def chan_doan_tu_sinh_hieu(sys_ha, dia_ha, mach):
+    """Trả danh sách mã ICD theo thứ tự ưu tiên bệnh chính (HA trước, mạch sau).
+    Dùng chung bởi endpoint (mở hồ sơ / sửa sinh hiệu) và batch cả DB."""
+    muon = []
+    if (sys_ha is not None and sys_ha >= HA_TAM_THU_CAO) or \
+       (dia_ha is not None and dia_ha >= HA_TAM_TRUONG_CAO):
+        muon.append('I10')
+    if mach is not None and mach > MACH_NHANH:
+        muon.append('R00.0')
+    elif mach is not None and 0 < mach < MACH_CHAM:
+        muon.append('R00.1')
+    return muon
 
 
 def _parse_ha(s):
@@ -259,12 +275,7 @@ def tu_chan_doan_sinh_ton(ma_ho_so: str, user=Depends(auth.get_current_user)):
 
         sys_ha, dia_ha = _parse_ha(hs['huyet_ap'])
         mach = _mach_bpm(hs['mach'])
-        muon = []  # thứ tự ưu tiên bệnh chính: HA trước, mạch sau
-        if (sys_ha is not None and sys_ha >= HA_TAM_THU_CAO) or \
-           (dia_ha is not None and dia_ha >= HA_TAM_TRUONG_CAO):
-            muon.append('I10')
-        if mach is not None and mach > MACH_NHANH:
-            muon.append('R00.0')
+        muon = chan_doan_tu_sinh_hieu(sys_ha, dia_ha, mach)
         if not muon:
             return _payload(conn, [])
 
