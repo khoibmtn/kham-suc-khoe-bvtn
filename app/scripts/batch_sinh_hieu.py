@@ -1,8 +1,16 @@
 # -*- coding: utf-8 -*-
 """
 batch_sinh_hieu.py — chạy giờ nghỉ trưa (lưu lượng thấp): rà soát TOÀN BỘ DB
-theo Chỉ số sinh tồn, chỉ NÂNG (không bao giờ hạ / xoá / ghi đè dữ liệu sẵn có):
+theo Chỉ số sinh tồn, chỉ NÂNG/ĐIỀN CHỖ TRỐNG (không bao giờ hạ / xoá / ghi
+đè dữ liệu sẵn có hoặc do nhân viên tự chỉnh tay):
 
+  0) Điền BMI + Phân loại thể lực còn TRỐNG khi đã có đủ chiều cao + cân
+     nặng — dữ liệu nạp ban đầu (import_data.py) KHÔNG tự tính 2 giá trị
+     này (chỉ tính khi ai đó sửa tay qua form chi tiết/màn Sinh hiệu), nên
+     các hồ sơ có sẵn chiều cao/cân nặng từ nguồn nhưng chưa từng bị sửa
+     tay vẫn còn BMI/Phân loại thể lực trống. CHỈ điền khi đang TRỐNG —
+     không đụng giá trị đã có (kể cả khi khác gợi ý tự động, vì nhân viên
+     có thể đã cân nhắc thêm yếu tố khác).
   1) Phân loại CSST (Mạch + Huyết áp theo băng tuổi, QĐ1613 mục 45/46) ->
      NÂNG cơ quan Tuần hoàn (noi_khoa_tuan_hoan_pl) nếu đang thấp hơn.
   2) Tự thêm bệnh chính theo sinh hiệu (HA cao->I10, mạch nhanh->R00.0,
@@ -29,7 +37,7 @@ BACKEND = os.path.join(os.path.dirname(HERE), 'backend')
 sys.path.insert(0, BACKEND)
 
 import db  # noqa: E402
-from services import qc  # noqa: E402
+from services import qc, the_luc  # noqa: E402
 from routers.benh import chan_doan_tu_sinh_hieu  # noqa: E402
 
 
@@ -150,9 +158,11 @@ def main(apply):
 
     rows = conn.execute(
         "SELECT * FROM ho_so WHERE (mach IS NOT NULL AND mach<>'') "
-        "OR (huyet_ap IS NOT NULL AND huyet_ap<>'')").fetchall()
+        "OR (huyet_ap IS NOT NULL AND huyet_ap<>'') "
+        "OR (chieu_cao IS NOT NULL AND chieu_cao<>'' "
+        "    AND can_nang IS NOT NULL AND can_nang<>'')").fetchall()
 
-    n_th = n_dx = n_sk = n_flag = 0
+    n_bmi = n_plth = n_th = n_dx = n_sk = n_flag = 0
     dx_dem = {'I10': 0, 'R00.0': 0, 'R00.1': 0}
     done = 0
     for r in rows:
@@ -165,6 +175,26 @@ def main(apply):
         mach = _mach_bpm(r['mach'])
         l_mach = classify_mach(mach)
         l_ha, sys, dia = classify_huyet_ap(r['huyet_ap'], tuoi)
+
+        # 0) Điền BMI + Phân loại thể lực còn TRỐNG (chỉ khi trống — không
+        #    ghi đè giá trị đã có, kể cả khi khác gợi ý tự động).
+        if r['chieu_cao'] not in (None, '') and r['can_nang'] not in (None, ''):
+            if r['chi_so_bmi'] in (None, ''):
+                bmi_moi = the_luc.bmi(r['chieu_cao'], r['can_nang'])
+                if bmi_moi is not None:
+                    if apply:
+                        conn.execute('UPDATE ho_so SET chi_so_bmi=? '
+                                     'WHERE ma_ho_so=?', (bmi_moi, ma))
+                        log(ma, 'chi_so_bmi', None, bmi_moi)
+                    n_bmi += 1
+            if r['kham_the_luc_pl'] in (None, ''):
+                goi_y = the_luc.goi_y_the_luc(r['chieu_cao'], r['can_nang'], r['gioi_tinh'])
+                if goi_y:
+                    if apply:
+                        conn.execute('UPDATE ho_so SET kham_the_luc_pl=? '
+                                     'WHERE ma_ho_so=?', (goi_y['pl'], ma))
+                        log(ma, 'kham_the_luc_pl', None, goi_y['pl'])
+                    n_plth += 1
 
         # 1) NÂNG Tuần hoàn theo CSST
         csst = max(l_mach or 0, l_ha or 0)
@@ -257,6 +287,8 @@ def main(apply):
     conn.close()
 
     print(f"{'ĐÃ GHI' if apply else 'DRY-RUN'} | hồ sơ quét: {len(rows)}")
+    print(f"  Điền BMI còn trống    : {n_bmi}")
+    print(f"  Điền PL thể lực trống : {n_plth}")
     print(f"  Nâng Tuần hoàn (CSST) : {n_th}")
     print(f"  Thêm bệnh chính       : {n_dx}  {dx_dem}")
     print(f"  Gỡ cờ CO_PHAN_LOAI    : {n_flag}")
