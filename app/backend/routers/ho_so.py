@@ -205,12 +205,18 @@ _CO_QC_TTL = 300  # giây — số cờ đổi chậm, cache 5' để không qu�
 def co_qc_thong_ke(user=Depends(auth.get_current_user)):
     """Đếm SỐ HỒ SƠ theo TỪNG mã cờ (toàn bộ dữ liệu) — dùng cho bộ lọc "Cờ
     cảnh báo". Query dùng 11 LIKE '%;X;%' KHÔNG index được -> quét toàn bảng
-    (~14s trên 13k dòng), lại gọi MỖI lần mở danh sách. Vì con số đổi chậm nên
-    CACHE trong tiến trình 5' (đủ để giảm tải Turso dưới tải cao 25 người)."""
-    import time
-    now = time.time()
-    if _CO_QC_CACHE['data'] is not None and now - _CO_QC_CACHE['t'] < _CO_QC_TTL:
-        return _CO_QC_CACHE['data']
+    (~14s trên 13k dòng Turso serverless), lại gọi MỖI lần mở danh sách. Vì
+    con số đổi chậm nên CACHE trong tiến trình 5' — CHỈ khi chạy SERVERLESS
+    (Turso, có TURSO_URL) để giảm tải Turso dưới tải cao 25 người. Khi chạy
+    LOCAL sqlite (không có TURSO_URL) thì quét toàn bảng RẤT NHANH -> BỎ QUA
+    cache, luôn tính TƯƠI, tránh số đếm bị cũ (vd xử lý xong 1 cờ nhưng số
+    dropdown vẫn giữ nguyên vì cache 5 phút chưa hết hạn)."""
+    is_serverless = bool(os.getenv('TURSO_URL'))
+    if is_serverless:
+        import time
+        now = time.time()
+        if _CO_QC_CACHE['data'] is not None and now - _CO_QC_CACHE['t'] < _CO_QC_TTL:
+            return _CO_QC_CACHE['data']
     conn = db.get_connection()
     try:
         flags = list(qc.FLAG_META.keys())
@@ -222,8 +228,9 @@ def co_qc_thong_ke(user=Depends(auth.get_current_user)):
         out = {f: (row[f'f{i}'] or 0) for i, f in enumerate(flags)}
     finally:
         conn.close()
-    _CO_QC_CACHE['data'] = out
-    _CO_QC_CACHE['t'] = now
+    if is_serverless:
+        _CO_QC_CACHE['data'] = out
+        _CO_QC_CACHE['t'] = time.time()
     return out
 
 
@@ -483,6 +490,21 @@ def patch_ho_so(ma_ho_so: str, body: PatchBody,
             pl_moi = the_luc.tinh_va_ap_pl(conn, ma_ho_so, user['id'])
             if pl_moi != pl_truoc:
                 updated['kham_the_luc_pl'] = pl_moi
+
+        # Đợt 13: tự GỠ/THÊM cờ THIEU_SINH_HIEU khi vitals đổi qua panel chi tiết
+        # (trước chỉ màn "Sinh hiệu hàng loạt" mới tự làm -> cờ bị thừa). Đủ 4
+        # chỉ số cốt lõi (cao/nặng/mạch/HA) -> gỡ; thiếu bất kỳ -> thêm.
+        if any(f in changes for f in ('chieu_cao', 'can_nang', 'mach', 'huyet_ap')):
+            v = conn.execute('SELECT chieu_cao, can_nang, mach, huyet_ap, co_qc '
+                             'FROM ho_so WHERE ma_ho_so=?', (ma_ho_so,)).fetchone()
+            du = all(v[c] not in (None, '') for c in ('chieu_cao', 'can_nang', 'mach', 'huyet_ap'))
+            co_co = 'THIEU_SINH_HIEU' in qc.flags_of(v['co_qc'])
+            if du and co_co:
+                qc.remove_flags(conn, ma_ho_so, ['THIEU_SINH_HIEU'])
+                conn.commit()
+            elif (not du) and (not co_co):
+                qc.add_flag(conn, ma_ho_so, 'THIEU_SINH_HIEU')
+                conn.commit()
 
         new_row = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?',
                                 (ma_ho_so,)).fetchone()

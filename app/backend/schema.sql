@@ -12,7 +12,11 @@ CREATE TABLE IF NOT EXISTS nguoi_dung (
   ho_ten        TEXT NOT NULL,
   vai_tro       TEXT NOT NULL CHECK(vai_tro IN ('admin','ra_soat')),
   mat_khau_hash TEXT NOT NULL,
-  dang_hoat_dong INTEGER DEFAULT 1
+  dang_hoat_dong INTEGER DEFAULT 1,
+  -- JSON danh sách khóa các luồng dashboard được BẬT (Việc 2), lưu THEO TÀI
+  -- KHOẢN — vd '["tongQuan","theoXa","chatLuong"]'. NULL = chưa đặt (frontend
+  -- coi như mặc định tick hết).
+  dashboard_tuy_chon TEXT
 );
 
 -- ========== HỒ SƠ ==========

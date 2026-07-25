@@ -117,9 +117,11 @@ const DashboardView = (() => {
   // ---------------- 8.1 Thẻ tổng quan ----------------
   function renderTongQuan(d) {
     const rsx = d.ra_soat_xong || {};
+    const drm = d.da_ra_soat_muc || d.da_ra_soat;  // Đợt 13: ≥1 mục (fallback cũ)
     const cards = [
       ['Tổng hồ sơ', d.tong_ho_so, ''],
-      ['Đã rà soát', `${d.da_ra_soat.so_luong} (${d.da_ra_soat.ty_le}%)`, 'ok'],
+      ['Đã rà soát (≥1 mục)', `${drm.so_luong} (${drm.ty_le}%)`, 'ok'],
+      ['Đã hoàn thành', `${d.da_ra_soat.so_luong} (${d.da_ra_soat.ty_le}%)`, ''],
       ['Đang rà soát', d.dang_ra_soat, ''],
       ['Chưa rà soát', d.chua_ra_soat, ''],
       ['Cần đối chiếu giấy', d.can_doi_chieu_giay, 'warn'],
@@ -219,6 +221,9 @@ const DashboardView = (() => {
   }
 
   function renderTheoCanBo(rows) {
+    // Đợt 13: sắp GIẢM DẦN theo số hồ sơ đã tham gia rà soát (người làm nhiều
+    // nhất lên đầu).
+    rows = rows.slice().sort((a, b) => (b.so_ho_so_tham_gia || 0) - (a.so_ho_so_tham_gia || 0));
     const trs = rows.map((r) => `
       <tr>
         <td>${esc(r.ho_ten)} <span class="dash-role">(${r.vai_tro === 'admin' ? 'Quản trị' : 'Nhân viên'})</span></td>

@@ -77,6 +77,8 @@ def tong_quan(user=Depends(auth.get_current_user)):
               SUM(CASE WHEN rs_sinh_ton=1 THEN 1 ELSE 0 END) AS rs_st,
               SUM(CASE WHEN rs_the_luc=1 THEN 1 ELSE 0 END) AS rs_tl,
               SUM(CASE WHEN rs_canh_bao_khac=1 THEN 1 ELSE 0 END) AS rs_cbk,
+              SUM(CASE WHEN rs_hanh_chinh=1 OR rs_sinh_ton=1 OR rs_the_luc=1
+                       THEN 1 ELSE 0 END) AS rs_it_nhat_1,
               SUM(CASE WHEN {RS_XONG_SQL} THEN 1 ELSE 0 END) AS rs_tat_ca
             FROM ho_so
             """,
@@ -86,9 +88,15 @@ def tong_quan(user=Depends(auth.get_current_user)):
     tong = row['tong'] or 0
     da = row['da'] or 0
     rs_tat_ca = row['rs_tat_ca'] or 0
+    rs_it_nhat_1 = row['rs_it_nhat_1'] or 0
     return {
         'tong_ho_so': tong,
+        # da_ra_soat: GIỮ nghĩa cũ = trạng thái 'hoàn thành' (nút Hoàn thành).
         'da_ra_soat': {'so_luong': da, 'ty_le': round(da / tong * 100, 1) if tong else 0},
+        # da_ra_soat_muc (Đợt 13): số hồ sơ ĐÃ RÀ SOÁT ≥1 mục (hành chính/sinh
+        # tồn/thể lực) — phản ánh công việc thật hơn (phản hồi anh Khôi).
+        'da_ra_soat_muc': {'so_luong': rs_it_nhat_1,
+                           'ty_le': round(rs_it_nhat_1 / tong * 100, 1) if tong else 0},
         'dang_ra_soat': row['dang'] or 0,
         'chua_ra_soat': row['chua'] or 0,
         'can_doi_chieu_giay': row['cdc'] or 0,
@@ -175,12 +183,18 @@ def theo_can_bo(user=Depends(auth.get_current_user)):
         # Aggregate nhật ký theo người dùng: SỐ HỒ SƠ đã tham gia sửa (đếm
         # theo HỒ SƠ - distinct, KHÔNG theo lượt sửa - phản hồi anh Khôi Đợt
         # 12) + số lượt sửa (giữ để tham khảo) + hoạt động gần nhất.
+        # LOẠI admin: admin chỉ sửa TEST, không phải rà soát thật -> không
+        # tính vào thống kê "sửa/tham gia" (phản hồi anh Khôi). Điều kiện
+        # NOT IN áp cho mọi truy vấn nhat_ky trong hàm này.
         nk_by = {}
         for r in conn.execute(
                 'SELECT nguoi_dung_id AS uid, '
                 'COUNT(DISTINCT ma_ho_so) AS so_ho_so, '
                 'COUNT(*) AS so_luot, '
-                'MAX(thoi_diem) AS gan_nhat FROM nhat_ky GROUP BY nguoi_dung_id'):
+                'MAX(thoi_diem) AS gan_nhat FROM nhat_ky '
+                "WHERE nguoi_dung_id NOT IN "
+                "(SELECT id FROM nguoi_dung WHERE vai_tro='admin') "
+                'GROUP BY nguoi_dung_id'):
             nk_by[r['uid']] = r
 
         # 7 ngày gần nhất: lấy ngày hôm nay theo giờ server (1 query) rồi tính
@@ -197,11 +211,18 @@ def theo_can_bo(user=Depends(auth.get_current_user)):
                 "SELECT nguoi_dung_id AS uid, date(thoi_diem) AS ngay, "
                 "COUNT(DISTINCT ma_ho_so) AS c FROM nhat_ky "
                 "WHERE date(thoi_diem) >= date('now','localtime','-6 day') "
+                "AND nguoi_dung_id NOT IN "
+                "(SELECT id FROM nguoi_dung WHERE vai_tro='admin') "
                 "GROUP BY nguoi_dung_id, date(thoi_diem)"):
             day_by.setdefault(r['uid'], {})[r['ngay']] = r['c']
     finally:
         conn.close()
 
+    # Lưu ý: admin (vai_tro='admin') vẫn xuất hiện trong danh sách `users` (nếu
+    # đang hoạt động) để hiển thị hàng "Quản trị" trong bảng, nhưng vì nk_by/
+    # day_by đã LOẠI admin ở truy vấn nhat_ky trên -> nk_by.get(uid)=None cho
+    # admin -> so_ho_so_tham_gia/so_luot_sua/hoat_dong_gan_nhat/nang_suat_7_ngay
+    # đều về 0/None (không tính sửa TEST của admin vào thống kê).
     out = []
     for u in users:
         uid = u['id']

@@ -220,6 +220,8 @@ const DetailView = (() => {
         renderQd1613Banner();
         renderFlagsSummary();
         if (code === 'phan_loai_sk' || /_pl$/.test(code)) renderQd1613Banner();
+        // Đợt 13: nhập Mạch/HA -> phân loại CSST + tự nâng Tuần hoàn (ghi=true)
+        if (code === 'mach' || code === 'huyet_ap') capNhatCSST(true);
       },
     };
   }
@@ -305,6 +307,13 @@ const DetailView = (() => {
   function render() {
     root.innerHTML = '';
 
+    // Khối GHIM ĐẦU (Đợt 13, phản hồi anh Khôi): giữ dính khi cuộn CẢ thông
+    // tin bệnh nhân + chẩn đoán gốc + cờ cảnh báo (trước chỉ ghim chẩn đoán
+    // gốc). position:sticky trên container này (xem .detail-sticky-top).
+    const stickyTop = document.createElement('div');
+    stickyTop.className = 'detail-sticky-top';
+    root.appendChild(stickyTop);
+
     const header = document.createElement('div');
     header.className = 'detail-header';
     header.innerHTML = `<div class="detail-header-info">
@@ -318,22 +327,27 @@ const DetailView = (() => {
     closeBtn.textContent = 'Đóng (Esc)';
     closeBtn.addEventListener('click', () => AppShell.closeDetail());
     header.appendChild(closeBtn);
-    root.appendChild(header);
+    stickyTop.appendChild(header);
 
-    // Chẩn đoán gốc — ghim đầu, chỉ đọc (§3.4 quy tắc 2)
+    // Chẩn đoán gốc — chỉ đọc (§3.4 quy tắc 2). Nằm trong khối ghim chung.
     const goc = document.createElement('div');
-    goc.className = 'chan-doan-goc sticky';
+    goc.className = 'chan-doan-goc';
     goc.innerHTML = `<div class="label">Chẩn đoán gốc (chỉ đọc)</div>
       <div class="content">${escapeHtml(current.chan_doan_goc || '(trống)')}</div>`;
-    root.appendChild(goc);
+    stickyTop.appendChild(goc);
 
     const banner = document.createElement('div');
     banner.id = 'qd1613-banner';
-    root.appendChild(banner);
+    stickyTop.appendChild(banner);
 
     const flagsBox = document.createElement('div');
     flagsBox.id = 'flags-summary';
-    root.appendChild(flagsBox);
+    stickyTop.appendChild(flagsBox);
+
+    // Ghi chú phân loại theo Chỉ số sinh tồn (Mạch + Huyết áp) — Đợt 13.
+    // Gắn vào NHÓM C (Thể lực & sinh hiệu) ngay dưới các ô — xem vòng lặp nhóm.
+    const csstNote = document.createElement('div');
+    csstNote.id = 'csst-note';
 
     const actions = document.createElement('div');
     actions.className = 'detail-actions';
@@ -367,6 +381,8 @@ const DetailView = (() => {
         });
         details.appendChild(grid);
       }
+      // Đợt 13: dòng "Phân loại CSST" nằm ngay trong frame Thể lực & sinh hiệu.
+      if (g.key === 'C') details.appendChild(csstNote);
       groupsContainer.appendChild(details);
     });
     root.appendChild(groupsContainer);
@@ -382,6 +398,96 @@ const DetailView = (() => {
 
     renderQd1613Banner();
     renderFlagsSummary();
+    capNhatCSST(true);    // mở hồ sơ: hiện ghi chú CSST + tự nâng Tuần hoàn
+  }
+
+  // ---- Đợt 13: tự phân loại theo Chỉ số sinh tồn (Mạch + Huyết áp) ----
+  // Ngưỡng QĐ1613: Mạch mục 46.1; Huyết áp mục 45 theo BĂNG TUỔI (<30t = 45.1;
+  // >=30t dùng bảng 45.2 — QĐ1613 KHÔNG có băng >50t nên lấy gần nhất). Lấy
+  // LOẠI CAO NHẤT (xấu nhất) của Mạch & HA, rồi NÂNG Tuần hoàn nếu đang thấp hơn.
+  function _tuoiHienTai() {
+    if (current.tuoi != null && current.tuoi !== '') {
+      const t = parseInt(current.tuoi, 10);
+      if (!isNaN(t) && t > 0) return t;
+    }
+    const nam = parseInt(String(current.ngay_sinh || '').slice(-4), 10);
+    if (!isNaN(nam) && nam > 1900) return new Date().getFullYear() - nam;
+    return null;
+  }
+  function classifyMach(bpm) {
+    if (!isFinite(bpm) || bpm <= 0) return null;
+    if (bpm < 55) return 4;
+    if (bpm <= 59) return 3;   // 55-59
+    if (bpm <= 75) return 1;   // 60-75
+    if (bpm <= 85) return 2;   // 76-85
+    if (bpm <= 95) return 3;   // 86-95
+    return 4;                  // >95
+  }
+  function _clsSys(sys, tuoi) {
+    if (tuoi != null && tuoi < 30) {         // 45.1 (<30t)
+      if (sys < 100) return 4;
+      if (sys <= 125) return 1;
+      if (sys <= 135) return 2;
+      if (sys <= 140) return 3;
+      return 4;
+    }
+    if (sys < 140) return 1;                 // 45.2 (>=30t)
+    if (sys <= 150) return 3;
+    return 4;
+  }
+  function _clsDia(dia, tuoi) {
+    if (tuoi != null && tuoi < 30) {         // 45.1
+      if (dia < 60) return 4;
+      if (dia <= 64) return 2;
+      if (dia <= 85) return 1;
+      if (dia <= 89) return 2;
+      if (dia <= 95) return 3;
+      return 4;
+    }
+    if (dia < 90) return 1;                  // 45.2
+    if (dia <= 95) return 3;
+    return 4;
+  }
+  function classifyHuyetAp(ha, tuoi) {
+    const m = String(ha || '').match(/(\d{2,3})\s*[/\-]\s*(\d{2,3})/);
+    if (!m) return null;
+    return Math.max(_clsSys(+m[1], tuoi), _clsDia(+m[2], tuoi));
+  }
+  function capNhatCSST(ghi) {
+    const box = document.getElementById('csst-note');
+    if (!box) return;
+    const tuoi = _tuoiHienTai();
+    const machBpm = parseFloat(String(current.mach || '').replace(',', '.'));
+    const lMach = classifyMach(machBpm);
+    const lHa = classifyHuyetAp(current.huyet_ap, tuoi);
+    if (lMach == null && lHa == null) { box.innerHTML = ''; return; }
+    const loai = Math.max(lMach || 0, lHa || 0);
+    const LM = ['I', 'II', 'III', 'IV', 'V'][loai - 1];
+    const parts = [];
+    if (lMach === loai) parts.push(`Mạch ${machBpm} l/ph`);
+    if (lHa === loai) parts.push(`HA ${escapeHtml(current.huyet_ap || '')}`);
+    box.innerHTML = `<span class="csst-badge csst-${loai}">Phân loại CSST: Loại ${LM}</span>`
+      + ` <span class="csst-detail">(${parts.join(' · ')})</span>`;
+    if (!ghi) return;
+    const curTH = (current.noi_khoa_tuan_hoan_pl == null || current.noi_khoa_tuan_hoan_pl === '')
+      ? 0 : parseInt(current.noi_khoa_tuan_hoan_pl, 10);
+    if (loai > curTH) {   // chỉ NÂNG, không hạ
+      Api.patchHoSo(current.ma_ho_so, {
+        noi_khoa_tuan_hoan_pl: loai,
+        _base: { noi_khoa_tuan_hoan_pl: current.noi_khoa_tuan_hoan_pl },
+      }).then((res) => {
+        current.noi_khoa_tuan_hoan_pl = loai;
+        const wrap = document.getElementById('f_noi_khoa_tuan_hoan_pl');
+        if (wrap) {
+          wrap.querySelectorAll('input[type=radio]').forEach((r) => {
+            r.checked = Number(r.value) === loai;
+          });
+          if (window.Widgets && Widgets.flashSaved) Widgets.flashSaved(wrap);
+        }
+        if (res && res.qd1613) { current.qd1613 = res.qd1613; renderQd1613Banner(); }
+        toast(`Tuần hoàn tự nâng Loại ${LM} theo sinh hiệu`);
+      }).catch(() => {});
+    }
   }
 
   function renderQd1613Banner() {
