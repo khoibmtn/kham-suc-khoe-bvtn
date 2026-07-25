@@ -7,6 +7,25 @@ const Api = (() => {
   let onUnauthorized = null;
   function setOnUnauthorized(fn) { onUnauthorized = fn; }
 
+  // FastAPI trả `detail` dạng CHUỖI cho HTTPException thường, nhưng dạng
+  // MẢNG các object {loc, msg, type} khi Pydantic tự chặn request KHÔNG
+  // khớp schema (422) — trước đây `new Error(detail)` với detail là mảng
+  // 1 phần tử bị ép kiểu thành chuỗi "[object Object]" (JS Array.toString
+  // nối các phần tử bằng dấu phẩy, phần tử object -> "[object Object]"),
+  // hiện KHÔNG rõ nghĩa gì với người dùng. Ghép lại thành câu đọc được.
+  function formatErrorDetail(data) {
+    const d = data && data.detail;
+    if (!d) return null;
+    if (typeof d === 'string') return d;
+    if (Array.isArray(d)) {
+      return d.map((x) => (x && typeof x === 'object')
+        ? `${(x.loc || []).slice(1).join('.')}: ${x.msg || JSON.stringify(x)}`
+        : String(x)).join('; ');
+    }
+    if (typeof d === 'object') return JSON.stringify(d);
+    return String(d);
+  }
+
   async function req(method, path, body) {
     const opt = {
       method,
@@ -21,7 +40,7 @@ const Api = (() => {
     let data = null;
     try { data = await res.json(); } catch (e) { /* no body */ }
     if (!res.ok) {
-      const err = new Error((data && data.detail) || `Lỗi ${res.status}`);
+      const err = new Error(formatErrorDetail(data) || `Lỗi ${res.status}`);
       err.status = res.status;
       err.data = data;
       // /api/login trả 401 khi sai mật khẩu — đó là lỗi hiển thị NGAY TẠI
