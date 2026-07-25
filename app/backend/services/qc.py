@@ -19,6 +19,19 @@ from build_xlsm import TEN_CQ  # noqa: E402
 # tên cột phân loại (lowercase, khớp schema.sql) theo đúng thứ tự ưu tiên §6.1
 ORGAN_PL_FIELDS = [(code, ORGAN_COLS[code][1].lower()) for code in ORGANS]
 
+# Phản hồi anh Khôi: bất biến QĐ1613 (Phân loại sức khỏe chung = mức nặng
+# nhất) phải tính CẢ Thể lực, không chỉ 14 cơ quan khám mục D — Thể lực là
+# 1 chỉ tiêu riêng (không phải "cơ quan" nên KHÔNG có trong ORGAN_COLS của
+# build/classify.py, cũng KHÔNG có mã BYT ở TEN_CQ) nhưng vẫn quyết định
+# phân loại chung y hệt các cơ quan khác. Thiếu chỉ tiêu này -> banner "vi
+# phạm bất biến" báo SAI khi Thể lực mới là mức nặng nhất thật sự (vd Tuần
+# hoàn=I nhưng Thể lực=IV, phan_loai_sk=IV đúng -> hệ thống lại chọn nhầm
+# Tuần hoàn làm "mức nặng nhất" rồi báo vi phạm 1≠4).
+ORGAN_PL_FIELDS = ORGAN_PL_FIELDS + [('THELUC', 'kham_the_luc_pl')]
+_TEN_CQ_BO_SUNG = {'THELUC': 'Thể lực'}  # không gộp vào TEN_CQ (build_xlsm.py) —
+# dict đó là tên cơ quan CHÍNH THỨC dùng khi xuất .xlsm nộp Bộ, Thể lực
+# không phải 1 trong 14 cơ quan đó.
+
 # ----------------------------------------------------------------------
 # Mức độ cờ (§4) — 🔴 đỏ chặn xuất file, 🟠 cam cần đối chiếu, 🟡 vàng nhắc nhở
 FLAG_META = {
@@ -198,7 +211,8 @@ def recompute_cccd_flags(conn, ma_ho_so, old_cccd, new_cccd, user_id):
 
 
 def check_invariant(row):
-    """row: dict-like (sqlite3.Row hoặc dict) có đủ 14 cột *_pl + phan_loai_sk.
+    """row: dict-like (sqlite3.Row hoặc dict) có đủ 14 cột *_pl + kham_the_luc_pl
+    (Thể lực) + phan_loai_sk.
 
     Trả {'vi_pham': bool, 'co_quan_max': mã|None, 'ten_co_quan_max': str|None,
     'gia_tri_max': int|None} — cùng ngữ nghĩa với truy vấn SQL §8.6 (NULL
@@ -217,6 +231,7 @@ def check_invariant(row):
     return {
         'vi_pham': vi_pham,
         'co_quan_max': best_code,
-        'ten_co_quan_max': TEN_CQ.get(best_code) if best_code else None,
+        'ten_co_quan_max': (TEN_CQ.get(best_code) or _TEN_CQ_BO_SUNG.get(best_code))
+                            if best_code else None,
         'gia_tri_max': best_val,
     }
