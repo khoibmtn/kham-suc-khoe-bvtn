@@ -432,7 +432,7 @@ def _run_job(job_id, rows, red_set, user_map, include_errors, ext_enabled, ext_c
 
         result = subprocess.run(
             [sys.executable, WORKER_PATH, handoff_path, output_path],
-            capture_output=True, text=True)
+            capture_output=True, text=True, encoding='utf-8', errors='replace')
 
         try:
             os.remove(handoff_path)

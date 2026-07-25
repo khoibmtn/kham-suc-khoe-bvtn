@@ -22,6 +22,16 @@ import json
 import os
 import sys
 
+# Windows: console/pipe stdout mặc định dùng bảng mã cp1252 (không phải
+# UTF-8) — print() đường dẫn/tên xã có dấu tiếng Việt sẽ crash
+# (UnicodeEncodeError) NGAY SAU KHI file .xlsm đã ghi xong, khiến tiến
+# trình cha (export_xlsm.py) thấy returncode != 0 và coi cả xã đó là LỖI,
+# bỏ qua file đã tạo thành công. Ép UTF-8 tường minh, không phụ thuộc
+# codepage của máy đang chạy.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, 'reconfigure'):
+        _stream.reconfigure(encoding='utf-8', errors='replace')
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config  # noqa: E402
 
