@@ -98,6 +98,8 @@ CREATE INDEX IF NOT EXISTS idx_hoso_nguoi   ON ho_so(nguoi_ra_soat_id);
 CREATE INDEX IF NOT EXISTS idx_hoso_tt      ON ho_so(trang_thai);
 CREATE INDEX IF NOT EXISTS idx_hoso_ngay    ON ho_so(ngay_vao);
 CREATE INDEX IF NOT EXISTS idx_hoso_cccd    ON ho_so(so_cccd);
+CREATE INDEX IF NOT EXISTS idx_hoso_hoten   ON ho_so(ho_ten);   -- ORDER BY danh sách
+CREATE INDEX IF NOT EXISTS idx_hoso_coquan  ON ho_so(co_quan_benh_chinh);
 
 -- ========== BỆNH CHI TIẾT ==========
 CREATE TABLE IF NOT EXISTS benh (

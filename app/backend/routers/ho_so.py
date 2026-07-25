@@ -198,10 +198,19 @@ def danh_muc(user=Depends(auth.get_current_user)):
 
 
 @router.get('/co-qc-thong-ke')
+_CO_QC_CACHE = {'t': 0.0, 'data': None}
+_CO_QC_TTL = 300  # giây — số cờ đổi chậm, cache 5' để không quét 13k dòng mỗi lần
+
+
 def co_qc_thong_ke(user=Depends(auth.get_current_user)):
     """Đếm SỐ HỒ SƠ theo TỪNG mã cờ (toàn bộ dữ liệu) — dùng cho bộ lọc "Cờ
-    cảnh báo": hiện số lượng cạnh mỗi cờ + ẩn cờ có 0 hồ sơ. Gộp 1 query
-    (SUM CASE WHEN) như dashboard/chat-luong để nhẹ (1 round-trip)."""
+    cảnh báo". Query dùng 11 LIKE '%;X;%' KHÔNG index được -> quét toàn bảng
+    (~14s trên 13k dòng), lại gọi MỖI lần mở danh sách. Vì con số đổi chậm nên
+    CACHE trong tiến trình 5' (đủ để giảm tải Turso dưới tải cao 25 người)."""
+    import time
+    now = time.time()
+    if _CO_QC_CACHE['data'] is not None and now - _CO_QC_CACHE['t'] < _CO_QC_TTL:
+        return _CO_QC_CACHE['data']
     conn = db.get_connection()
     try:
         flags = list(qc.FLAG_META.keys())
@@ -213,6 +222,8 @@ def co_qc_thong_ke(user=Depends(auth.get_current_user)):
         out = {f: (row[f'f{i}'] or 0) for i, f in enumerate(flags)}
     finally:
         conn.close()
+    _CO_QC_CACHE['data'] = out
+    _CO_QC_CACHE['t'] = now
     return out
 
 

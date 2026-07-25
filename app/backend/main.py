@@ -77,22 +77,22 @@ async def lifespan(app_: FastAPI):
     serverless = bool(os.getenv('TURSO_URL'))
     # Giai đoạn 1 PLAN_VERCEL.md criterion 4: bỏ sao lưu file (Turso lo bền)
     # khi chạy serverless; giữ nguyên hành vi local.
+    # SERVERLESS: KHÔNG chạy init_schema/snapshot lúc khởi động. Vercel spawn
+    # NHIỀU instance dưới tải cao (25 người) -> mỗi cold-start mà chạy schema
+    # DDL + GHI snapshot vào Turso => ghi dồn, chậm, góp phần 504. Turso đã có
+    # sẵn schema (chạy 1 lần lúc thiết lập); schema đổi thì áp thủ công trên
+    # Turso. Local giữ nguyên hành vi cũ (init + snapshot + sao lưu).
     if not serverless:
         _sao_luu_hang_ngay()
-    # Bọc toàn bộ thao tác DB lúc khởi động trong try/except để 1 cú hiccup
-    # cold-start (vd Turso sync chập chờn) không làm chết hẳn app — local
-    # vẫn giữ hành vi cũ (lỗi thật sẽ vẫn raise vì thao tác local hiếm khi
-    # lỗi và ta muốn thấy lỗi đó khi dev).
-    try:
-        conn = db.get_connection()
         try:
-            db.init_schema(conn)
-            if conn.execute('SELECT COUNT(*) FROM ho_so').fetchone()[0] > 0:
-                _snapshot_hom_nay(conn)
-        finally:
-            conn.close()
-    except Exception:
-        if not serverless:
+            conn = db.get_connection()
+            try:
+                db.init_schema(conn)
+                if conn.execute('SELECT COUNT(*) FROM ho_so').fetchone()[0] > 0:
+                    _snapshot_hom_nay(conn)
+            finally:
+                conn.close()
+        except Exception:
             raise
     yield
 
