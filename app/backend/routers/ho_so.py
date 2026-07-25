@@ -353,6 +353,23 @@ class PatchBody(BaseModel):
     model_config = ConfigDict(extra='allow')
 
 
+def la_ngay_sinh_uoc_luong(ngay_sinh):
+    """True nếu ngày sinh là ước lượng 01/01 (nguồn chỉ có năm) hoặc trống.
+    Ngày/tháng THẬT (khác 01/01) -> False -> đủ căn cứ gỡ NGAY_SINH_UOC_LUONG.
+    Định dạng DD/MM/YYYY (chấp nhận không đệm 0: 1/1/...)."""
+    s = str(ngay_sinh or '').strip()
+    if not s:
+        return True
+    parts = s.split('/')
+    if len(parts) < 2:
+        return True
+    try:
+        ngay, thang = int(parts[0]), int(parts[1])
+    except ValueError:
+        return True
+    return ngay == 1 and thang == 1
+
+
 def _recompute_bmi(fields):
     cao = fields.get('chieu_cao')
     can = fields.get('can_nang')
@@ -504,6 +521,21 @@ def patch_ho_so(ma_ho_so: str, body: PatchBody,
                 conn.commit()
             elif (not du) and (not co_co):
                 qc.add_flag(conn, ma_ho_so, 'THIEU_SINH_HIEU')
+                conn.commit()
+
+        # Sửa ngày sinh sang ngày/tháng THẬT (khác 01/01) -> tự gỡ cờ
+        # NGAY_SINH_UOC_LUONG (nguồn chỉ có năm, 01/01 là quy ước). Phản hồi
+        # anh Khôi: chỉ cần lưu ngày thật là gỡ, không cần bấm "Xác nhận".
+        if 'ngay_sinh' in changes and not la_ngay_sinh_uoc_luong(changes['ngay_sinh']):
+            r2 = conn.execute('SELECT co_qc FROM ho_so WHERE ma_ho_so=?',
+                              (ma_ho_so,)).fetchone()
+            if 'NGAY_SINH_UOC_LUONG' in qc.flags_of(r2['co_qc']):
+                new_co_qc = qc.remove_flags(conn, ma_ho_so, ['NGAY_SINH_UOC_LUONG'])
+                conn.execute(
+                    'INSERT INTO nhat_ky(ma_ho_so, nguoi_dung_id, ten_truong, '
+                    'gia_tri_cu, gia_tri_moi) VALUES (?,?,?,?,?)',
+                    (ma_ho_so, user['id'], 'co_qc', r2['co_qc'] or '',
+                     new_co_qc or ''))
                 conn.commit()
 
         new_row = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?',
