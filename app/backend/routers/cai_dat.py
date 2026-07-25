@@ -12,9 +12,9 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import db  # noqa: E402
 import auth  # noqa: E402
-from services import sinh_hieu_valid, auto_backup  # noqa: E402
+from services import sinh_hieu_valid, auto_backup, batch_sinh_hieu  # noqa: E402
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional
 
@@ -106,3 +106,17 @@ def put_cai_dat(body: CaiDatBody, admin=Depends(auth.require_admin)):
     finally:
         conn.close()
     return out
+
+
+@router.post('/admin/ra-soat-sinh-hieu')
+def ra_soat_sinh_hieu(apply: bool = Query(False), admin=Depends(auth.require_admin)):
+    """Chạy rà soát toàn DB theo sinh hiệu (điền BMI/PL thể lực còn trống,
+    nâng Tuần hoàn theo CSST, tự thêm bệnh chính, nâng Sức khỏe chung) — cùng
+    logic scripts/batch_sinh_hieu.py, gọi được TỪ XA qua nút bấm trong app
+    (Cài đặt), không cần mở CMD trên máy chạy server. apply=false (mặc định)
+    chỉ đếm (dry-run), không ghi gì; apply=true mới thực sự ghi."""
+    conn = db.get_connection()
+    try:
+        return batch_sinh_hieu.chay(conn, apply, admin['id'])
+    finally:
+        conn.close()

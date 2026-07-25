@@ -69,6 +69,7 @@ const Api = (() => {
     coQcThongKe: () => req('GET', '/api/co-qc-thong-ke'),
     caiDatGet: () => req('GET', '/api/cai-dat'),
     caiDatPut: (body) => req('PUT', '/api/cai-dat', body),
+    raSoatSinhHieu: (apply) => req('POST', `/api/admin/ra-soat-sinh-hieu?apply=${apply ? 'true' : 'false'}`),
 
     listHoSo: (params) => req('GET', '/api/ho-so?' + qs(params)),
     getHoSo: (ma) => req('GET', `/api/ho-so/${encodeURIComponent(ma)}`),

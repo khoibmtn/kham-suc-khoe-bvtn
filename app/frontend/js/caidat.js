@@ -98,9 +98,62 @@ const CaiDatView = (() => {
         <div id="cd-tudong-result"></div>
         <button type="submit">Lưu</button>
       </form>
+
+      <h2>Rà soát & tự động phân loại (toàn bộ hồ sơ)</h2>
+      <p class="cd-hint">Chạy 1 lần: điền BMI/Phân loại thể lực còn TRỐNG (khi
+        đã có chiều cao+cân nặng), nâng Tuần hoàn theo Mạch/Huyết áp, tự thêm
+        bệnh chính khi HA cao/mạch bất thường mà chưa có chẩn đoán, nâng Phân
+        loại sức khỏe chung lên mức nặng nhất. <b>Chỉ nâng/điền chỗ trống —
+        không bao giờ xoá hay ghi đè giá trị đã có.</b> Bấm "Xem trước" để xem
+        số lượng dự kiến trước khi Áp dụng.</p>
+      <div class="cd-row">
+        <button type="button" id="cd-rasoat-preview">Xem trước (dry-run)</button>
+        <button type="button" id="cd-rasoat-apply" disabled>Áp dụng</button>
+      </div>
+      <div id="cd-rasoat-result"></div>
     `;
     panel.querySelector('#cd-form').addEventListener('submit', onSubmit);
     panel.querySelector('#cd-tudong-form').addEventListener('submit', onSubmitTuDong);
+    panel.querySelector('#cd-rasoat-preview').addEventListener('click', () => onRaSoat(false));
+    panel.querySelector('#cd-rasoat-apply').addEventListener('click', () => onRaSoat(true));
+  }
+
+  function fmtRaSoat(kq) {
+    return `Quét: <b>${kq.tong_quet}</b> hồ sơ<br>`
+      + `Điền BMI còn trống: <b>${kq.dien_bmi}</b><br>`
+      + `Điền Phân loại thể lực còn trống: <b>${kq.dien_pl_the_luc}</b><br>`
+      + `Nâng Tuần hoàn (theo Mạch/HA): <b>${kq.nang_tuan_hoan}</b><br>`
+      + `Tự thêm bệnh chính: <b>${kq.them_benh_chinh}</b> `
+      + `(I10: ${kq.them_benh_chinh_theo_ma['I10']}, `
+      + `R00.0: ${kq.them_benh_chinh_theo_ma['R00.0']}, `
+      + `R00.1: ${kq.them_benh_chinh_theo_ma['R00.1']})<br>`
+      + `Gỡ cờ "Có phân loại nhưng không có chẩn đoán": <b>${kq.go_co}</b><br>`
+      + `Nâng Phân loại sức khỏe chung: <b>${kq.nang_suc_khoe_chung}</b>`;
+  }
+
+  async function onRaSoat(apply) {
+    const resultBox = panel.querySelector('#cd-rasoat-result');
+    const previewBtn = panel.querySelector('#cd-rasoat-preview');
+    const applyBtn = panel.querySelector('#cd-rasoat-apply');
+    if (apply && !confirm('Áp dụng thay đổi cho TOÀN BỘ hồ sơ như số liệu '
+      + 'vừa xem trước? Thao tác ghi thẳng vào dữ liệu (có ghi nhật ký).')) return;
+    previewBtn.disabled = true;
+    applyBtn.disabled = true;
+    resultBox.className = '';
+    resultBox.textContent = apply ? 'Đang áp dụng…' : 'Đang quét…';
+    try {
+      const kq = await Api.raSoatSinhHieu(apply);
+      resultBox.innerHTML = (apply ? '✅ Đã áp dụng.<br>' : '👁 Xem trước (chưa ghi gì) —<br>')
+        + fmtRaSoat(kq);
+      resultBox.className = 'ok';
+      applyBtn.disabled = apply; // sau khi áp dụng thật -> phải Xem trước lại mới cho áp dụng tiếp
+    } catch (err) {
+      resultBox.textContent = err.message;
+      resultBox.className = 'error';
+    } finally {
+      previewBtn.disabled = false;
+      if (!apply) applyBtn.disabled = false;
+    }
   }
 
   async function onSubmitTuDong(e) {
