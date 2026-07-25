@@ -317,6 +317,67 @@ def list_ho_so(request: Request, page: int = Query(1, ge=1),
     return {'total': total, 'page': page, 'page_size': page_size, 'items': items}
 
 
+def _filtered_where_q(params):
+    """(where_sql, args) áp DÙNG CHUNG bộ lọc + từ khóa `q` như list_ho_so
+    (không phân trang) — cho xuất Excel toàn bộ danh sách đã lọc."""
+    where_sql, args = build_where(params, None)
+    legacy_ho_ten = (params.get('ho_ten') or '').strip()
+    q_raw = (params.get('q') or legacy_ho_ten or '').strip()
+    hoten_only = bool(legacy_ho_ten) or (
+        (params.get('q_hoten_only') or '').strip().lower() in ('1', 'true', 'yes'))
+    if q_raw:
+        q_kd = fuzzy.strip_diacritics(q_raw).replace(',', '.')
+        col = 'ho_ten_kd' if hoten_only else 'search_blob_kd'
+        like_sql, like_args = _like_tokens(col, q_kd)
+        where_sql = f'{where_sql} AND {like_sql}'
+        args = args + like_args
+    return where_sql, args
+
+
+# Cột nội bộ (khóa tìm kiếm bỏ dấu) — không đưa vào file xuất cho người dùng.
+_EXPORT_SKIP_COLS = {'ho_ten_kd', 'search_blob_kd'}
+
+
+@router.get('/ho-so/xuat-excel')
+def xuat_excel_danh_sach(request: Request, user=Depends(auth.get_current_user)):
+    """Xuất .xlsx TOÀN BỘ danh sách theo đúng bộ lọc hiện tại (không phân
+    trang), đầy đủ mọi cột của hồ sơ, cột `ma_ho_so` đứng đầu. Mọi người dùng
+    đã đăng nhập đều xuất được (giống quyền xem danh sách)."""
+    import io
+    from openpyxl import Workbook
+    from fastapi.responses import Response
+
+    params = _parse_list_params(request)
+    conn = db.get_connection()
+    try:
+        where_sql, args = _filtered_where_q(params)
+        order = _order_by(params)
+        cols = [c['name'] for c in conn.execute('PRAGMA table_info(ho_so)').fetchall()]
+        cols = [c for c in cols if c not in _EXPORT_SKIP_COLS]
+        # ma_ho_so lên đầu
+        if 'ma_ho_so' in cols:
+            cols = ['ma_ho_so'] + [c for c in cols if c != 'ma_ho_so']
+        rows = conn.execute(
+            f'SELECT * FROM ho_so WHERE {where_sql} ORDER BY {order}', args).fetchall()
+    finally:
+        conn.close()
+
+    wb = Workbook(write_only=True)
+    ws = wb.create_sheet('Danh sách')
+    ws.append(cols)
+    for r in rows:
+        ws.append([r[c] for c in cols])
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    import datetime as _dt
+    fn = f'KSK_DanhSach_{len(rows)}ca_{_dt.datetime.now():%Y%m%d_%H%M}.xlsx'
+    return Response(
+        content=buf.getvalue(),
+        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={'Content-Disposition': f'attachment; filename="{fn}"'})
+
+
 def _load_ho_so_or_404(conn, ma_ho_so, user):
     # Đợt 12 (phản hồi anh Khôi): MỌI người mở/sửa được mọi hồ sơ — mô hình
     # cộng tác mở, truy vết ai sửa gì qua nhat_ky. (Bỏ chặn 403 theo phân công.)

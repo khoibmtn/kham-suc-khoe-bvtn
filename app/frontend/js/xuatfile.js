@@ -105,20 +105,13 @@ const ExportView = (() => {
       </div>
 
       <div class="xf-block xf-cmd-block">
-        <div class="xf-label">Xuất .xlsm chính thức trên máy cá nhân</div>
-        <p class="xf-hint">File .xlsm nộp Bộ (kèm dropdown &amp; VBA) chỉ tạo
-          được ở máy local. Câu lệnh dưới khởi động app trên máy anh và nối
-          thẳng DB online, để file .xlsm phản ánh ĐÚNG dữ liệu nhân viên đã rà
-          soát trên mạng — copy vào Terminal rồi chạy:</p>
-        <pre id="xf-cmd" class="xf-cmd">cd ~/Documents/Antigravity/kham-suc-khoe/app &amp;&amp; \
-TURSO_URL="libsql://ksk-khoibmtn.aws-ap-northeast-1.turso.io" \
-TURSO_AUTH_TOKEN="$(turso db tokens create ksk)" \
-./run.sh</pre>
-        <button id="xf-cmd-copy" type="button">Sao chép câu lệnh</button>
-        <p class="xf-hint">Sau khi chạy, mở <b>http://127.0.0.1:8000</b> →
-          trang <b>Xuất file</b> → bấm <b>Bắt đầu xuất .xlsm</b>.
-          (Máy cần đã cài <code>turso</code> CLI và đăng nhập
-          <code>turso auth login</code>.)</p>
+        <div class="xf-label">✅ Xuất .xlsm chuẩn Bộ — đã sẵn sàng</div>
+        <p class="xf-hint">Hệ thống đang chạy trực tiếp trên máy chủ nội bộ nên
+          nút <b>&ldquo;Bắt đầu xuất .xlsm (nộp Bộ)&rdquo;</b> ở trên tạo ngay
+          file .xlsm chuẩn Bộ (kèm dropdown &amp; VBA từ template chính thức),
+          phản ánh ĐÚNG dữ liệu nhân viên vừa rà soát. Chọn phạm vi → bấm nút
+          xanh → tải file trong mục &ldquo;Các lần xuất gần đây&rdquo; bên dưới.
+          Không cần chạy lệnh Terminal hay kết nối gì thêm.</p>
       </div>
 
       <div id="xf-job-progress"></div>
@@ -163,15 +156,6 @@ TURSO_AUTH_TOKEN="$(turso db tokens create ksk)" \
     panel.querySelector('#xf-plain-btn').addEventListener('click', doExportPlain);
     panel.querySelector('#xf-edit-btn').addEventListener('click', doExportChinhSua);
     panel.querySelector('#xf-ds-file').addEventListener('change', doDoiSoatPreview);
-
-    const copyBtn = panel.querySelector('#xf-cmd-copy');
-    copyBtn.addEventListener('click', () => {
-      const txt = panel.querySelector('#xf-cmd').textContent;
-      navigator.clipboard.writeText(txt).then(() => {
-        copyBtn.textContent = 'Đã sao chép ✓';
-        setTimeout(() => { copyBtn.textContent = 'Sao chép câu lệnh'; }, 1500);
-      }).catch(() => { copyBtn.textContent = 'Bôi đen để copy thủ công'; });
-    });
 
     const extToggle = panel.querySelector('#xf-extended-enabled');
     extToggle.addEventListener('change', () => {

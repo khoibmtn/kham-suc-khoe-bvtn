@@ -353,6 +353,31 @@ const ListView = (() => {
     pageSizeBox.appendChild(pageSizeLbl);
     summaryRow.appendChild(pageSizeBox);
 
+    // Nút tải Excel TOÀN BỘ danh sách theo bộ lọc hiện tại (đầy đủ cột, mã hồ
+    // sơ ở đầu) — không phụ thuộc phân trang. Dùng thẻ <a> tải trực tiếp
+    // (cookie phiên tự gửi kèm với GET cùng origin).
+    const excelBtn = document.createElement('button');
+    excelBtn.type = 'button';
+    excelBtn.id = 'list-excel-btn';
+    excelBtn.className = 'list-excel-btn';
+    excelBtn.textContent = '⬇ Tải Excel (danh sách đã lọc)';
+    excelBtn.title = 'Tải toàn bộ kết quả đang lọc ra .xlsx (đầy đủ cột)';
+    excelBtn.addEventListener('click', () => {
+      const before = excelBtn.textContent;
+      excelBtn.disabled = true;
+      excelBtn.textContent = '⏳ Đang tạo file…';
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = buildExcelUrl();
+      document.body.appendChild(iframe);
+      setTimeout(() => {
+        excelBtn.disabled = false;
+        excelBtn.textContent = before;
+        setTimeout(() => iframe.remove(), 60000);
+      }, 1500);
+    });
+    summaryRow.appendChild(excelBtn);
+
     footer.appendChild(summaryRow);
 
     const pager = document.createElement('div');
@@ -389,6 +414,19 @@ const ListView = (() => {
       co_qc: filters.co_qc, phan_loai_sk: filters.phan_loai_sk,
       co_quan_benh_chinh: filters.co_quan_benh_chinh,
     };
+  }
+
+  function buildExcelUrl() {
+    const p = currentFilterParams();
+    const usp = new URLSearchParams();
+    Object.entries(p).forEach(([k, v]) => {
+      if (Array.isArray(v)) {
+        v.forEach((x) => { if (x !== '' && x != null) usp.append(k, x); });
+      } else if (v !== '' && v != null) {
+        usp.append(k, v);
+      }
+    });
+    return '/api/ho-so/xuat-excel?' + usp.toString();
   }
 
   let _reloadSeq = 0;
