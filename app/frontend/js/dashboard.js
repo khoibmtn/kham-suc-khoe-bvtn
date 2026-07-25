@@ -224,8 +224,13 @@ const DashboardView = (() => {
         ty_le: duocGiao ? Math.round(hoanThanh / duocGiao * 100) : null,
       };
     });
+    // Phản hồi anh Khôi: biểu đồ sắp GIẢM DẦN theo Được giao (khối lượng);
+    // bảng sắp GIẢM DẦN theo Tỷ lệ hoàn thành (khoa chưa có mục tiêu, tỷ lệ
+    // "—", xếp cuối cùng — không lẫn vào giữa các khoa có số thật).
+    const rowsChart = rows2.slice().sort((a, b) => b.duoc_giao - a.duoc_giao);
+    const rowsTable = rows2.slice().sort((a, b) => (b.ty_le ?? -1) - (a.ty_le ?? -1));
     const maxDuocGiao = Math.max(1, ...rows2.map((r) => r.duoc_giao));
-    const bars = rows2.map((r) => {
+    const bars = rowsChart.map((r) => {
       const w = (v) => (r.duoc_giao ? (v / r.duoc_giao * 100) : 0);
       return `
         <div class="dash-xa-row">
@@ -237,7 +242,7 @@ const DashboardView = (() => {
           <div class="dash-xa-pct">${r.ty_le == null ? '—' : r.ty_le + '%'}</div>
         </div>`;
     }).join('');
-    const tableRows = rows2.map((r) => `
+    const tableRows = rowsTable.map((r) => `
       <tr>
         <td>${esc(r.ten_khoa)}</td><td>${r.duoc_giao}</td>
         <td>${r.hoan_thanh}</td><td>${r.chua_hoan_thanh}</td>
