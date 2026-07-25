@@ -742,7 +742,6 @@ const DetailView = (() => {
     icdInput.type = 'text'; icdInput.placeholder = 'Gõ để tìm ICD...';
     const suggBox = document.createElement('div'); suggBox.className = 'icd-suggestions';
     suggBox.hidden = true;
-    let chosen = null;
     let dTimer = null;
     // Đợt 11 criterion 3: đảm bảo cache sẵn sàng khi user mở ô ICD của bảng
     // bệnh này (idempotent — không gây thêm request nếu init() đã nạp xong).
@@ -762,8 +761,7 @@ const DetailView = (() => {
           row.textContent = it.label;
           row.addEventListener('mousedown', (e) => {
             e.preventDefault();
-            chosen = it; icdInput.value = it.label; suggBox.hidden = true;
-            toast('Đã chọn: ' + it.label);
+            suggBox.hidden = true;
             // Đợt 11 criterion 6: tự chọn cơ quan theo chương ICD của mã
             // vừa chọn (nếu map được) — coQuanSel vẫn là select bình
             // thường, user đổi tay tự do sau đó (criterion 7).
@@ -771,6 +769,11 @@ const DetailView = (() => {
             if (organ && Array.from(coQuanSel.options).some((o) => o.value === organ)) {
               coQuanSel.value = organ;
             }
+            // Đợt 14 (phản hồi anh Khôi): CLICK là tự thêm luôn, không cần
+            // bấm "+ Thêm bệnh" — chuỗi gốc = nhãn gợi ý (mã + tên chính
+            // thức), giữ nguyên hành vi ghi "chuoi_goc" cũ (trước đây lấy
+            // từ icdInput.value lúc bấm nút, cũng chính là it.label).
+            doAddBenh(it, coQuanSel.value, it.label);
           });
           suggBox.appendChild(row);
         });
@@ -800,17 +803,20 @@ const DetailView = (() => {
     (danhMuc.co_quan_benh_chinh || []).forEach((c) => {
       const o = document.createElement('option'); o.value = c.ma; o.textContent = c.ten; coQuanSel.appendChild(o);
     });
-    const addBtn = document.createElement('button');
-    addBtn.textContent = '+ Thêm bệnh';
-    addBtn.addEventListener('click', async () => {
-      if (!chosen) { toast('Chưa chọn mã ICD'); return; }
+    // Đợt 14 (phản hồi anh Khôi): click 1 gợi ý ICD = tự thêm ngay, không cần
+    // nút "+ Thêm bệnh" riêng nữa (bỏ nút). Nếu hồ sơ CHƯA có bệnh nào, mã
+    // vừa thêm TỰ ĐỘNG thành bệnh chính (backend quyết định + đồng bộ ô Kết
+    // luận/Mã bệnh chính/Cơ quan — xem _ma_benh_chinh/_ket_luan_benh trong
+    // response, khớp field trả về của /tu-chan-doan-sinh-ton).
+    async function doAddBenh(item, coQuan, chuoiGoc) {
       const res = await Api.addBenh(current.ma_ho_so, {
-        ma_icd: chosen.ma, co_quan: coQuanSel.value, chuoi_goc: icdInput.value,
+        ma_icd: item.ma, co_quan: coQuan, chuoi_goc: chuoiGoc,
       });
-      // Backend trả kèm _co_qc/_so_loi (cờ hiện tại của hồ sơ sau khi tự gỡ
-      // CON_CHAN_DOAN_CHUA_ANH_XA) — tách ra khỏi dòng bệnh rồi đồng bộ chip.
       const coQc = res._co_qc; const soLoi = res._so_loi;
-      delete res._co_qc; delete res._so_loi;
+      const maBenhChinh = res._ma_benh_chinh; const ketLuanBenh = res._ket_luan_benh;
+      const coQuanBenhChinh = res._co_quan_benh_chinh; const qd1613 = res._qd1613;
+      delete res._co_qc; delete res._so_loi; delete res._ma_benh_chinh;
+      delete res._ket_luan_benh; delete res._co_quan_benh_chinh; delete res._qd1613;
       current.benh = current.benh || [];
       current.benh.push(res);
       if (coQc) {
@@ -819,15 +825,23 @@ const DetailView = (() => {
         if (soLoi != null) current.so_loi = soLoi;
         renderFlagsSummary();
       }
+      const vuaThanhBenhChinh = maBenhChinh && current.ma_benh_chinh !== maBenhChinh;
+      if (vuaThanhBenhChinh) {
+        current.ma_benh_chinh = maBenhChinh;
+        current.ket_luan_benh = ketLuanBenh;
+        current.co_quan_benh_chinh = coQuanBenhChinh;
+        current.qd1613 = qd1613;
+        syncBenhChinhFields();
+        renderQd1613Banner();
+      }
       drawRows();
-      icdInput.value = ''; chosen = null;
-      toast('Đã lưu');
-    });
+      icdInput.value = '';
+      toast(vuaThanhBenhChinh ? 'Đã thêm — đặt làm bệnh chính' : 'Đã lưu');
+    }
     icdInputWrap.appendChild(icdInput);
     icdInputWrap.appendChild(suggBox);
     addForm.appendChild(icdInputWrap);
     addForm.appendChild(coQuanSel);
-    addForm.appendChild(addBtn);
     wrap.appendChild(addForm);
     return wrap;
   }

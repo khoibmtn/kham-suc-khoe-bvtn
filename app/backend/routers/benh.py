@@ -101,19 +101,39 @@ def _resolve_icd(conn, ma_icd):
 def add_benh(ma_ho_so: str, body: BenhBody, user=Depends(auth.get_current_user)):
     conn = db.get_connection()
     try:
-        _load_ho_so_or_404(conn, ma_ho_so, user)
+        ho_so_row = _load_ho_so_or_404(conn, ma_ho_so, user)
         ma, ten = _resolve_icd(conn, body.ma_icd)
         stt = conn.execute('SELECT COALESCE(MAX(stt_benh),0)+1 FROM benh '
                             'WHERE ma_ho_so=?', (ma_ho_so,)).fetchone()[0]
+        # Phản hồi anh Khôi: hồ sơ CHƯA có bệnh nào -> mã vừa thêm TỰ ĐỘNG
+        # thành bệnh chính (khỏi phải bấm radio tay riêng cho lần đầu).
+        la_dau_tien = stt == 1
         cur = conn.execute(
             'INSERT INTO benh(ma_ho_so, stt_benh, la_benh_chinh, ma_icd, '
             'ten_icd, co_quan, muc_do_nang, chuoi_goc, nguon_anh_xa, '
-            'dien_giai_bs, can_ra_soat) VALUES (?,?,0,?,?,?,?,?,?,?,0)',
-            (ma_ho_so, stt, ma, ten, body.co_quan, body.muc_do_nang,
-             body.chuoi_goc, 'nhap_tay', body.dien_giai_bs))
+            'dien_giai_bs, can_ra_soat) VALUES (?,?,?,?,?,?,?,?,?,?,0)',
+            (ma_ho_so, stt, 1 if la_dau_tien else 0, ma, ten, body.co_quan,
+             body.muc_do_nang, body.chuoi_goc, 'nhap_tay', body.dien_giai_bs))
         new_id = cur.lastrowid
         _log(conn, ma_ho_so, user['id'], f'benh:add:{new_id}', None,
              f'{ma} — {ten}')
+
+        if la_dau_tien:
+            conn.execute(
+                'UPDATE ho_so SET ma_benh_chinh=?, ket_luan_benh=?, '
+                'co_quan_benh_chinh=? WHERE ma_ho_so=?',
+                (ma, ten, body.co_quan, ma_ho_so))
+            for field, old_v, new_v in (
+                    ('ma_benh_chinh', ho_so_row['ma_benh_chinh'], ma),
+                    ('ket_luan_benh', ho_so_row['ket_luan_benh'], ten),
+                    ('co_quan_benh_chinh', ho_so_row['co_quan_benh_chinh'], body.co_quan)):
+                if old_v != new_v:
+                    _log(conn, ma_ho_so, user['id'], field, old_v, new_v)
+            # Bệnh IV-V nay đã có chẩn đoán chính -> gỡ cờ liên quan (khớp
+            # logic set_benh_chinh bên dưới, áp dụng nhất quán).
+            if ho_so_row['phan_loai_sk'] in (4, 5):
+                qc.remove_flags(conn, ma_ho_so,
+                                ['CO_PHAN_LOAI_NHUNG_KHONG_CO_CHAN_DOAN'])
 
         # Phản hồi anh Khôi (Phase 1/Đợt 12): thêm 1 mã ICD hợp lệ = đã bổ sung
         # ánh xạ chẩn đoán -> tự gỡ cờ 'Còn chẩn đoán chưa ánh xạ' Ở BACKEND
@@ -130,16 +150,20 @@ def add_benh(ma_ho_so: str, body: BenhBody, user=Depends(auth.get_current_user))
 
         conn.commit()
         row = conn.execute('SELECT * FROM benh WHERE id=?', (new_id,)).fetchone()
-        hs2 = conn.execute('SELECT co_qc, so_loi FROM ho_so WHERE ma_ho_so=?',
+        hs2 = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?',
                            (ma_ho_so,)).fetchone()
     finally:
         conn.close()
-    # Trả dòng bệnh + meta cờ hiện tại của hồ sơ (để frontend cập nhật chip
-    # cảnh báo ngay, không cần tải lại toàn hồ sơ). Thêm khóa _co_qc/_so_loi
-    # (tiền tố _ để không lẫn với cột của bảng benh).
+    # Trả dòng bệnh + meta cờ/kết luận hiện tại của hồ sơ (để frontend cập
+    # nhật chip cảnh báo + ô Kết luận bệnh ngay, không cần tải lại toàn hồ
+    # sơ). Thêm khóa _ để không lẫn với cột của bảng benh.
     out = dict(row)
     out['_co_qc'] = qc.flags_of(hs2['co_qc']) if hs2 else []
     out['_so_loi'] = hs2['so_loi'] if hs2 else None
+    out['_ma_benh_chinh'] = hs2['ma_benh_chinh'] if hs2 else None
+    out['_ket_luan_benh'] = hs2['ket_luan_benh'] if hs2 else None
+    out['_co_quan_benh_chinh'] = hs2['co_quan_benh_chinh'] if hs2 else None
+    out['_qd1613'] = qc.check_invariant(hs2) if hs2 else None
     return out
 
 
