@@ -119,17 +119,22 @@ def xuat_xlsx_chinh_sua(body: PreviewBody, admin=Depends(auth.require_admin)):
 async def nhap_doi_soat_ep(file: UploadFile = File(...),
                            ap_dung: bool = Form(False),
                            cho_ghi_de: bool = Form(False),
+                           cot: str = Form(''),
                            admin=Depends(auth.require_admin)):
     """Nhập lại file .xlsx đã chỉnh sửa, đối soát với DB. ap_dung=False -> chỉ
     XEM TRƯỚC (không ghi). ap_dung=True -> ghi (bổ sung luôn; ghi đè chỉ khi
-    cho_ghi_de=True). Trả tóm tắt + mẫu chi tiết thay đổi."""
+    cho_ghi_de=True). `cot`: danh sách tên cột (field, chữ thường) cách nhau
+    dấu phẩy — CHỈ đối soát/ghi các cột này (do user chọn ở bước xem trước);
+    rỗng = dùng TẤT CẢ cột phát hiện được trong file (mặc định, tương thích
+    ngược). Trả tóm tắt + cot_phat_hien + mẫu chi tiết thay đổi."""
     content = await file.read()
+    cot_chon = {c.strip() for c in cot.split(',') if c.strip()} if cot else None
     conn = db.get_connection()
     try:
         try:
             result = nhap_doi_soat.doi_soat(
                 conn, content, apply=ap_dung, cho_ghi_de=cho_ghi_de,
-                user_id=admin['id'])
+                user_id=admin['id'], cot_chon=cot_chon)
         except ValueError as e:
             raise HTTPException(400, str(e))
     finally:

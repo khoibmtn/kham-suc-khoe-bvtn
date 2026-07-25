@@ -274,22 +274,49 @@ const ExportView = (() => {
       { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   }
 
-  // Chọn file -> XEM TRƯỚC đối soát (không ghi). Giữ file để bấm "Áp dụng".
+  // Chọn file -> XEM TRƯỚC đối soát (không ghi, dùng TẤT CẢ cột phát hiện
+  // được lần đầu). Giữ file để bấm "Cập nhật xem trước" / "Áp dụng".
   async function doDoiSoatPreview(e) {
     const file = e.target.files[0];
     const box = panel.querySelector('#xf-ds-result');
     if (!file) { box.innerHTML = ''; return; }
-    box.innerHTML = '<div class="xf-hint">Đang đối soát ...</div>';
+    box.innerHTML = '<div class="xf-hint">Đang đọc file & đối soát ...</div>';
     try {
       const r = await Api.nhapDoiSoat(file, false, false);
-      renderDoiSoat(r, file);
+      renderDoiSoat(r, file, null);
     } catch (err) {
       box.innerHTML = `<div class="xf-error">${esc(err.message)}</div>`;
     }
   }
 
-  function renderDoiSoat(r, file) {
+  // Đợt 16 (phản hồi anh Khôi): liệt kê CỘT PHÁT HIỆN ĐƯỢC trong file, cho
+  // user chọn cột nào muốn cập nhật (mặc định chọn hết) — bỏ chọn cột nào
+  // thì cột đó bị XEM NHƯ KHÔNG CÓ trong file (kể cả có giá trị khác DB).
+  // Đổi chọn cột -> tự động ĐỐI SOÁT LẠI (gọi lại server, không tính tay ở
+  // client) để tổng số bổ sung/ghi đè luôn chính xác cho MỌI dòng, không chỉ
+  // 100 dòng mẫu hiển thị. `selected`: Set tên field đang chọn, null = lần
+  // đầu (chưa ai bấm gì) -> dùng nguyên r.cot_phat_hien (tất cả).
+  function renderDoiSoat(r, file, selected) {
     const box = panel.querySelector('#xf-ds-result');
+    const cotList = r.cot_phat_hien || [];
+    if (!selected) selected = new Set(cotList.map((c) => c.field));
+
+    const cotBox = cotList.length ? `
+      <div class="xf-ds-cot">
+        <div class="xf-ds-cot-title">Cột phát hiện được trong file — chọn cột muốn cập nhật:</div>
+        <div class="xf-ds-cot-actions">
+          <button type="button" id="xf-ds-cot-all">Chọn tất cả</button>
+          <button type="button" id="xf-ds-cot-none">Bỏ chọn tất cả</button>
+        </div>
+        <div class="xf-ds-cot-list">
+          ${cotList.map((c) => `
+            <label class="xf-ds-cot-item">
+              <input type="checkbox" class="xf-ds-cot-cb" value="${esc(c.field)}" ${selected.has(c.field) ? 'checked' : ''}>
+              ${esc(c.nhan)}
+            </label>`).join('')}
+        </div>
+      </div>` : '';
+
     const rows = (r.chi_tiet || []).slice(0, 100).map((row) => {
       const ch = row.changes.map((c) => `
         <div class="xf-ds-ch xf-ds-${c.loai}">
@@ -305,6 +332,7 @@ const ExportView = (() => {
       ? `<div class="xf-ds-warn">⚠ ${r.so_khong_khop} dòng KHÔNG khớp mã định danh — sẽ bỏ qua${r.khong_khop.length ? ' (vd: ' + esc(r.khong_khop.slice(0, 3).join(', ')) + ')' : ''}.</div>`
       : '';
     box.innerHTML = `
+      ${cotBox}
       <div class="xf-ds-summary">
         Khớp <b>${r.so_khop}</b> dòng · Bổ sung <b class="xf-ok">${r.so_bo_sung}</b> ô ·
         Ghi đè <b class="xf-red">${r.so_ghi_de}</b> ô${r.so_khong_khop ? ` · Không khớp <b>${r.so_khong_khop}</b>` : ''}
@@ -317,24 +345,55 @@ const ExportView = (() => {
           <button id="xf-ds-apply-btn" type="button">Áp dụng thay đổi</button>
           <span id="xf-ds-apply-status" class="xf-plain-status"></span>
         </div>`
-        : '<div class="xf-hint">Không có thay đổi nào để áp dụng.</div>'}
+        : (cotList.length ? '<div class="xf-hint">Không có thay đổi nào để áp dụng (với các cột đang chọn).</div>' : '')}
     `;
     if (coThayDoi) {
-      panel.querySelector('#xf-ds-apply-btn').addEventListener('click', () => doDoiSoatApply(file));
+      panel.querySelector('#xf-ds-apply-btn').addEventListener('click',
+        () => doDoiSoatApply(file, layCotDangChon()));
+    }
+
+    function layCotDangChon() {
+      return Array.from(panel.querySelectorAll('.xf-ds-cot-cb:checked')).map((cb) => cb.value);
+    }
+    async function doiSoatLai() {
+      const cotMoi = new Set(layCotDangChon());
+      box.innerHTML = '<div class="xf-hint">Đang đối soát lại theo cột đã chọn ...</div>';
+      try {
+        const r2 = await Api.nhapDoiSoat(file, false, false, Array.from(cotMoi));
+        renderDoiSoat(r2, file, cotMoi);
+      } catch (err) {
+        box.innerHTML = `<div class="xf-error">${esc(err.message)}</div>`;
+      }
+    }
+    if (cotList.length) {
+      panel.querySelectorAll('.xf-ds-cot-cb').forEach((cb) => cb.addEventListener('change', doiSoatLai));
+      panel.querySelector('#xf-ds-cot-all').addEventListener('click', () => {
+        panel.querySelectorAll('.xf-ds-cot-cb').forEach((cb) => { cb.checked = true; });
+        doiSoatLai();
+      });
+      panel.querySelector('#xf-ds-cot-none').addEventListener('click', () => {
+        panel.querySelectorAll('.xf-ds-cot-cb').forEach((cb) => { cb.checked = false; });
+        doiSoatLai();
+      });
     }
   }
 
-  async function doDoiSoatApply(file) {
+  async function doDoiSoatApply(file, cot) {
     const btn = panel.querySelector('#xf-ds-apply-btn');
     const status = panel.querySelector('#xf-ds-apply-status');
     const ghideEl = panel.querySelector('#xf-ds-ghide');
     const choGhiDe = !!(ghideEl && ghideEl.checked);
-    if (!confirm(`Áp dụng thay đổi?\n\n- Bổ sung dữ liệu mới cho các ô đang trống.\n- ${choGhiDe ? 'CÓ ghi đè các ô đã có dữ liệu (khác giá trị).' : 'KHÔNG ghi đè ô đã có dữ liệu.'}\n\nThao tác được ghi nhật ký.`)) return;
+    if (!cot || !cot.length) {
+      status.textContent = ' Chưa chọn cột nào để cập nhật.';
+      status.className = 'xf-plain-status error';
+      return;
+    }
+    if (!confirm(`Áp dụng thay đổi cho ${cot.length} cột đã chọn?\n\n- Bổ sung dữ liệu mới cho các ô đang trống.\n- ${choGhiDe ? 'CÓ ghi đè các ô đã có dữ liệu (khác giá trị).' : 'KHÔNG ghi đè ô đã có dữ liệu.'}\n\nThao tác được ghi nhật ký.`)) return;
     btn.disabled = true;
     status.textContent = ' Đang ghi ...';
     status.className = 'xf-plain-status';
     try {
-      const r = await Api.nhapDoiSoat(file, true, choGhiDe);
+      const r = await Api.nhapDoiSoat(file, true, choGhiDe, cot);
       status.textContent = ` Đã ghi: ${r.da_ghi_bo_sung} bổ sung, ${r.da_ghi_ghi_de} ghi đè.`
         + (r.loi_validate && r.loi_validate.length ? ` (${r.loi_validate.length} ô bị bỏ do sai ngưỡng)` : '');
       status.className = 'xf-plain-status ok';

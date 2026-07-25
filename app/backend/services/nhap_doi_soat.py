@@ -63,7 +63,14 @@ def _read_sheet(file_bytes):
     return rows
 
 
-def doi_soat(conn, file_bytes, apply=False, cho_ghi_de=False, user_id=None):
+def doi_soat(conn, file_bytes, apply=False, cho_ghi_de=False, user_id=None,
+             cot_chon=None):
+    """cot_chon: None/rỗng -> dùng TẤT CẢ cột phát hiện được (hành vi cũ,
+    tương thích ngược); tập hợp tên field (chữ thường, khớp schema.sql) ->
+    CHỈ đối soát/ghi những cột đó — các cột khác coi như KHÔNG có trong file
+    (bỏ qua hoàn toàn, kể cả nếu có giá trị). Trả kèm 'cot_phat_hien' (TOÀN
+    BỘ cột hợp lệ tìm thấy trong file, không phụ thuộc cot_chon) để frontend
+    liệt kê + hỏi user chọn trước khi đối soát/ghi (phản hồi anh Khôi)."""
     rows = _read_sheet(file_bytes)
     if len(rows) < 4:
         raise ValueError('File không đúng định dạng (cần 3 dòng tiêu đề + dữ liệu).')
@@ -78,10 +85,20 @@ def doi_soat(conn, file_bytes, apply=False, cho_ghi_de=False, user_id=None):
                          '"Xuất để chỉnh sửa & nhập lại".')
 
     patch = _patchable(conn)
-    col_field = {ci: c.lower() for ci, c in code_by_col.items()
-                 if ci != id_col and c.lower() in patch}
-    if not col_field:
+    col_field_all = {ci: c.lower() for ci, c in code_by_col.items()
+                     if ci != id_col and c.lower() in patch}
+    if not col_field_all:
         raise ValueError('Không có cột dữ liệu nào hợp lệ để nhập.')
+    # Thứ tự xuất hiện trong file — giữ nguyên để frontend liệt kê tự nhiên.
+    cot_phat_hien = [{'field': f, 'nhan': label_by_col.get(ci, f)}
+                      for ci, f in col_field_all.items()]
+
+    if cot_chon:
+        col_field = {ci: f for ci, f in col_field_all.items() if f in cot_chon}
+        if not col_field:
+            raise ValueError('Chưa chọn cột nào hợp lệ để cập nhật.')
+    else:
+        col_field = col_field_all
 
     nguong = sinh_hieu_valid.load_nguong(conn)
 
@@ -140,6 +157,7 @@ def doi_soat(conn, file_bytes, apply=False, cho_ghi_de=False, user_id=None):
 
     return {
         'apply': apply,
+        'cot_phat_hien': cot_phat_hien,
         'tong_dong': tong,
         'so_khop': so_khop,
         'so_khong_khop': so_khong_khop,

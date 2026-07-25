@@ -151,12 +151,14 @@ const Api = (() => {
       const m = /filename\*=UTF-8''([^;]+)/i.exec(cd);
       return { blob, name: m ? decodeURIComponent(m[1]) : 'KSK_ChinhSua.xlsx' };
     },
-    // Nhập lại file đã sửa để đối soát. apDung=false -> xem trước.
-    nhapDoiSoat: async (fileObj, apDung, choGhiDe) => {
+    // Nhập lại file đã sửa để đối soát. apDung=false -> xem trước. cot: mảng
+    // tên field muốn cập nhật (rỗng/undefined -> tất cả cột phát hiện được).
+    nhapDoiSoat: async (fileObj, apDung, choGhiDe, cot) => {
       const fd = new FormData();
       fd.append('file', fileObj);
       fd.append('ap_dung', apDung ? 'true' : 'false');
       fd.append('cho_ghi_de', choGhiDe ? 'true' : 'false');
+      if (cot && cot.length) fd.append('cot', cot.join(','));
       const res = await fetch('/api/xuat-file/nhap-doi-soat', {
         method: 'POST', body: fd, credentials: 'same-origin',
       });
