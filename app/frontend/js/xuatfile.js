@@ -6,6 +6,7 @@ const ExportView = (() => {
   let panel, danhMuc;
   let pollTimer = null;
   let cotMoRongList = [];
+  const autoDownloaded = new Set();
 
   function init(panelEl, dm) {
     panel = panelEl;
@@ -242,7 +243,7 @@ const ExportView = (() => {
       const job = await Api.xuatFileStart({
         ...scope, ...currentOptions(), extended: { enabled: extEnabled, columns },
       });
-      renderJob(job);
+      renderJob(job, { autoDownload: true });
       startPolling(job.id);
       startBtn.textContent = nhanCu;
     } catch (err) {
@@ -481,7 +482,7 @@ const ExportView = (() => {
     pollTimer = setInterval(async () => {
       try {
         const job = await Api.xuatFileJob(jobId);
-        renderJob(job);
+        renderJob(job, { autoDownload: true });
         if (job.status === 'done' || job.status === 'error') {
           clearInterval(pollTimer);
           pollTimer = null;
@@ -491,41 +492,65 @@ const ExportView = (() => {
         clearInterval(pollTimer);
         pollTimer = null;
       }
-    }, 2000);
+    }, 1500);
   }
 
   function statusLabel(s) {
-    return { queued: 'Chờ xử lý', running: 'Đang chạy', done: 'Xong', error: 'Có lỗi',
-              cho: 'Chờ', dang_chay: 'Đang xử lý...', xong: 'Xong', loi: 'Lỗi' }[s] || s;
+    return { queued: 'Chờ xử lý', running: 'Đang chạy', done: 'Xong', error: 'Có lỗi' }[s] || s;
   }
 
-  function renderJob(job) {
+  function triggerDownload(path, ten) {
+    const a = document.createElement('a');
+    a.href = `/api/xuat-file/download?path=${encodeURIComponent(path)}`;
+    a.download = ten || '';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  // Đợt 18 (phản hồi anh Khôi): gộp 1 file .xlsm duy nhất (không tách theo
+  // xã), UI tối giản — chỉ icon + % trong lúc chạy, xong thì TỰ ĐỘNG tải
+  // file (trình duyệt tự hỏi nơi lưu như tải 1 file bình thường), không hiện
+  // bảng chi tiết từng xã/log dài như trước. `autoDownload` chỉ bật khi gọi
+  // từ doStart/polling (job MỚI chạy) — xem lại lịch sử ("Xem") không tự tải
+  // lại file cũ.
+  function renderJob(job, opts) {
+    opts = opts || {};
     const box = panel.querySelector('#xf-job-progress');
-    const xaLines = (job.xa_progress || []).map((p) => `
-      <div class="xf-xa-line xf-xa-${p.status}">
-        <span class="xf-xa-name">${esc(p.xa)}</span>
-        <span class="xf-xa-status">${statusLabel(p.status)}</span>
-        <span class="xf-xa-count">${p.so_ca || 0} ca</span>
-        ${p.loi ? `<div class="xf-xa-loi-detail">${esc(p.loi)}</div>` : ''}
-      </div>`).join('');
-    const files = (job.files || []).map((f) => `
-      <li><a href="/api/xuat-file/download?path=${encodeURIComponent(f.duong_dan)}" target="_blank">${esc(f.ten)}</a></li>
-    `).join('');
-    const logLines = (job.log || []).slice(-30).join('\n');
-    // Đợt 17 (phản hồi anh Khôi): "quay lại nút ban đầu, không thấy gì xảy
-    // ra" — thực ra CÓ báo lỗi nhưng nằm lẫn, chữ nhỏ, dễ bỏ qua. Job lỗi
-    // (status='error') giờ có banner đỏ TO, không thể không thấy.
-    const banner = job.status === 'error'
-      ? `<div class="xf-error xf-error-big">❌ Xuất file THẤT BẠI — xem chi tiết lỗi bên dưới (dòng "Lỗi" màu đỏ và log cuối trang). Báo lại nội dung lỗi này để được hỗ trợ.</div>`
-      : '';
-    box.innerHTML = `
-      ${banner}
-      <h3>Job ${esc(job.id)} — ${statusLabel(job.status)}</h3>
-      <div class="xf-job-stats">Sẽ xuất ${job.se_xuat}/${job.tong_pham_vi} (cờ đỏ ${job.do_flag_count}, loại trừ ${job.se_loai_tru})</div>
-      <div class="xf-xa-list">${xaLines}</div>
-      ${files ? `<div class="xf-files"><b>File đã tạo:</b><ul>${files}</ul></div>` : ''}
-      <pre class="xf-log">${esc(logLines)}</pre>
-    `;
+    const xlsm = (job.files || []).find((f) => f.loai === 'xlsm');
+    const ke = (job.files || []).find((f) => f.loai === 'file_ke');
+
+    if (opts.autoDownload && job.status === 'done' && xlsm && !autoDownloaded.has(job.id)) {
+      autoDownloaded.add(job.id);
+      triggerDownload(xlsm.duong_dan, xlsm.ten);
+    }
+
+    let body;
+    if (job.status === 'queued' || job.status === 'running') {
+      const pct = job.progress_percent || 0;
+      body = `
+        <div class="xf-loading"><span class="spinner"></span> Đang xuất... <b>${pct}%</b></div>
+        <div class="xf-progress-bar"><div class="xf-progress-fill" style="width:${pct}%"></div></div>
+        <div class="xf-hint">% là ước tính theo thời gian, không phải số dòng thực đã ghi.</div>
+      `;
+    } else if (job.status === 'error') {
+      const logLines = (job.log || []).slice(-15).join('\n');
+      body = `
+        <div class="xf-error xf-error-big">❌ Xuất file THẤT BẠI — báo lại nội dung lỗi dưới đây để được hỗ trợ.</div>
+        ${job.error ? `<div class="xf-xa-loi-detail">${esc(job.error)}</div>` : ''}
+        <pre class="xf-log">${esc(logLines)}</pre>
+      `;
+    } else {
+      body = `
+        <div class="xf-done">✅ Đã xuất xong — ${job.se_xuat} ca trong 1 file.
+          ${xlsm ? 'File đang tải xuống (nếu trình duyệt không tự tải, bấm '
+            + `<a href="/api/xuat-file/download?path=${encodeURIComponent(xlsm.duong_dan)}">vào đây</a>).`
+            : ''}</div>
+        ${ke ? `<div class="xf-hint">File kê danh sách (không phải file nộp Bộ):
+          <a href="/api/xuat-file/download?path=${encodeURIComponent(ke.duong_dan)}" target="_blank">${esc(ke.ten)}</a></div>` : ''}
+      `;
+    }
+    box.innerHTML = `<h3>Job ${esc(job.id)} — ${statusLabel(job.status)}</h3>${body}`;
   }
 
   async function refreshJobList() {

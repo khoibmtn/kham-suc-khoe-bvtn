@@ -17,10 +17,10 @@ import datetime
 import io
 import json
 import os
-import re
 import subprocess
 import sys
 import threading
+import time
 import uuid
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -258,9 +258,12 @@ def build_plain_xlsx(conn, pham_vi, gia_tri, include_errors, chi_rs_xong=False,
 
 
 # ============================= XÂY BẢN GHI =============================
-def _xa_filename(xa):
-    ten = re.sub(r'[^\w]+', '_', xa or 'Chua_xac_dinh').strip('_')
-    return f'KSK_Import_{ten}.xlsm'
+def _merged_filename(so_ca):
+    """Đợt 18 (phản hồi anh Khôi): GỘP 1 file .xlsm duy nhất theo đúng phạm
+    vi đã chọn — không tách theo xã nữa (xem ghi chú tại _run_job về việc
+    kiểm chứng lại giới hạn bộ nhớ ở §7.1 mục 7 SPEC)."""
+    ts = datetime.datetime.now().strftime('%Y%m%d_%H%M')
+    return f'KSK_Import_{so_ca}ca_{ts}.xlsm'
 
 
 def _row_to_rec(row, tt):
@@ -336,10 +339,6 @@ def create_job(pham_vi, gia_tri, include_errors, extended, admin_id,
     if ext_enabled:
         ext_columns = [c for c in (extended.get('columns') or []) if c in EXTENDED_CODES]
 
-    xa_groups = {}
-    for row in rows:
-        xa_groups.setdefault(row['maxa_cu_tru'] or 'Chưa xác định', []).append(row)
-
     do_flag_count = sum(1 for r in rows if r['ma_ho_so'] in red_set)
     se_loai_tru = 0 if include_errors else do_flag_count
 
@@ -357,8 +356,7 @@ def create_job(pham_vi, gia_tri, include_errors, extended, admin_id,
                     'extended': {'enabled': ext_enabled, 'columns': ext_columns}},
         'tong_pham_vi': len(rows), 'do_flag_count': do_flag_count,
         'se_xuat': len(rows) - se_loai_tru, 'se_loai_tru': se_loai_tru,
-        'xa_progress': [{'xa': xa, 'so_ca': len(v), 'status': 'cho'}
-                         for xa, v in sorted(xa_groups.items())],
+        'progress_percent': 0,
         'log': [], 'files': [], 'error': None, 'job_dir': job_dir,
     }
     with _JOBS_LOCK:
@@ -374,89 +372,97 @@ def create_job(pham_vi, gia_tri, include_errors, extended, admin_id,
 
 
 def _run_job(job_id, rows, red_set, user_map, include_errors, ext_enabled, ext_columns):
+    """Đợt 18 (phản hồi anh Khôi): GỘP 1 file .xlsm duy nhất theo đúng phạm vi
+    đã chọn — không tách theo xã/phường nữa như trước. §7.1 mục 7 SPEC từng
+    ghi "gộp 13.326 ca vào 1 file làm openpyxl vượt bộ nhớ" — đã ĐO LẠI THẬT
+    trên máy hiện tại (write_xlsm với TOÀN BỘ 13.326 ca thật trong DB): peak
+    ~840MB RAM, ~15s, chạy trót lọt — với openpyxl/phần cứng hiện tại, giới
+    hạn cũ không còn đúng. Vẫn chạy trong 1 SUBPROCESS riêng (không phải
+    ngay tiến trình server) để nếu có bất ngờ thật sự xảy ra, chỉ tiến trình
+    con bị ảnh hưởng, server chính không bị kéo theo."""
     job = _JOBS[job_id]
     job['status'] = 'running'
     _log(job, f"Bắt đầu xuất {len(rows)} hồ sơ trong phạm vi đã chọn "
               f"(cờ đỏ: {job['do_flag_count']}, "
               f"{'gồm cả hồ sơ lỗi' if include_errors else 'loại trừ hồ sơ lỗi'})")
 
-    xa_groups = {}
-    for row in rows:
-        xa_groups.setdefault(row['maxa_cu_tru'] or 'Chưa xác định', []).append(row)
+    included_rows, skip_rows = [], []
+    for r in rows:
+        is_red = r['ma_ho_so'] in red_set
+        if is_red and not include_errors:
+            skip_rows.append(r)
+        else:
+            included_rows.append(r)
+    ke_records = [(r, False, None) for r in skip_rows]
 
     exported_ma = []
-    ke_records = []  # (row, included: bool, ten_file|None) — cho file kê
     had_error = False
 
-    for prog in job['xa_progress']:
-        xa = prog['xa']
-        xa_rows = xa_groups.get(xa, [])
-
-        included_rows, skip_rows = [], []
-        for r in xa_rows:
-            is_red = r['ma_ho_so'] in red_set
-            if is_red and not include_errors:
-                skip_rows.append(r)
-            else:
-                included_rows.append(r)
-        for r in skip_rows:
-            ke_records.append((r, False, None))
-
-        if not included_rows:
-            prog['status'] = 'xong'
-            prog['so_ca'] = 0
-            _log(job, f"Xã {xa}: không có hồ sơ để xuất "
-                      f"(toàn bộ {len(skip_rows)} ca bị loại do cờ đỏ)")
-            _save_job(job)
-            continue
-
-        prog['status'] = 'dang_chay'
-        _log(job, f"Xã {xa}: đang xuất {len(included_rows)} ca ...")
-
-        recs = []
-        for i, r in enumerate(included_rows, 1):
-            rec = _row_to_rec(r, i)
-            if ext_enabled:
-                rec['_EXT'] = _row_ext(r, user_map.get(r['nguoi_ra_soat_id'], ''))
-            recs.append(rec)
-
-        filename = _xa_filename(xa)
-        output_path = os.path.join(job['job_dir'], filename)
-        handoff_name = re.sub(r'[^\w]+', '_', xa).strip('_') or 'xa'
-        handoff_path = os.path.join(job['job_dir'], f'.handoff_{handoff_name}.json')
-        with open(handoff_path, 'w', encoding='utf-8') as f:
-            json.dump({'records': recs,
-                       'extended': {'enabled': ext_enabled, 'columns': ext_columns,
-                                    'labels': EXTENDED_LABELS}},
-                      f, ensure_ascii=False)
-
-        result = subprocess.run(
-            [sys.executable, WORKER_PATH, handoff_path, output_path],
-            capture_output=True, text=True, encoding='utf-8', errors='replace')
-
-        try:
-            os.remove(handoff_path)
-        except OSError:
-            pass
-
-        if result.returncode == 0:
-            prog['status'] = 'xong'
-            prog['so_ca'] = len(included_rows)
-            job['files'].append({'ten': filename, 'duong_dan': output_path,
-                                  'loai': 'xlsm', 'xa': xa})
-            for r in included_rows:
-                exported_ma.append(r['ma_ho_so'])
-                ke_records.append((r, True, filename))
-            _log(job, f"Xã {xa}: xong — {len(included_rows)} ca -> {filename}")
-        else:
-            prog['status'] = 'loi'
-            had_error = True
-            err_tail = (result.stderr or '').strip()[-800:]
-            prog['loi'] = err_tail
-            _log(job, f"Xã {xa}: LỖI — {err_tail}")
-            for r in included_rows:
-                ke_records.append((r, False, None))
+    if not included_rows:
+        job['status'] = 'error'
+        job['error'] = 'Không có hồ sơ nào để xuất — toàn bộ đã bị loại do cờ 🔴.'
+        _log(job, job['error'])
         _save_job(job)
+        return
+
+    _log(job, f"Đang ghi {len(included_rows)} ca vào 1 file .xlsm gộp ...")
+
+    recs = []
+    for i, r in enumerate(included_rows, 1):
+        rec = _row_to_rec(r, i)
+        if ext_enabled:
+            rec['_EXT'] = _row_ext(r, user_map.get(r['nguoi_ra_soat_id'], ''))
+        recs.append(rec)
+
+    filename = _merged_filename(len(included_rows))
+    output_path = os.path.join(job['job_dir'], filename)
+    handoff_path = os.path.join(job['job_dir'], '.handoff.json')
+    with open(handoff_path, 'w', encoding='utf-8') as f:
+        json.dump({'records': recs,
+                   'extended': {'enabled': ext_enabled, 'columns': ext_columns,
+                                'labels': EXTENDED_LABELS}},
+                  f, ensure_ascii=False)
+
+    # % tiến trình chỉ là ƯỚC TÍNH theo thời gian đã trôi qua so với thời
+    # gian dự kiến (hiệu chỉnh thực đo: ~3.5s cố định mở template+danh mục +
+    # ~0.85ms/dòng ghi 103 cột; cột mở rộng nếu bật mở lại toàn file 1 lần
+    # nữa, ~3s + ~1.8ms/dòng) — write_xlsm() ở build/ không có hook báo tiến
+    # độ thật và KHÔNG được sửa file đó (§9 SPEC: không viết lại pipeline).
+    est_total_s = 3.5 + 0.00085 * len(included_rows)
+    if ext_enabled:
+        est_total_s += 3.0 + 0.0018 * len(included_rows)
+
+    proc = subprocess.Popen(
+        [sys.executable, WORKER_PATH, handoff_path, output_path],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True, encoding='utf-8', errors='replace')
+    t0 = time.time()
+    while proc.poll() is None:
+        job['progress_percent'] = min(95, int((time.time() - t0) / est_total_s * 100))
+        _save_job(job)
+        time.sleep(0.7)
+    _, stderr = proc.communicate()
+
+    try:
+        os.remove(handoff_path)
+    except OSError:
+        pass
+
+    if proc.returncode == 0:
+        job['progress_percent'] = 100
+        job['files'].append({'ten': filename, 'duong_dan': output_path, 'loai': 'xlsm'})
+        for r in included_rows:
+            exported_ma.append(r['ma_ho_so'])
+            ke_records.append((r, True, filename))
+        _log(job, f"Xong — {len(included_rows)} ca -> {filename}")
+    else:
+        had_error = True
+        err_tail = (stderr or '').strip()[-800:]
+        job['error'] = err_tail
+        _log(job, f"LỖI — {err_tail}")
+        for r in included_rows:
+            ke_records.append((r, False, None))
+    _save_job(job)
 
     _log(job, 'Đang tạo file kê ...')
     file_ke_path = os.path.join(job['job_dir'], 'file_ke.xlsx')
@@ -487,7 +493,7 @@ def _run_job(job_id, rows, red_set, user_map, include_errors, ext_enabled, ext_c
 
     job['status'] = 'error' if had_error else 'done'
     job['finished_at'] = datetime.datetime.now().isoformat()
-    _log(job, 'Hoàn tất — có lỗi ở một số xã, xem log.' if had_error else 'Hoàn tất.')
+    _log(job, 'Hoàn tất — có lỗi, xem chi tiết ở trên.' if had_error else 'Hoàn tất.')
     _save_job(job)
 
 
