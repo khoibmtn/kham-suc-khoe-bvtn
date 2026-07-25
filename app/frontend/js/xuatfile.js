@@ -19,6 +19,7 @@ const ExportView = (() => {
     render();
     wire();
     refreshJobList();
+    refreshBackupList();
   }
 
   function render() {
@@ -118,6 +119,21 @@ const ExportView = (() => {
 
       <h3>Các lần xuất gần đây</h3>
       <div id="xf-job-history"></div>
+
+      <div class="xf-block xf-backup-block">
+        <div class="xf-label">Sao lưu &amp; khôi phục dữ liệu (local)</div>
+        <p class="xf-hint">Ngoài sao lưu tự động (chỉnh ở trang Cài đặt), có
+          thể sao lưu NGAY LẬP TỨC ở đây. Khôi phục sẽ GHI ĐÈ dữ liệu hiện tại
+          của TOÀN BỘ hệ thống (ảnh hưởng mọi người đang dùng) — hệ thống LUÔN
+          tự tạo 1 bản an toàn của dữ liệu hiện tại trước khi ghi đè, để hoàn
+          tác được nếu chọn nhầm.</p>
+        <button id="xf-backup-create-btn" type="button">Tạo bản sao lưu ngay</button>
+        <span id="xf-backup-create-status" class="xf-plain-status"></span>
+        <table class="dash-table xf-backup-table">
+          <thead><tr><th>Tên file</th><th>Thời gian</th><th>Kích thước</th><th></th></tr></thead>
+          <tbody id="xf-backup-list-body"><tr><td colspan="4">Đang tải...</td></tr></tbody>
+        </table>
+      </div>
     `;
   }
 
@@ -156,6 +172,7 @@ const ExportView = (() => {
     panel.querySelector('#xf-plain-btn').addEventListener('click', doExportPlain);
     panel.querySelector('#xf-edit-btn').addEventListener('click', doExportChinhSua);
     panel.querySelector('#xf-ds-file').addEventListener('change', doDoiSoatPreview);
+    panel.querySelector('#xf-backup-create-btn').addEventListener('click', doBackupCreate);
 
     const extToggle = panel.querySelector('#xf-extended-enabled');
     extToggle.addEventListener('change', () => {
@@ -500,6 +517,73 @@ const ExportView = (() => {
         });
       });
     } catch (e) { /* ignore */ }
+  }
+
+  // ---- Đợt 16 (phản hồi anh Khôi): sao lưu thủ công + liệt kê + khôi phục ----
+  function fmtKichThuoc(bytes) {
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+  function fmtThoiGianBackup(iso) {
+    const d = new Date(iso);
+    return isNaN(d) ? iso : d.toLocaleString('vi-VN');
+  }
+
+  async function refreshBackupList() {
+    const tbody = panel.querySelector('#xf-backup-list-body');
+    if (!tbody) return;
+    try {
+      const list = await Api.backupDanhSach();
+      tbody.innerHTML = list.length ? list.map((b) => `
+        <tr>
+          <td>${esc(b.ten)}</td>
+          <td>${esc(fmtThoiGianBackup(b.thoi_gian))}</td>
+          <td>${fmtKichThuoc(b.kich_thuoc)}</td>
+          <td><button type="button" class="xf-backup-restore-btn" data-path="${esc(b.duong_dan)}" data-ten="${esc(b.ten)}">Khôi phục</button></td>
+        </tr>`).join('') : '<tr><td colspan="4">Chưa có bản sao lưu nào.</td></tr>';
+      tbody.querySelectorAll('.xf-backup-restore-btn').forEach((btn) => {
+        btn.addEventListener('click', () => doBackupRestore(btn.dataset.path, btn.dataset.ten, btn));
+      });
+    } catch (e) {
+      tbody.innerHTML = `<tr><td colspan="4" class="xf-error">Lỗi tải danh sách: ${esc(e.message)}</td></tr>`;
+    }
+  }
+
+  async function doBackupCreate() {
+    const btn = panel.querySelector('#xf-backup-create-btn');
+    const status = panel.querySelector('#xf-backup-create-status');
+    btn.disabled = true;
+    status.textContent = ' Đang sao lưu...';
+    status.className = 'xf-plain-status';
+    try {
+      const r = await Api.backupTaoThuCong();
+      status.textContent = ` Đã tạo: ${r.duong_dan}`;
+      status.className = 'xf-plain-status ok';
+      refreshBackupList();
+    } catch (err) {
+      status.textContent = ' ' + err.message;
+      status.className = 'xf-plain-status error';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function doBackupRestore(duongDan, ten, btn) {
+    // Xác nhận 2 LẦN vì đây là thao tác GHI ĐÈ TOÀN BỘ dữ liệu hệ thống,
+    // ảnh hưởng mọi người đang dùng — không thể chỉ 1 cú click là xong.
+    if (!confirm(`⚠ KHÔI PHỤC "${ten}"?\n\nThao tác này sẽ GHI ĐÈ TOÀN BỘ dữ liệu hiện tại của hệ thống bằng bản sao lưu này — ảnh hưởng MỌI người đang dùng ngay lập tức.\n\nHệ thống sẽ tự tạo 1 bản an toàn của dữ liệu hiện tại trước khi ghi đè.\n\nBấm OK để tiếp tục.`)) return;
+    if (!confirm(`Xác nhận LẦN CUỐI: khôi phục về "${ten}"? Không thể huỷ giữa chừng.`)) return;
+    btn.disabled = true;
+    btn.textContent = 'Đang khôi phục...';
+    try {
+      const r = await Api.backupKhoiPhuc(duongDan);
+      alert(`Đã khôi phục xong. Bản an toàn của dữ liệu TRƯỚC khi khôi phục: ${r.ban_an_toan_truoc_khoi_phuc}`);
+      refreshBackupList();
+    } catch (err) {
+      alert('Lỗi khôi phục: ' + err.message);
+      btn.disabled = false;
+      btn.textContent = 'Khôi phục';
+    }
   }
 
   return { init, show };

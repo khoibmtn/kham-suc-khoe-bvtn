@@ -213,8 +213,7 @@ def backup_tao_thu_cong(admin=Depends(auth.require_admin)):
     """Sao lưu NGAY LẬP TỨC theo yêu cầu tay — lưu riêng thư mục 'manual'
     (không bị dọn bớt theo số lượng như bản tự động)."""
     duong_dan = auto_backup.backup_now(sub='manual')
-    return {'duong_dan': os.path.relpath(duong_dan, export_xlsm.EXPORTS_DIR + '/../backups')
-                          if False else os.path.basename(duong_dan)}
+    return {'duong_dan': os.path.basename(duong_dan)}
 
 
 class KhoiPhucBody(BaseModel):

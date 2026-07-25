@@ -180,6 +180,10 @@ const Api = (() => {
     xuatFileJobs: () => req('GET', '/api/xuat-file/jobs'),
     xuatFileJob: (id) => req('GET', `/api/xuat-file/jobs/${encodeURIComponent(id)}`),
 
+    backupDanhSach: () => req('GET', '/api/backup/danh-sach'),
+    backupTaoThuCong: () => req('POST', '/api/backup/tao-thu-cong'),
+    backupKhoiPhuc: (duong_dan) => req('POST', '/api/backup/khoi-phuc', { duong_dan }),
+
     dashTongQuan: () => req('GET', '/api/dashboard/tong-quan'),
     dashTheoXa: () => req('GET', '/api/dashboard/theo-xa'),
     dashTheoKhoaPhong: () => req('GET', '/api/dashboard/theo-khoa-phong'),

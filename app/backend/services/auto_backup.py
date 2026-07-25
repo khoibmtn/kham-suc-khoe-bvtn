@@ -37,16 +37,18 @@ def load_tu_dong(conn):
     return out
 
 
-def _thu_muc_auto():
-    d = os.path.join(config.BACKUP_DIR, 'auto')
+def _thu_muc(sub='auto'):
+    d = os.path.join(config.BACKUP_DIR, sub)
     os.makedirs(d, exist_ok=True)
     return d
 
 
-def backup_now():
-    """Sao lưu ngay lập tức, trả về đường dẫn file mới tạo."""
+def backup_now(sub='auto'):
+    """Sao lưu ngay lập tức (DB SỐNG -> file mới trong thư mục `sub`), trả về
+    đường dẫn file mới tạo. `sub='manual'` dùng cho nút bấm tay ở trang Xuất
+    file — KHÔNG bị dọn bớt (chỉ `_prune()` áp cho thư mục 'auto')."""
     ts = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-    dest = os.path.join(_thu_muc_auto(), f'ksk_{ts}.db')
+    dest = os.path.join(_thu_muc(sub), f'ksk_{ts}.db')
     src = sqlite3.connect(config.DB_PATH)
     try:
         dst = sqlite3.connect(dest)
@@ -106,3 +108,61 @@ def _loop():
 
 def start():
     threading.Thread(target=_loop, daemon=True, name='auto_backup').start()
+
+
+# ---- Đợt 16 (phản hồi anh Khôi): backup thủ công + liệt kê + khôi phục ----
+# Quét TOÀN BỘ *.db dưới BACKUP_DIR (mọi thư mục con: auto/, manual/,
+# before_restore/, và các bản .db rời rạc ở gốc như sao lưu hằng ngày) —
+# admin thấy hết mọi bản có sẵn, không phân biệt nguồn gốc.
+def list_backups():
+    """Trả list {ten, duong_dan (TƯƠNG ĐỐI trong BACKUP_DIR — dùng lại khi
+    gọi restore_backup), kich_thuoc (byte), thoi_gian (ISO)} — sắp mới nhất
+    trước."""
+    out = []
+    for root, _dirs, files in os.walk(config.BACKUP_DIR):
+        for f in files:
+            if not f.endswith('.db'):
+                continue
+            full = os.path.join(root, f)
+            try:
+                st = os.stat(full)
+            except OSError:
+                continue
+            rel = os.path.relpath(full, config.BACKUP_DIR)
+            out.append({
+                'ten': f, 'duong_dan': rel, 'kich_thuoc': st.st_size,
+                'thoi_gian': datetime.datetime.fromtimestamp(
+                    st.st_mtime).isoformat(timespec='seconds'),
+            })
+    out.sort(key=lambda x: x['thoi_gian'], reverse=True)
+    return out
+
+
+def restore_backup(duong_dan_tuong_doi):
+    """Khôi phục DB SỐNG từ 1 bản backup đã liệt kê (đường dẫn TƯƠNG ĐỐI
+    trong BACKUP_DIR — validate chống path traversal, chỉ chấp nhận file
+    nằm trong BACKUP_DIR). LUÔN tạo 1 bản AN TOÀN của DB hiện tại (thư mục
+    before_restore/) TRƯỚC KHI ghi đè — để hoàn tác được nếu chọn nhầm bản.
+    Dùng sqlite3 backup API (không copy file thô) — an toàn hơn khi có
+    request khác đang mở DB cùng lúc (đặt busy_timeout chờ khoá thay vì lỗi
+    ngay). Trả đường dẫn bản an toàn vừa tạo."""
+    full = os.path.realpath(os.path.join(config.BACKUP_DIR, duong_dan_tuong_doi))
+    root = os.path.realpath(config.BACKUP_DIR)
+    if not (full == root or full.startswith(root + os.sep)):
+        raise ValueError('Đường dẫn backup không hợp lệ')
+    if not os.path.isfile(full):
+        raise ValueError('Không tìm thấy file backup')
+
+    safety_path = backup_now(sub='before_restore')
+
+    src = sqlite3.connect(full)
+    try:
+        dst = sqlite3.connect(config.DB_PATH)
+        try:
+            dst.execute('PRAGMA busy_timeout=15000')
+            src.backup(dst)
+        finally:
+            dst.close()
+    finally:
+        src.close()
+    return safety_path
