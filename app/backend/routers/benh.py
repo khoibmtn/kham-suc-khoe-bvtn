@@ -199,10 +199,29 @@ def patch_benh(ma_ho_so: str, benh_id: int, body: BenhBody,
             conn.execute(f'UPDATE benh SET {", ".join(set_clauses)} WHERE id = ?',
                          args)
             conn.commit()
+
+        # Phản hồi anh Khôi: sửa "Cơ quan" của dòng ĐANG LÀ bệnh chính (vd
+        # tự động ánh xạ sai chương ICD -> nhân viên sửa lại tay ngay trên
+        # bảng bệnh) phải đồng bộ luôn ho_so.co_quan_benh_chinh — trước đây
+        # chỉ UPDATE bảng benh, cột co_quan_benh_chinh của hồ sơ (dùng cho ô
+        # "Cơ quan bệnh chính" + xuất file) bị lệch/cũ.
+        co_quan_benh_chinh_moi = None
+        if (old['la_benh_chinh'] and 'co_quan' in changes
+                and changes['co_quan'] != old['co_quan']):
+            co_quan_benh_chinh_moi = changes['co_quan']
+            conn.execute('UPDATE ho_so SET co_quan_benh_chinh=? WHERE ma_ho_so=?',
+                         (co_quan_benh_chinh_moi, ma_ho_so))
+            _log(conn, ma_ho_so, user['id'], 'co_quan_benh_chinh',
+                 old['co_quan'], co_quan_benh_chinh_moi)
+            conn.commit()
+
         row = conn.execute('SELECT * FROM benh WHERE id=?', (benh_id,)).fetchone()
     finally:
         conn.close()
-    return dict(row)
+    out = dict(row)
+    if co_quan_benh_chinh_moi is not None:
+        out['_co_quan_benh_chinh'] = co_quan_benh_chinh_moi
+    return out
 
 
 @router.delete('/ho-so/{ma_ho_so}/benh/{benh_id}')

@@ -710,8 +710,8 @@ const DetailView = (() => {
         tdChinh.appendChild(radio);
         tr.appendChild(tdChinh);
         tr.appendChild(td(`${b.ma_icd || ''} — ${b.ten_icd || ''}`));
-        tr.appendChild(td(b.co_quan || ''));
-        tr.appendChild(td(b.muc_do_nang == null ? '' : b.muc_do_nang));
+        tr.appendChild(tdCoQuanSua(b));
+        tr.appendChild(tdMucDoSua(b));
         tr.appendChild(td(b.chuoi_goc || ''));
         tr.appendChild(td(b.nguon_anh_xa || ''));
         const tdDel = document.createElement('td');
@@ -729,6 +729,72 @@ const DetailView = (() => {
       });
     }
     function td(text) { const t = document.createElement('td'); t.textContent = text; return t; }
+
+    // Đợt 14 (phản hồi anh Khôi): "Cơ quan" tự động ánh xạ theo chương ICD
+    // đôi khi sai (vd N82.x mã lấy chương N nhưng thực tế đôi khi thuộc
+    // Sản phụ khoa chứ không phải Thận-TN-SD như bảng ánh xạ mặc định) —
+    // trước đây KHÔNG sửa được sau khi đã thêm vào bảng bệnh (chỉ chọn được
+    // lúc thêm mới). Giờ sửa TRỰC TIẾP trên dòng đã thêm, PATCH ngay khi đổi.
+    function tdCoQuanSua(b) {
+      const t = document.createElement('td');
+      const sel = document.createElement('select');
+      sel.className = 'benh-inline-select';
+      const optBlank = document.createElement('option');
+      optBlank.value = ''; optBlank.textContent = '—';
+      sel.appendChild(optBlank);
+      (danhMuc.co_quan_benh_chinh || []).forEach((c) => {
+        const o = document.createElement('option'); o.value = c.ma; o.textContent = c.ten;
+        if (c.ma === b.co_quan) o.selected = true;
+        sel.appendChild(o);
+      });
+      sel.addEventListener('change', async () => {
+        const giaTriCu = b.co_quan;
+        try {
+          const res = await Api.patchBenh(current.ma_ho_so, b.id, { co_quan: sel.value || null });
+          b.co_quan = res.co_quan;
+          // Dòng vừa sửa ĐANG LÀ bệnh chính -> backend trả kèm
+          // _co_quan_benh_chinh, đồng bộ luôn ô "Cơ quan bệnh chính".
+          if (res._co_quan_benh_chinh !== undefined) {
+            current.co_quan_benh_chinh = res._co_quan_benh_chinh;
+            const cqbc = document.getElementById('f_co_quan_benh_chinh');
+            if (cqbc) cqbc.value = res._co_quan_benh_chinh || '';
+          }
+          toast('Đã lưu');
+        } catch (err) {
+          sel.value = giaTriCu || '';
+          toast('Lỗi: ' + err.message);
+        }
+      });
+      t.appendChild(sel);
+      return t;
+    }
+
+    // "Mức độ" (1-5, QĐ1613) — cũng sửa trực tiếp được, tương tự Cơ quan.
+    function tdMucDoSua(b) {
+      const t = document.createElement('td');
+      const sel = document.createElement('select');
+      sel.className = 'benh-inline-select benh-inline-select-sm';
+      [['', '—'], ['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5']].forEach(([v, label]) => {
+        const o = document.createElement('option'); o.value = v; o.textContent = label;
+        if (String(b.muc_do_nang == null ? '' : b.muc_do_nang) === v) o.selected = true;
+        sel.appendChild(o);
+      });
+      sel.addEventListener('change', async () => {
+        const giaTriCu = b.muc_do_nang;
+        try {
+          const val = sel.value === '' ? null : Number(sel.value);
+          const res = await Api.patchBenh(current.ma_ho_so, b.id, { muc_do_nang: val });
+          b.muc_do_nang = res.muc_do_nang;
+          toast('Đã lưu');
+        } catch (err) {
+          sel.value = giaTriCu == null ? '' : String(giaTriCu);
+          toast('Lỗi: ' + err.message);
+        }
+      });
+      t.appendChild(sel);
+      return t;
+    }
+
     drawRows();
 
     const addForm = document.createElement('div');

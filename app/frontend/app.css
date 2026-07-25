@@ -325,6 +325,8 @@ details summary {
 
 .benh-table-wrap { padding: 10px; }
 .benh-table { width: 100%; font-size: 12px; }
+.benh-inline-select { font-size: 12px; padding: 2px 4px; max-width: 180px; }
+.benh-inline-select-sm { max-width: 56px; }
 .benh-add-form { display: flex; gap: 6px; margin-top: 8px; position: relative; align-items: center; }
 .icd-input-wrap input { width: 100%; padding: 4px; }
 .benh-add-form select { flex: 1; }
