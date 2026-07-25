@@ -85,10 +85,28 @@ def doi_soat(conn, file_bytes, apply=False, cho_ghi_de=False, user_id=None,
                          '"Xuất để chỉnh sửa & nhập lại".')
 
     patch = _patchable(conn)
-    col_field_all = {ci: c.lower() for ci, c in code_by_col.items()
-                     if ci != id_col and c.lower() in patch}
-    if not col_field_all:
+    col_field_headers = {ci: c.lower() for ci, c in code_by_col.items()
+                         if ci != id_col and c.lower() in patch}
+    if not col_field_headers:
         raise ValueError('Không có cột dữ liệu nào hợp lệ để nhập.')
+
+    # Phản hồi anh Khôi: file xuất luôn giữ ĐỦ header 103 cột chuẩn BYT dù
+    # người dùng chỉ điền vài cột — liệt kê theo HEADER (như trước) khiến
+    # danh sách chọn cột dài cả trăm dòng dù file thực tế chỉ có ~12 cột có
+    # dữ liệu. Chỉ liệt kê cột có ÍT NHẤT 1 ô khác trống trong toàn bộ dòng
+    # dữ liệu (quét 1 lượt, dừng sớm khi đã đủ mọi cột).
+    con_thieu = set(col_field_headers.values())
+    for r in rows[3:]:
+        if not r or not con_thieu:
+            break
+        for ci, f in col_field_headers.items():
+            if f in con_thieu and ci < len(r) and _norm(r[ci]) != '':
+                con_thieu.discard(f)
+    co_du_lieu = set(col_field_headers.values()) - con_thieu
+
+    col_field_all = {ci: f for ci, f in col_field_headers.items() if f in co_du_lieu}
+    if not col_field_all:
+        raise ValueError('File không có cột dữ liệu nào có giá trị để nhập.')
     # Thứ tự xuất hiện trong file — giữ nguyên để frontend liệt kê tự nhiên.
     cot_phat_hien = [{'field': f, 'nhan': label_by_col.get(ci, f)}
                       for ci, f in col_field_all.items()]
