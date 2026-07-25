@@ -599,6 +599,31 @@ def patch_ho_so(ma_ho_so: str, body: PatchBody,
                      new_co_qc or ''))
                 conn.commit()
 
+        # Phản hồi anh Khôi: sau MỌI thay đổi có thể làm đổi phân loại 1 cơ
+        # quan (CSST tự nâng Tuần hoàn, thể lực tự tính lại, sửa tay cơ quan
+        # khác...) -> tự NÂNG Phân loại sức khỏe chung lên bằng mức nặng nhất
+        # trong các cơ quan nếu đang THẤP HƠN (chỉ nâng, không hạ — cùng
+        # nguyên tắc scripts/batch_sinh_hieu.py). Bỏ qua khi CHÍNH request
+        # này đã tự tay đổi phan_loai_sk (tôn trọng lựa chọn thủ công ngay
+        # trong cùng 1 lần lưu, không tự ghi đè lên nó).
+        if 'phan_loai_sk' not in changes:
+            row_now = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?',
+                                   (ma_ho_so,)).fetchone()
+            inv_now = qc.check_invariant(row_now)
+            gmax = inv_now['gia_tri_max']
+            pl_hien_tai = row_now['phan_loai_sk']
+            pl_hien_tai_i = int(pl_hien_tai) if pl_hien_tai not in (None, '') else 0
+            if gmax is not None and gmax > pl_hien_tai_i:
+                conn.execute('UPDATE ho_so SET phan_loai_sk=? WHERE ma_ho_so=?',
+                             (gmax, ma_ho_so))
+                conn.execute(
+                    'INSERT INTO nhat_ky(ma_ho_so, nguoi_dung_id, ten_truong, '
+                    'gia_tri_cu, gia_tri_moi) VALUES (?,?,?,?,?)',
+                    (ma_ho_so, user['id'], 'phan_loai_sk',
+                     '' if pl_hien_tai is None else str(pl_hien_tai), str(gmax)))
+                conn.commit()
+                updated['phan_loai_sk'] = gmax
+
         new_row = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?',
                                 (ma_ho_so,)).fetchone()
         qd1613 = qc.check_invariant(new_row)

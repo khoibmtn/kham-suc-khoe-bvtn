@@ -217,6 +217,7 @@ const DetailView = (() => {
             Widgets.flashSaved(plWrap);
           }
         }
+        capNhatPhanLoaiSkTuUpdated(res, code);
         renderQd1613Banner();
         renderFlagsSummary();
         if (code === 'phan_loai_sk' || /_pl$/.test(code)) renderQd1613Banner();
@@ -444,6 +445,18 @@ const DetailView = (() => {
     syncBenhChinhFields();
     renderFlagsSummary();
     renderQd1613Banner();
+    // Phản hồi anh Khôi: tự thêm chẩn đoán xong -> có thể kéo theo tự nâng
+    // Phân loại sức khỏe chung (server đã tính) — nhảy radio nếu đổi.
+    if (res.phan_loai_sk != null && Number(res.phan_loai_sk) !== Number(current.phan_loai_sk)) {
+      current.phan_loai_sk = res.phan_loai_sk;
+      const wrap = document.getElementById('f_phan_loai_sk');
+      if (wrap) {
+        wrap.querySelectorAll('input[type=radio]').forEach((r) => {
+          r.checked = Number(r.value) === Number(res.phan_loai_sk);
+        });
+        if (window.Widgets && Widgets.flashSaved) Widgets.flashSaved(wrap);
+      }
+    }
     toast('Tự thêm chẩn đoán theo sinh hiệu: ' + res.added.map((a) => a.ma_icd).join(', '));
   }
 
@@ -499,6 +512,23 @@ const DetailView = (() => {
     if (!m) return null;
     return Math.max(_clsSys(+m[1], tuoi), _clsDia(+m[2], tuoi));
   }
+  // Phản hồi anh Khôi: backend tự NÂNG Phân loại sức khỏe chung sau MỌI
+  // PATCH có thể đổi phân loại 1 cơ quan (trả kèm trong res.updated nếu có
+  // đổi) — nhảy radio "Phân loại sức khỏe" + chớp xanh, GIỐNG hệt cách xử lý
+  // kham_the_luc_pl ở trên. Bỏ qua khi chính field vừa sửa là phan_loai_sk
+  // (đã tự flash ở widgets.js, tránh lặp).
+  function capNhatPhanLoaiSkTuUpdated(res, code) {
+    if (!res || !res.updated || !('phan_loai_sk' in res.updated) || code === 'phan_loai_sk') return;
+    current.phan_loai_sk = res.updated.phan_loai_sk;
+    const wrap = document.getElementById('f_phan_loai_sk');
+    if (wrap) {
+      wrap.querySelectorAll('input[type=radio]').forEach((r) => {
+        r.checked = Number(r.value) === Number(res.updated.phan_loai_sk);
+      });
+      if (window.Widgets && Widgets.flashSaved) Widgets.flashSaved(wrap);
+    }
+  }
+
   function capNhatCSST(ghi) {
     const box = document.getElementById('csst-note');
     if (!box) return;
@@ -531,6 +561,7 @@ const DetailView = (() => {
           if (window.Widgets && Widgets.flashSaved) Widgets.flashSaved(wrap);
         }
         if (res && res.qd1613) { current.qd1613 = res.qd1613; renderQd1613Banner(); }
+        capNhatPhanLoaiSkTuUpdated(res, 'noi_khoa_tuan_hoan_pl');
         toast(`Tuần hoàn tự nâng Loại ${LM} theo sinh hiệu`);
       }).catch(() => {});
     }

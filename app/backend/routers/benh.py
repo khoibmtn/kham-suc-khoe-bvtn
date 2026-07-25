@@ -23,15 +23,22 @@ router = APIRouter(prefix='/api', tags=['benh'])
 # ---- Tự thêm chẩn đoán chính theo Chỉ số sinh tồn (phản hồi anh Khôi) ----
 # Hồ sơ CHƯA có mã bệnh chính nhưng sinh hiệu bất thường -> tự gán chẩn đoán:
 #   - Huyết áp CAO  (tâm thu ≥140 HOẶC tâm trương ≥90) -> I10  Tăng huyết áp
-#   - Mạch NHANH    (> 100 l/ph)                        -> R00.0 Nhịp nhanh tim
-#   - Mạch CHẬM     (< 55 l/ph)                         -> R00.1 Nhịp chậm tim
-# rồi gỡ cờ đỏ 'Có phân loại nhưng không có chẩn đoán'. Ngưỡng lâm sàng chuẩn,
-# đặt hằng số ở đây để bác sĩ chỉnh khi cần. Chỉ NÂNG (thêm), không xoá/ghi đè
-# bệnh sẵn có; chỉ chạy khi ma_benh_chinh đang trống (đúng cảnh CO_PHAN_LOAI).
+#   - Mạch NHANH    (> 85 l/ph)                         -> R00.0 Nhịp nhanh tim
+#   - Mạch CHẬM     (< 60 l/ph)                         -> R00.1 Nhịp chậm tim
+# rồi gỡ cờ đỏ 'Có phân loại nhưng không có chẩn đoán'. NGƯỠNG MẠCH khớp
+# ĐÚNG ranh giới "không còn Loại I/II" của bảng phân loại CSST QĐ1613 mục 46.1
+# (services/batch_sinh_hieu.classify_mach / detail.js classifyMach: 60-75=I,
+# 76-85=II, 86-95=III, >95=IV; đối xứng 55-59=III, <55=IV) — phản hồi anh
+# Khôi: mạch 93 (Loại III) phải TỰ THÊM R00.0 giống hệt lúc tự nâng Tuần
+# hoàn, không dùng ngưỡng "nhịp nhanh lâm sàng" (>100) tách biệt khỏi CSST
+# nữa (trước đây 2 cơ chế lệch ngưỡng nhau -> Tuần hoàn lên Loại III nhưng
+# không có chẩn đoán kèm theo). Đặt hằng số ở đây để bác sĩ chỉnh khi cần.
+# Chỉ NÂNG (thêm), không xoá/ghi đè bệnh sẵn có; chỉ chạy khi ma_benh_chinh
+# đang trống (đúng cảnh CO_PHAN_LOAI).
 HA_TAM_THU_CAO = 140
 HA_TAM_TRUONG_CAO = 90
-MACH_NHANH = 100
-MACH_CHAM = 55
+MACH_NHANH = 85
+MACH_CHAM = 60
 
 
 def chan_doan_tu_sinh_hieu(sys_ha, dia_ha, mach):
@@ -261,6 +268,7 @@ def tu_chan_doan_sinh_ton(ma_ho_so: str, user=Depends(auth.get_current_user)):
             'ma_benh_chinh': hs['ma_benh_chinh'],
             'ket_luan_benh': hs['ket_luan_benh'],
             'co_quan_benh_chinh': hs['co_quan_benh_chinh'],
+            'phan_loai_sk': hs['phan_loai_sk'],
             'co_qc': qc.flags_of(hs['co_qc']),
             'so_loi': hs['so_loi'],
             'qd1613': qc.check_invariant(hs),
@@ -329,6 +337,23 @@ def tu_chan_doan_sinh_ton(ma_ho_so: str, user=Depends(auth.get_current_user)):
                 conn, ma_ho_so, ['CO_PHAN_LOAI_NHUNG_KHONG_CO_CHAN_DOAN'])
             _log(conn, ma_ho_so, user['id'], 'co_qc', old_co_qc or '',
                  new_co_qc or '')
+
+        # Phản hồi anh Khôi: sau khi tự thêm chẩn đoán -> tự NÂNG Phân loại
+        # sức khỏe chung lên mức nặng nhất trong các cơ quan nếu đang thấp
+        # hơn (vd Tuần hoàn đã được CSST nâng lên III trước đó nhưng chưa
+        # có chẩn đoán -> giờ có R00.0 rồi -> phan_loai_sk cũng phải theo
+        # kịp). Chỉ nâng, không hạ — cùng nguyên tắc routers/ho_so.py.
+        row_now = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?',
+                               (ma_ho_so,)).fetchone()
+        inv_now = qc.check_invariant(row_now)
+        gmax = inv_now['gia_tri_max']
+        pl_hien_tai = row_now['phan_loai_sk']
+        pl_hien_tai_i = int(pl_hien_tai) if pl_hien_tai not in (None, '') else 0
+        if gmax is not None and gmax > pl_hien_tai_i:
+            conn.execute('UPDATE ho_so SET phan_loai_sk=? WHERE ma_ho_so=?',
+                         (gmax, ma_ho_so))
+            _log(conn, ma_ho_so, user['id'], 'phan_loai_sk',
+                 '' if pl_hien_tai is None else str(pl_hien_tai), str(gmax))
 
         conn.commit()
         return _payload(conn, added)
