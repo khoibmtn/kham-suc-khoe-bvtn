@@ -154,6 +154,70 @@ def theo_xa(user=Depends(auth.get_current_user)):
     return out
 
 
+@router.get('/theo-khoa-phong')
+def theo_khoa_phong(user=Depends(auth.get_current_user)):
+    """Tiến độ theo khoa/phòng (tương tự §8.3 theo_can_bo nhưng gộp theo
+    khoa/phòng thay vì từng nhân viên): mục tiêu (tổng so_luong_muc_tieu từ
+    phan_cong_khoa), được giao (COUNT ho_so có nguoi_ra_soat_id thuộc nhân
+    viên của khoa đó), hoàn thành, chưa hoàn thành, tỷ lệ. Có thêm 1 dòng gộp
+    "Chưa phân khoa/phòng" cho nhân viên có khoa_phong_id NULL. Giống
+    theo_can_bo: KHÔNG loại trừ admin khỏi tập nhân viên/hồ sơ được giao
+    (theo_can_bo chỉ loại admin khỏi thống kê nhật ký, còn hs_by/giao vẫn
+    tính cả admin nếu có hồ sơ giao) — áp dụng nhất quán ở đây."""
+    conn = db.get_connection()
+    try:
+        khoa_rows = conn.execute(
+            'SELECT id, ten FROM khoa_phong WHERE dang_hoat_dong=1 ORDER BY ten'
+        ).fetchall()
+
+        muc_tieu_by = {}
+        for r in conn.execute(
+                'SELECT khoa_phong_id AS kid, SUM(so_luong_muc_tieu) AS mt '
+                'FROM phan_cong_khoa GROUP BY khoa_phong_id'):
+            muc_tieu_by[r['kid']] = r['mt'] or 0
+
+        # Gộp ho_so theo khoa/phòng của nhân viên được giao (join nguoi_dung),
+        # gộp cả nhân viên khoa_phong_id NULL vào 1 nhóm "Chưa phân khoa/phòng"
+        # (COALESCE(khoa_phong_id, 0), 0 không trùng id thật vì INTEGER PRIMARY
+        # KEY bắt đầu từ 1).
+        hs_by = {}
+        for r in conn.execute(
+                """
+                SELECT COALESCE(nd.khoa_phong_id, 0) AS kid,
+                  COUNT(*) AS duoc_giao,
+                  SUM(CASE WHEN ho.trang_thai='hoan_thanh' THEN 1 ELSE 0 END) AS hoan_thanh
+                FROM ho_so ho
+                JOIN nguoi_dung nd ON nd.id = ho.nguoi_ra_soat_id
+                WHERE ho.nguoi_ra_soat_id IS NOT NULL
+                GROUP BY COALESCE(nd.khoa_phong_id, 0)
+                """):
+            hs_by[r['kid']] = r
+    finally:
+        conn.close()
+
+    def _row(kid, ten):
+        r = hs_by.get(kid)
+        muc_tieu = muc_tieu_by.get(kid, 0) or 0
+        duoc_giao = (r['duoc_giao'] if r else 0) or 0
+        hoan_thanh = (r['hoan_thanh'] if r else 0) or 0
+        return {
+            'ten_khoa': ten,
+            'muc_tieu': muc_tieu,
+            'duoc_giao': duoc_giao,
+            'hoan_thanh': hoan_thanh,
+            'chua_hoan_thanh': duoc_giao - hoan_thanh,
+            'ty_le': round(hoan_thanh / duoc_giao * 100) if duoc_giao else 0,
+        }
+
+    out = [_row(k['id'], k['ten']) for k in khoa_rows]
+    # Dòng gộp "Chưa phân khoa/phòng" — chỉ thêm nếu có dữ liệu (mục tiêu
+    # hoặc hồ sơ được giao) để không làm rối bảng khi mọi nhân viên đã có khoa.
+    chua_phan = _row(0, 'Chưa phân khoa/phòng')
+    if chua_phan['duoc_giao'] or chua_phan['muc_tieu']:
+        out.append(chua_phan)
+    return out
+
+
 @router.get('/theo-can-bo')
 def theo_can_bo(user=Depends(auth.get_current_user)):
     """§8.3: giao/hoàn thành/%/lượt sửa/hoạt động gần nhất/năng suất 7

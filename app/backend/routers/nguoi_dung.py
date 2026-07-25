@@ -21,8 +21,11 @@ def list_nguoi_dung(admin=Depends(auth.require_admin)):
     conn = db.get_connection()
     try:
         rows = conn.execute(
-            'SELECT id, ten_dang_nhap, ho_ten, vai_tro, dang_hoat_dong '
-            'FROM nguoi_dung ORDER BY ho_ten').fetchall()
+            'SELECT nd.id, nd.ten_dang_nhap, nd.ho_ten, nd.vai_tro, '
+            'nd.dang_hoat_dong, nd.khoa_phong_id, kp.ten AS ten_khoa_phong '
+            'FROM nguoi_dung nd '
+            'LEFT JOIN khoa_phong kp ON kp.id = nd.khoa_phong_id '
+            'ORDER BY nd.ho_ten').fetchall()
     finally:
         conn.close()
     return [dict(r) for r in rows]
@@ -63,27 +66,52 @@ def create_nguoi_dung(body: NguoiDungBody, admin=Depends(auth.require_admin)):
 
 
 class UpdateHoTenBody(BaseModel):
-    ho_ten: str
+    ho_ten: Optional[str] = None
+    # criterion 6: cho phép sửa khoa/phòng cùng lúc — None = không đổi,
+    # 0/giá trị âm không hợp lệ; giá trị 0 KHÔNG dùng — dùng null để "gỡ gán"
+    # (frontend gửi khoa_phong_id: null khi chọn "— Chưa gán —").
+    khoa_phong_id: Optional[int] = None
+    # cờ riêng để phân biệt "không gửi field" vs "gửi null để gỡ gán" —
+    # Pydantic không phân biệt field vắng mặt với None nếu không dùng
+    # exclude_unset, nên dùng model_fields_set ở hàm xử lý bên dưới.
 
 
 @router.patch('/nguoi-dung/{nguoi_dung_id}')
 def update_nguoi_dung(nguoi_dung_id: int, body: UpdateHoTenBody,
                        admin=Depends(auth.require_admin)):
-    ho_ten = body.ho_ten.strip()
-    if not ho_ten:
-        raise HTTPException(400, 'Họ tên không được để trống')
     conn = db.get_connection()
     try:
         row = conn.execute('SELECT id FROM nguoi_dung WHERE id=?',
                             (nguoi_dung_id,)).fetchone()
         if not row:
             raise HTTPException(404, 'Không tìm thấy tài khoản')
-        conn.execute('UPDATE nguoi_dung SET ho_ten=? WHERE id=?',
-                     (ho_ten, nguoi_dung_id))
+
+        campos = body.model_fields_set
+        if 'ho_ten' in campos and body.ho_ten is not None:
+            ho_ten = body.ho_ten.strip()
+            if not ho_ten:
+                raise HTTPException(400, 'Họ tên không được để trống')
+            conn.execute('UPDATE nguoi_dung SET ho_ten=? WHERE id=?',
+                         (ho_ten, nguoi_dung_id))
+
+        if 'khoa_phong_id' in campos:
+            if body.khoa_phong_id is not None:
+                khoa = conn.execute('SELECT id FROM khoa_phong WHERE id=?',
+                                     (body.khoa_phong_id,)).fetchone()
+                if not khoa:
+                    raise HTTPException(404, 'Không tìm thấy khoa/phòng')
+            conn.execute('UPDATE nguoi_dung SET khoa_phong_id=? WHERE id=?',
+                         (body.khoa_phong_id, nguoi_dung_id))
+
         conn.commit()
+        row = conn.execute(
+            'SELECT nd.id, nd.ten_dang_nhap, nd.ho_ten, nd.vai_tro, '
+            'nd.dang_hoat_dong, nd.khoa_phong_id, kp.ten AS ten_khoa_phong '
+            'FROM nguoi_dung nd LEFT JOIN khoa_phong kp ON kp.id = nd.khoa_phong_id '
+            'WHERE nd.id=?', (nguoi_dung_id,)).fetchone()
     finally:
         conn.close()
-    return {'ok': True, 'id': nguoi_dung_id, 'ho_ten': ho_ten}
+    return dict(row)
 
 
 @router.post('/nguoi-dung/{nguoi_dung_id}/reset-mat-khau')

@@ -157,6 +157,22 @@ CREATE TABLE IF NOT EXISTS phan_cong (
   ghi_chu       TEXT
 );
 
+-- ========== DANH MỤC KHOA/PHÒNG ==========
+CREATE TABLE IF NOT EXISTS khoa_phong (
+  id            INTEGER PRIMARY KEY,
+  ten           TEXT UNIQUE NOT NULL,
+  dang_hoat_dong INTEGER DEFAULT 1
+);
+
+-- ========== PHÂN CÔNG SỐ LƯỢNG HỒ SƠ THEO KHOA/PHÒNG (tách riêng phan_cong) ==========
+CREATE TABLE IF NOT EXISTS phan_cong_khoa (
+  id                  INTEGER PRIMARY KEY,
+  khoa_phong_id       INTEGER REFERENCES khoa_phong(id),
+  so_luong_muc_tieu   INTEGER NOT NULL,
+  ngay_giao           TEXT DEFAULT (datetime('now','localtime')),
+  ghi_chu             TEXT
+);
+
 -- =====================================================================
 -- BỔ SUNG NGOÀI §2 (không thay đổi 6 bảng gốc ở trên) — theo PLAN.md
 -- =====================================================================

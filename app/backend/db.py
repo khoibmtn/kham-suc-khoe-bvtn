@@ -249,6 +249,7 @@ def init_schema(conn=None):
         conn.executescript(f.read())
     conn.commit()
     _migrate_search_cols(conn)
+    _migrate_khoa_phong(conn)
     if own:
         conn.close()
 
@@ -285,6 +286,45 @@ def _migrate_search_cols(conn):
             changed = True
         except Exception:
             pass
+    if changed:
+        conn.commit()
+
+
+_KHOA_PHONG_MAC_DINH = ('TCHC', 'Điều dưỡng', 'Dân số & PT', 'ATTP', 'YTCC',
+                         'KSBT', 'KHNV')
+
+
+def _migrate_khoa_phong(conn):
+    """(a) ALTER TABLE nguoi_dung ADD COLUMN khoa_phong_id nếu chưa có
+    (bảng nguoi_dung có thể đã tồn tại TRƯỚC KHI schema.sql có cột này —
+    CREATE TABLE IF NOT EXISTS không tự thêm cột cho bảng đã có, giống
+    _migrate_search_cols ở trên). (b) seed 7 khoa/phòng mặc định vào bảng
+    khoa_phong CHỈ KHI bảng đang RỖNG lúc khởi động server (bảng phải tồn
+    tại trước — executescript(schema.sql) đã chạy trước hàm này trong
+    init_schema())."""
+    try:
+        cols = {r['name'] for r in conn.execute('PRAGMA table_info(nguoi_dung)')}
+    except Exception:
+        return
+    changed = False
+    if 'khoa_phong_id' not in cols:
+        try:
+            conn.execute(
+                'ALTER TABLE nguoi_dung ADD COLUMN khoa_phong_id INTEGER '
+                'REFERENCES khoa_phong(id)')
+            changed = True
+        except Exception:
+            # cột đã được instance khác thêm đồng thời, hoặc lỗi tạm — không
+            # chặn khởi động server vì việc này.
+            pass
+    try:
+        so_luong = conn.execute('SELECT COUNT(*) FROM khoa_phong').fetchone()[0]
+        if so_luong == 0:
+            conn.executemany('INSERT INTO khoa_phong(ten) VALUES (?)',
+                             [(t,) for t in _KHOA_PHONG_MAC_DINH])
+            changed = True
+    except Exception:
+        pass
     if changed:
         conn.commit()
 

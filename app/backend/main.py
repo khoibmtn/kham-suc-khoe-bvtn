@@ -20,7 +20,7 @@ from fastapi.responses import JSONResponse
 from starlette.types import Scope
 
 from routers import (ho_so, benh, icd, phan_cong, nguoi_dung, xuat_file,  # noqa: E402
-                      dashboard, sinh_hieu, cai_dat)
+                      dashboard, sinh_hieu, cai_dat, khoa_phong, phan_cong_khoa)
 
 
 def _snapshot_hom_nay(conn):
@@ -147,6 +147,8 @@ app.include_router(xuat_file.router)
 app.include_router(dashboard.router)
 app.include_router(sinh_hieu.router)
 app.include_router(cai_dat.router)
+app.include_router(khoa_phong.router)
+app.include_router(phan_cong_khoa.router)
 
 
 _APP_VER_CACHE = {'val': None, 'at': 0.0}
