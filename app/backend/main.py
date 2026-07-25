@@ -99,6 +99,40 @@ async def lifespan(app_: FastAPI):
 
 app = FastAPI(title='KSK NCT — Quản lý & rà soát', version='0.4.0-phase4', lifespan=lifespan)
 
+
+# ------------------------------------------------------------------
+# BẢO TRÌ trên Vercel (Đợt 13): dưới tải 25 người, serverless+Turso mở kết
+# nối mới mỗi request -> cạn kết nối -> 500/504. Đã chuyển tạm sang bản chạy
+# local + tunnel. Chặn MỌI truy cập vào bản Vercel (nhận diện bằng biến
+# VERCEL Vercel tự đặt) để 25 người KHÔNG ghi dữ liệu ở 2 nơi lệch nhau. Bản
+# LOCAL (không có biến VERCEL) hoạt động BÌNH THƯỜNG. Gỡ bảo trì = revert
+# commit này.
+from fastapi.responses import HTMLResponse  # noqa: E402
+
+_BAO_TRI_HTML = """<!doctype html><html lang="vi"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KSK NCT — Đang bảo trì</title>
+<body style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+background:#f3f5f7;color:#1a1a1a;display:flex;align-items:center;
+justify-content:center;height:100vh;margin:0">
+<div style="background:#fff;max-width:520px;padding:32px;border-radius:10px;
+box-shadow:0 2px 16px rgba(0,0,0,.1);text-align:center">
+<h2 style="margin-top:0">Hệ thống đang chuyển địa chỉ</h2>
+<p style="color:#475569;line-height:1.6">Địa chỉ này (Vercel) đã <b>tạm dừng</b>
+để tránh nhập liệu ở hai nơi. Vui lòng dùng <b>ĐỊA CHỈ MỚI</b> do quản trị
+(anh Khôi) cung cấp.</p>
+<p style="color:#c0392b"><b>KHÔNG nhập liệu tại đây</b> — dữ liệu sẽ không được
+lưu.</p>
+</div></body></html>"""
+
+
+@app.middleware('http')
+async def _chan_vercel_bao_tri(request, call_next):
+    if os.getenv('VERCEL'):
+        return HTMLResponse(_BAO_TRI_HTML, status_code=503)
+    return await call_next(request)
+
+
 app.include_router(auth.router)
 app.include_router(ho_so.router)
 app.include_router(benh.router)
