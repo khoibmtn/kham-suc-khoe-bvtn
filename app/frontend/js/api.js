@@ -63,6 +63,7 @@ const Api = (() => {
     patchBenh: (ma, id, body) => req('PATCH', `/api/ho-so/${encodeURIComponent(ma)}/benh/${id}`, body),
     delBenh: (ma, id) => req('DELETE', `/api/ho-so/${encodeURIComponent(ma)}/benh/${id}`),
     setBenhChinh: (ma, benh_id) => req('POST', `/api/ho-so/${encodeURIComponent(ma)}/benh/set-benh-chinh`, { benh_id }),
+    tuChanDoanSinhTon: (ma) => req('POST', `/api/ho-so/${encodeURIComponent(ma)}/tu-chan-doan-sinh-ton`, {}),
 
     searchIcd: (q) => req('GET', '/api/icd?q=' + encodeURIComponent(q)),
     // Đợt 11: nạp toàn bộ danh mục ICD 1 lần (client-side cache) — dùng để

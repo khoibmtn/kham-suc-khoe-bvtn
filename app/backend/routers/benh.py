@@ -5,6 +5,7 @@ benh.py — CRUD bảng bệnh (§3.4.6) + đổi bệnh chính bằng radio m�
 Tên bệnh luôn lưu NGUYÊN VĂN từ dm_icd (§9, bẫy §10) — không tự soạn.
 """
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -18,6 +19,29 @@ from pydantic import BaseModel
 from typing import Optional
 
 router = APIRouter(prefix='/api', tags=['benh'])
+
+# ---- Tự thêm chẩn đoán chính theo Chỉ số sinh tồn (phản hồi anh Khôi) ----
+# Hồ sơ CHƯA có mã bệnh chính nhưng sinh hiệu bất thường -> tự gán chẩn đoán:
+#   - Huyết áp CAO  (tâm thu ≥140 HOẶC tâm trương ≥90) -> I10  Tăng huyết áp
+#   - Mạch NHANH    (> 100 l/ph)                        -> R00.0 Nhịp nhanh tim
+# rồi gỡ cờ đỏ 'Có phân loại nhưng không có chẩn đoán'. Ngưỡng lâm sàng chuẩn,
+# đặt hằng số ở đây để bác sĩ chỉnh khi cần. Chỉ NÂNG (thêm), không xoá/ghi đè
+# bệnh sẵn có; chỉ chạy khi ma_benh_chinh đang trống (đúng cảnh CO_PHAN_LOAI).
+HA_TAM_THU_CAO = 140
+HA_TAM_TRUONG_CAO = 90
+MACH_NHANH = 100
+
+
+def _parse_ha(s):
+    m = re.search(r'(\d{2,3})\s*[/\-]\s*(\d{2,3})', s or '')
+    return (int(m.group(1)), int(m.group(2))) if m else (None, None)
+
+
+def _mach_bpm(s):
+    try:
+        return float(str(s or '').replace(',', '.'))
+    except ValueError:
+        return None
 
 
 class BenhBody(BaseModel):
@@ -199,3 +223,103 @@ def set_benh_chinh(ma_ho_so: str, body: SetBenhChinhBody,
             'ket_luan_benh': new_row['ket_luan_benh'],
             'co_quan_benh_chinh': new_row['co_quan_benh_chinh'],
             'qd1613': qc.check_invariant(new_row)}
+
+
+@router.post('/ho-so/{ma_ho_so}/tu-chan-doan-sinh-ton')
+def tu_chan_doan_sinh_ton(ma_ho_so: str, user=Depends(auth.get_current_user)):
+    """Tự thêm chẩn đoán chính theo sinh hiệu (HA cao->I10, mạch nhanh->R00.0)
+    khi hồ sơ CHƯA có bệnh chính; gỡ cờ CO_PHAN_LOAI_NHUNG_KHONG_CO_CHAN_DOAN.
+    Idempotent: không thêm trùng mã đã có; không đụng khi đã có bệnh chính.
+
+    Trả về {added, benh, ma_benh_chinh, ket_luan_benh, co_quan_benh_chinh,
+    co_qc, so_loi, qd1613}. added=[] nghĩa là không thay đổi gì."""
+    def _payload(conn, added):
+        rows = conn.execute(
+            'SELECT * FROM benh WHERE ma_ho_so=? ORDER BY la_benh_chinh DESC, '
+            'stt_benh', (ma_ho_so,)).fetchall()
+        hs = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?',
+                          (ma_ho_so,)).fetchone()
+        return {
+            'added': added,
+            'benh': [dict(r) for r in rows],
+            'ma_benh_chinh': hs['ma_benh_chinh'],
+            'ket_luan_benh': hs['ket_luan_benh'],
+            'co_quan_benh_chinh': hs['co_quan_benh_chinh'],
+            'co_qc': qc.flags_of(hs['co_qc']),
+            'so_loi': hs['so_loi'],
+            'qd1613': qc.check_invariant(hs),
+        }
+
+    conn = db.get_connection()
+    try:
+        hs = _load_ho_so_or_404(conn, ma_ho_so, user)
+        # Chỉ chạy khi CHƯA có bệnh chính (tôn trọng dữ liệu sẵn có, không ghi đè)
+        if hs['ma_benh_chinh']:
+            return _payload(conn, [])
+
+        sys_ha, dia_ha = _parse_ha(hs['huyet_ap'])
+        mach = _mach_bpm(hs['mach'])
+        muon = []  # thứ tự ưu tiên bệnh chính: HA trước, mạch sau
+        if (sys_ha is not None and sys_ha >= HA_TAM_THU_CAO) or \
+           (dia_ha is not None and dia_ha >= HA_TAM_TRUONG_CAO):
+            muon.append('I10')
+        if mach is not None and mach > MACH_NHANH:
+            muon.append('R00.0')
+        if not muon:
+            return _payload(conn, [])
+
+        # mã ICD -> id dòng benh đã có (idempotent, không thêm trùng)
+        co_san = {r['ma_icd']: r['id'] for r in conn.execute(
+            'SELECT id, ma_icd FROM benh WHERE ma_ho_so=?', (ma_ho_so,)).fetchall()}
+        added = []
+        id_theo_ma = {}
+        for ma_icd in muon:
+            if ma_icd in co_san:
+                id_theo_ma[ma_icd] = co_san[ma_icd]
+                continue
+            ma, ten = _resolve_icd(conn, ma_icd)
+            stt = conn.execute('SELECT COALESCE(MAX(stt_benh),0)+1 FROM benh '
+                               'WHERE ma_ho_so=?', (ma_ho_so,)).fetchone()[0]
+            cur = conn.execute(
+                'INSERT INTO benh(ma_ho_so, stt_benh, la_benh_chinh, ma_icd, '
+                'ten_icd, co_quan, muc_do_nang, chuoi_goc, nguon_anh_xa, '
+                'dien_giai_bs, can_ra_soat) VALUES (?,?,0,?,?,?,?,?,?,?,0)',
+                (ma_ho_so, stt, ma, ten, 'TH', None,
+                 'Tự gán theo chỉ số sinh tồn', 'sinh_hieu_tu_dong', None))
+            new_id = cur.lastrowid
+            id_theo_ma[ma_icd] = new_id
+            _log(conn, ma_ho_so, user['id'], f'benh:add:{new_id}', None,
+                 f'{ma} — {ten} (tự động theo sinh hiệu)')
+            added.append({'ma_icd': ma, 'ten_icd': ten})
+
+        # Đặt bệnh chính = mã ưu tiên đầu (I10 nếu có, ngược lại R00.0)
+        main_ma = muon[0]
+        main_id = id_theo_ma[main_ma]
+        main_row = conn.execute('SELECT * FROM benh WHERE id=?',
+                                (main_id,)).fetchone()
+        conn.execute('UPDATE benh SET la_benh_chinh=0 WHERE ma_ho_so=?',
+                     (ma_ho_so,))
+        conn.execute('UPDATE benh SET la_benh_chinh=1 WHERE id=?', (main_id,))
+        conn.execute(
+            'UPDATE ho_so SET ma_benh_chinh=?, ket_luan_benh=?, '
+            'co_quan_benh_chinh=? WHERE ma_ho_so=?',
+            (main_row['ma_icd'], main_row['ten_icd'], main_row['co_quan'],
+             ma_ho_so))
+        for field, new_v in (('ma_benh_chinh', main_row['ma_icd']),
+                             ('ket_luan_benh', main_row['ten_icd']),
+                             ('co_quan_benh_chinh', main_row['co_quan'])):
+            _log(conn, ma_ho_so, user['id'], field, '', new_v)
+
+        # Đã có chẩn đoán chính -> gỡ cờ đỏ "Có phân loại nhưng không có chẩn đoán"
+        old_co_qc = conn.execute('SELECT co_qc FROM ho_so WHERE ma_ho_so=?',
+                                 (ma_ho_so,)).fetchone()['co_qc']
+        if 'CO_PHAN_LOAI_NHUNG_KHONG_CO_CHAN_DOAN' in qc.flags_of(old_co_qc):
+            new_co_qc = qc.remove_flags(
+                conn, ma_ho_so, ['CO_PHAN_LOAI_NHUNG_KHONG_CO_CHAN_DOAN'])
+            _log(conn, ma_ho_so, user['id'], 'co_qc', old_co_qc or '',
+                 new_co_qc or '')
+
+        conn.commit()
+        return _payload(conn, added)
+    finally:
+        conn.close()

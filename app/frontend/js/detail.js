@@ -221,7 +221,11 @@ const DetailView = (() => {
         renderFlagsSummary();
         if (code === 'phan_loai_sk' || /_pl$/.test(code)) renderQd1613Banner();
         // Đợt 13: nhập Mạch/HA -> phân loại CSST + tự nâng Tuần hoàn (ghi=true)
-        if (code === 'mach' || code === 'huyet_ap') capNhatCSST(true);
+        // + tự thêm chẩn đoán chính theo sinh hiệu (HA cao->I10, mạch nhanh->R00.0)
+        if (code === 'mach' || code === 'huyet_ap') {
+          capNhatCSST(true);
+          autoChanDoanSinhTon();
+        }
       },
     };
   }
@@ -399,6 +403,48 @@ const DetailView = (() => {
     renderQd1613Banner();
     renderFlagsSummary();
     capNhatCSST(true);    // mở hồ sơ: hiện ghi chú CSST + tự nâng Tuần hoàn
+    autoChanDoanSinhTon(); // mở hồ sơ: tự thêm chẩn đoán chính theo sinh hiệu
+  }
+
+  // ---- Đợt 13 (phản hồi anh Khôi): tự thêm chẩn đoán chính theo sinh hiệu ----
+  // Hồ sơ CHƯA có bệnh chính + HA cao (->I10) / mạch nhanh (->R00.0): backend
+  // tự thêm bệnh chính rồi gỡ cờ "Có phân loại nhưng không có chẩn đoán".
+  // Chạy cả khi mở hồ sơ và khi sửa Mạch/Huyết áp (xem onSave). Im lặng nếu lỗi.
+  function refreshBenhTable() {
+    const bd = document.getElementById('group_benh');
+    if (!bd) return;
+    bd.innerHTML = '<summary>Bảng bệnh (Alt+7)</summary>';
+    bd.appendChild(renderBenhTable());
+  }
+  function syncBenhChinhFields() {
+    const kl = document.getElementById('f_ket_luan_benh');
+    if (kl && kl.querySelector('input')) kl.querySelector('input').value = current.ket_luan_benh || '';
+    const mbc = document.getElementById('f_ma_benh_chinh');
+    if (mbc) mbc.value = current.ma_benh_chinh || '';
+    const cqbc = document.getElementById('f_co_quan_benh_chinh');
+    if (cqbc) cqbc.value = current.co_quan_benh_chinh || '';
+  }
+  async function autoChanDoanSinhTon() {
+    let res;
+    try {
+      res = await Api.tuChanDoanSinhTon(current.ma_ho_so);
+    } catch (e) { return; }
+    if (!res || !res.added || !res.added.length) return;
+    current.benh = res.benh;
+    current.ma_benh_chinh = res.ma_benh_chinh;
+    current.ket_luan_benh = res.ket_luan_benh;
+    current.co_quan_benh_chinh = res.co_quan_benh_chinh;
+    current.qd1613 = res.qd1613;
+    if (res.co_qc) {
+      current.co_qc_list = res.co_qc;
+      current.co_qc = res.co_qc.join(';');
+      if (res.so_loi != null) current.so_loi = res.so_loi;
+    }
+    refreshBenhTable();
+    syncBenhChinhFields();
+    renderFlagsSummary();
+    renderQd1613Banner();
+    toast('Tự thêm chẩn đoán theo sinh hiệu: ' + res.added.map((a) => a.ma_icd).join(', '));
   }
 
   // ---- Đợt 13: tự phân loại theo Chỉ số sinh tồn (Mạch + Huyết áp) ----
