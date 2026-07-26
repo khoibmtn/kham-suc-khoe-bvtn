@@ -11,7 +11,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import db  # noqa: E402
 import auth  # noqa: E402
-from services import qc  # noqa: E402
+from services import csst, qc  # noqa: E402
 from routers.ho_so import _load_ho_so_or_404  # noqa: E402
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -322,7 +322,8 @@ def tu_chan_doan_sinh_ton(ma_ho_so: str, user=Depends(auth.get_current_user)):
     Idempotent: không thêm trùng mã đã có; không đổi bệnh chính nếu đã đúng.
 
     Trả về {added, benh, ma_benh_chinh, ket_luan_benh, co_quan_benh_chinh,
-    co_qc, so_loi, qd1613}. added=[] nghĩa là không thêm mã mới nào."""
+    co_qc, so_loi, qd1613, noi_khoa_tuan_hoan}. added=[] nghĩa là không thêm
+    mã mới nào (noi_khoa_tuan_hoan có thể vẫn đổi — xem Đợt 14 bên dưới)."""
     def _payload(conn, added):
         rows = conn.execute(
             'SELECT * FROM benh WHERE ma_ho_so=? ORDER BY la_benh_chinh DESC, '
@@ -346,6 +347,7 @@ def tu_chan_doan_sinh_ton(ma_ho_so: str, user=Depends(auth.get_current_user)):
             'co_qc': qc.flags_of(hs['co_qc']),
             'so_loi': hs['so_loi'],
             'qd1613': qc.check_invariant(hs),
+            'noi_khoa_tuan_hoan': hs['noi_khoa_tuan_hoan'],
         }
 
     conn = db.get_connection()
@@ -354,6 +356,26 @@ def tu_chan_doan_sinh_ton(ma_ho_so: str, user=Depends(auth.get_current_user)):
 
         sys_ha, dia_ha = _parse_ha(hs['huyet_ap'])
         mach = _mach_bpm(hs['mach'])
+
+        # Đợt 14 (phản hồi anh Khôi): Loại II+ CSST -> tự cập nhật TEXT
+        # "Khám Tuần hoàn" nêu lý do (vd "Mạch 92 l/ph"), CHẠY DÙ ngưỡng
+        # MACH_NHANH/HA_TAM_THU_CAO ở trên chưa vượt (vd mạch=85 là Loại II
+        # theo CSST nhưng KHÔNG >85 nên chan_doan_tu_sinh_hieu không tự thêm
+        # ICD) — nên đặt TRƯỚC early-return `if not muon`.
+        l_mach = csst.classify_mach(mach)
+        l_ha, sys_val, dia_val = csst.classify_huyet_ap(hs['huyet_ap'], csst.tuoi(hs))
+        ly_do = csst.ly_do_tang_csst(l_mach, hs['mach'], l_ha, sys_val, dia_val)
+        if ly_do:
+            moi = csst.ap_dung_ly_do_tuan_hoan(hs['noi_khoa_tuan_hoan'], ly_do)
+            if moi != hs['noi_khoa_tuan_hoan']:
+                _log(conn, ma_ho_so, user['id'], 'noi_khoa_tuan_hoan',
+                     hs['noi_khoa_tuan_hoan'], moi)
+                conn.execute('UPDATE ho_so SET noi_khoa_tuan_hoan=? WHERE ma_ho_so=?',
+                             (moi, ma_ho_so))
+                conn.commit()
+                hs = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?',
+                                  (ma_ho_so,)).fetchone()
+
         muon = chan_doan_tu_sinh_hieu(sys_ha, dia_ha, mach)
         if not muon:
             return _payload(conn, [])
