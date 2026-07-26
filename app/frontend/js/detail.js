@@ -462,7 +462,16 @@ const DetailView = (() => {
     try {
       res = await Api.tuChanDoanSinhTon(current.ma_ho_so);
     } catch (e) { return; }
-    if (!res || !res.added || !res.added.length) return;
+    if (!res) return;
+    // Đợt 14: server có thể đã tự cập nhật text "Khám Tuần hoàn" theo lý do
+    // CSST NGAY CẢ KHI added=[] (vd mạch=85 là Loại II CSST nhưng chưa vượt
+    // ngưỡng tự thêm ICD) — nên xử lý TRƯỚC early-return theo added bên dưới.
+    if (res.noi_khoa_tuan_hoan !== undefined && res.noi_khoa_tuan_hoan !== current.noi_khoa_tuan_hoan) {
+      current.noi_khoa_tuan_hoan = res.noi_khoa_tuan_hoan;
+      const th = document.getElementById('f_noi_khoa_tuan_hoan');
+      if (th) th.value = current.noi_khoa_tuan_hoan || '';
+    }
+    if (!res.added || !res.added.length) return;
     current.benh = res.benh;
     current.ma_benh_chinh = res.ma_benh_chinh;
     current.ket_luan_benh = res.ket_luan_benh;
