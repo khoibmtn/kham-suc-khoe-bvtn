@@ -65,10 +65,6 @@ FIELDS = [
     ('TSBT_MA_TUY',           lambda F: False),
 ]
 
-# Nhóm bệnh KHÔNG nằm trong 19 mục trên -> gom vào "Bệnh khác"
-ORGAN_KHAC = {'CXK', 'NOITIET', 'DALIEU', 'SAN', 'RHM', 'NGOAI', 'THAN'}
-
-
 def _only(findings, organ, codes):
     """True nếu cơ quan `organ` CHỈ có đúng các mã trong `codes`."""
     fs = [f for f in findings if f['co_quan'] == organ]
@@ -102,12 +98,14 @@ def suy_luan(findings, benh_chinh, ten_chinh_thuc):
         out[name] = CO if fn(man_tinh) else KHONG
 
     # --- Bệnh khác + ghi rõ tên ---
-    khac = [f for f in man_tinh
-            if f['co_quan'] in ORGAN_KHAC and not _covered(f)]
+    khac = [f for f in man_tinh if not _covered(f)]
     out['TSBT_BENH_KHAC'] = CO if khac else KHONG
-    # cột AW chỉ nhận 1 giá trị -> lấy bệnh nặng nhất trong nhóm khác
+    # cột AW chỉ nhận 1 giá trị -> lấy bệnh nặng nhất trong nhóm khác;
+    # hoà mức độ nặng thì ưu tiên theo chương bệnh TH > HH > TK
+    _CHUONG_UU_TIEN = {'TH': 0, 'HH': 1, 'TK': 2}
     if khac:
-        khac_sorted = sorted(khac, key=lambda f: -f.get('_sev', 3))
+        khac_sorted = sorted(khac, key=lambda f: (-f.get('_sev', 3),
+                                                   _CHUONG_UU_TIEN.get(f['co_quan'], 99)))
         out['TSBT_MA_BENH_KHAC'] = ten_chinh_thuc(khac_sorted[0]['icd'],
                                                   khac_sorted[0]['ten_icd'])
     else:

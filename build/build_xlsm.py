@@ -97,8 +97,11 @@ def build_record(row, stt, gidx=None):
         'CAC_BENH_TAT_NEU_CO': basic_clean(raw_dx),
         '_MA_BENH_CHINH': bc['icd'] if bc else '',
         '_MA_BENH_KEM': ';'.join(f['icd'] for f in bk_u),
-        '_TEN_BENH_KEM': ';'.join(ten_chinh_thuc(f['icd'], f['ten_icd'])
-                                  for f in bk_u),
+        '_TEN_BENH_KEM': ';'.join(
+            (organ_text.get(bc['co_quan'], 'Thể lực') if bc and bc.get('co_quan')
+             else 'Thể lực')
+            if f['icd'] == 'Z00.0' else ten_chinh_thuc(f['icd'], f['ten_icd'])
+            for f in bk_u),
         '_CO_QUAN_BENH_CHINH': bc['co_quan'] if bc else '',
     }
     # --- TIỀN SỬ (cột Y, AA..AY) ---
