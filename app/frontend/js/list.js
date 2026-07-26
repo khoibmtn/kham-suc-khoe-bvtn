@@ -794,6 +794,10 @@ const ListView = (() => {
       // "Box điều kiện" (Bộ lọc nâng cao) — JSON các dòng điều kiện ĐÃ ĐỦ
       // điều kiện gửi lên (rỗng -> '' -> bị api.js:qs() bỏ qua, không gửi).
       dieu_kien: dk.length ? JSON.stringify(dk) : '',
+      // Mã trường ĐANG CHỌN ở Box 1 của MỌI dòng (kể cả dòng toán tử còn
+      // "(chưa chọn)") — chọn trường là hiện cột ngay, không cần đợi chọn
+      // xong toán tử (phản hồi anh Khôi).
+      truong_dang_chon: Array.from(new Set(advConditions.map((r) => r.field).filter(Boolean))),
     };
   }
 
@@ -862,7 +866,7 @@ const ListView = (() => {
       return `<th>${esc(def ? def.label : code)}</th>`;
     }).join('');
     thead.innerHTML = `<tr>
-        <th>STT</th><th>Họ tên</th><th>Năm sinh</th><th>Giới</th><th>CCCD</th>
+        <th>STT</th><th>Họ tên</th><th>Ngày sinh</th><th>Giới</th><th>CCCD</th>
         <th>Xã</th><th>Ngày khám</th><th>Phân loại SK</th><th>Bệnh chính</th>
         <th>Số cờ</th><th>Trạng thái</th>${extraTh}<th>Mã hồ sơ</th></tr>`;
   }
@@ -906,7 +910,7 @@ const ListView = (() => {
       const extraTd = extraFieldCodes.map((code) => `<td>${highlightCell(it[code])}</td>`).join('');
       tr.innerHTML = `<td>${stt}</td>
         <td>${highlightCell(it.ho_ten)}</td>
-        <td>${highlightCell(it.nam_sinh)}</td><td>${highlightCell(it.gioi_tinh)}</td>
+        <td>${highlightCell(it.ngay_sinh)}</td><td>${highlightCell(it.gioi_tinh)}</td>
         <td>${highlightCell(it.so_cccd)}</td>
         <td>${highlightCell(it.maxa_cu_tru)}</td><td>${highlightCell(it.ngay_vao)}</td>
         <td>${highlightCell(it.phan_loai_sk)}</td><td>${highlightCell(it.ket_luan_benh)}</td>

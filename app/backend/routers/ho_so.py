@@ -261,6 +261,11 @@ def _parse_list_params(request: Request):
         # "Box điều kiện" (Bộ lọc nâng cao) — JSON thô, parse ở build_where
         # (cần `conn` để validate whitelist tên cột qua PRAGMA table_info).
         'dieu_kien': qp.get('dieu_kien'),
+        # Mã trường ĐANG CHỌN ở Box 1 của mọi dòng điều kiện (kể cả dòng
+        # toán tử còn "(chưa chọn)" — phản hồi anh Khôi: chọn xong trường là
+        # hiện cột ngay, không cần đợi chọn toán tử) — chỉ dùng để quyết định
+        # THÊM CỘT hiển thị, không ảnh hưởng lọc dữ liệu (xem list_ho_so).
+        'truong_dang_chon': qp.getlist('truong_dang_chon'),
     }
 
 
@@ -343,17 +348,17 @@ def list_ho_so(request: Request, page: int = Query(1, ge=1),
     try:
         where_sql, args = build_where(params, user, conn)
 
-        # Box điều kiện (Bộ lọc nâng cao) — nếu user lọc theo trường CHƯA có
-        # cột riêng trong bảng (vd "Ghi chú nhân viên"), tự thêm cột đó vào
-        # kết quả để nhìn thấy giá trị đang lọc, không cần mở từng hồ sơ
-        # (phản hồi anh Khôi). Whitelist lại y hệt build_where/_parse_dieu_kien
-        # (chỉ tên cột thật của ho_so mới lọt qua).
+        # Box điều kiện (Bộ lọc nâng cao) — trường nào ĐANG CHỌN ở Box 1 mà
+        # CHƯA có cột riêng trong bảng (vd "Ghi chú nhân viên") thì tự thêm
+        # cột đó vào kết quả để nhìn thấy giá trị, không cần mở từng hồ sơ
+        # (phản hồi anh Khôi). Dựa trên `truong_dang_chon` (mọi dòng đã chọn
+        # trường, KỂ CẢ dòng toán tử còn "(chưa chọn)") — KHÔNG dựa vào
+        # `dieu_kien` (chỉ chứa dòng đã đủ điều kiện lọc thật sự), nên cột
+        # hiện ngay khi chọn trường, không cần đợi chọn xong toán tử.
         allowed_cols = {r['name'] for r in conn.execute('PRAGMA table_info(ho_so)')}
-        dk_conditions = _parse_dieu_kien(params.get('dieu_kien'), allowed_cols)
         extra_codes = []
-        for c in dk_conditions:
-            f = c['field']
-            if f not in LIST_COLUMNS and f not in extra_codes:
+        for f in params.get('truong_dang_chon') or []:
+            if f in allowed_cols and f not in LIST_COLUMNS and f not in extra_codes:
                 extra_codes.append(f)
 
         # Đợt 7 criterion 4/5: `q` = từ khóa tìm kiếm; `q_hoten_only` = chỉ
@@ -412,7 +417,7 @@ def list_ho_so(request: Request, page: int = Query(1, ge=1),
             item = {
                 'ma_ho_so': r['ma_ho_so'],
                 'ho_ten': r['ho_ten'],
-                'nam_sinh': (r['ngay_sinh'] or '')[-4:] or None,
+                'ngay_sinh': r['ngay_sinh'],
                 'gioi_tinh': r['gioi_tinh'],
                 'so_cccd': r['so_cccd'],
                 'maxa_cu_tru': r['maxa_cu_tru'],
