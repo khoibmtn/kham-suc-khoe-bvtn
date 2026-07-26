@@ -35,6 +35,7 @@ def main(apply):
     print(f"  Điền BMI còn trống    : {kq['dien_bmi']}")
     print(f"  Điền PL thể lực trống : {kq['dien_pl_the_luc']}")
     print(f"  Nâng Tuần hoàn (CSST) : {kq['nang_tuan_hoan']}")
+    print(f"  Nâng lý do Tuần hoàn (text): {kq['nang_ly_do_tuan_hoan']}")
     print(f"  Thêm chẩn đoán sinh hiệu: {kq['them_benh_chinh']}  {kq['them_benh_chinh_theo_ma']}")
     print(f"  Đặt làm bệnh chính    : {kq['dat_benh_chinh']}")
     print(f"  Gỡ cờ CO_PHAN_LOAI    : {kq['go_co']}")

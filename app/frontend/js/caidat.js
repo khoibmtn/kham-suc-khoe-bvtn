@@ -132,8 +132,11 @@ const CaiDatView = (() => {
         đã có chiều cao+cân nặng), nâng Tuần hoàn theo Mạch/Huyết áp, tự thêm
         bệnh chính khi HA cao/mạch bất thường mà chưa có chẩn đoán, nâng Phân
         loại sức khỏe chung lên mức nặng nhất. <b>Chỉ nâng/điền chỗ trống —
-        không bao giờ xoá hay ghi đè giá trị đã có.</b> Bấm "Xem trước" để xem
-        số lượng dự kiến trước khi Áp dụng.</p>
+        không bao giờ xoá hay ghi đè giá trị đã có.</b> Riêng bước cập nhật
+        text "Khám Tuần hoàn" theo lý do CSST Loại II+ là NGOẠI LỆ: có thể
+        THAY THẾ "Bình thường" hoặc NỐI THÊM vào nội dung tự do đã có (không
+        chỉ điền khi trống). Bấm "Xem trước" để xem số lượng dự kiến trước
+        khi Áp dụng.</p>
       <div class="cd-row">
         <button type="button" id="cd-rasoat-preview">Xem trước (dry-run)</button>
         <button type="button" id="cd-rasoat-apply" disabled>Áp dụng</button>
@@ -328,6 +331,7 @@ const CaiDatView = (() => {
       + `Điền BMI còn trống: <b>${kq.dien_bmi}</b><br>`
       + `Điền Phân loại thể lực còn trống: <b>${kq.dien_pl_the_luc}</b><br>`
       + `Nâng Tuần hoàn (theo Mạch/HA): <b>${kq.nang_tuan_hoan}</b><br>`
+      + `Nâng lý do "Khám Tuần hoàn" (text, CSST Loại II+): <b>${kq.nang_ly_do_tuan_hoan}</b><br>`
       + `Tự thêm chẩn đoán theo sinh hiệu (I10/R00.0/R00.1): <b>${kq.them_benh_chinh}</b> `
       + `(I10: ${kq.them_benh_chinh_theo_ma['I10']}, `
       + `R00.0: ${kq.them_benh_chinh_theo_ma['R00.0']}, `
