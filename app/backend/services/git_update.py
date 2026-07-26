@@ -33,16 +33,26 @@ def _rev_parse(ref, cwd):
 
 
 def _spawn_restart(app_dir):
-    """Windows-only: hệt khối RESTART_CHECK của auto_update.bat — chờ 2s (để
-    response HTTP của request này kịp gửi xong), tắt tiến trình đang nghe
-    cổng 8000, mở lại uvicorn ở cửa sổ mới. DETACHED_PROCESS +
+    """Windows-only: chờ 2s (để response HTTP của request này kịp gửi xong),
+    tắt CHÍNH tiến trình đang chạy hàm này (nó đang giữ cổng 8000— run.bat/
+    auto_update.bat luôn khởi động uvicorn không --reload, không nhiều
+    worker, nên PID hiện tại CHẮC CHẮN là PID nghe cổng 8000, khỏi cần dò
+    qua netstat/findstr), rồi mở lại uvicorn ở cửa sổ mới. DETACHED_PROCESS +
     CREATE_NEW_PROCESS_GROUP để tiến trình con sống sót khi tiến trình cha
-    (server đang bị chính nó tắt) kết thúc."""
+    (server đang bị chính nó tắt) kết thúc.
+
+    BẢN CŨ dùng 1 vòng `for /f ... in ('netstat ...') do taskkill ... & start
+    ...` — do cú pháp batch coi TOÀN BỘ phần sau `do` là thân vòng lặp, nếu
+    netstat không trả về dòng nào đúng lúc kiểm tra (race 2s) thì CẢ taskkill
+    LẪN start đều không chạy — server cũ không tắt, server mới không mở,
+    "Cập nhật ngay" âm thầm không có tác dụng gì (bug thật, đã gặp trên máy
+    chủ). Dùng thẳng PID hiện tại loại bỏ hẳn việc dò netstat nên không còn
+    vòng lặp có thể chạy 0 lần."""
     py = os.path.join(app_dir, '.venv', 'Scripts', 'python.exe')
+    pid = os.getpid()
     cmd = (
         'timeout /t 2 /nobreak >nul & '
-        'for /f "tokens=5" %p in (\'netstat -ano ^| findstr :8000 ^| findstr LISTENING\') '
-        'do taskkill /F /PID %p & '
+        f'taskkill /F /PID {pid} & '
         f'start "KSK Server" cmd /k "cd /d {app_dir} && '
         f'{py} -m uvicorn main:app --app-dir backend --host 0.0.0.0 --port 8000"'
     )
