@@ -67,6 +67,8 @@ const ListView = (() => {
   let advDebounceTimer = null;
   let advPickerEl = null;   // popover chọn/sắp trường đang mở (null = đóng)
   let advPickerBtnEl = null;
+  let advPickerBtnIdx = -1; // dòng điều kiện chứa nút ⚙ đang mở popover — dùng để
+  // tìm lại nút MỚI sau renderAdvConditionsFull() (nút cũ bị huỷ khỏi DOM).
 
   const ADV_OP_LABELS = {
     '': '(chưa chọn)',
@@ -225,7 +227,7 @@ const ListView = (() => {
     pickerBtn.className = 'adv-field-picker-btn';
     pickerBtn.title = 'Hiện thêm trường / sắp xếp lại danh sách trường';
     pickerBtn.textContent = '⚙';
-    pickerBtn.addEventListener('click', () => toggleFieldPicker(pickerBtn));
+    pickerBtn.addEventListener('click', () => toggleFieldPicker(pickerBtn, idx));
     fieldWrap.appendChild(pickerBtn);
 
     line.appendChild(fieldWrap);
@@ -321,9 +323,15 @@ const ListView = (() => {
   }
 
   function reopenFieldPicker() {
-    const btn = advPickerBtnEl;
+    // advPickerBtnEl trỏ tới nút ⚙ CŨ — renderAdvConditionsFull() (gọi ngay
+    // trước hàm này ở cả 2 nơi dùng) đã huỷ và dựng lại toàn bộ DOM dòng điều
+    // kiện, nút cũ đã rời khỏi DOM (getBoundingClientRect() trả về (0,0) ->
+    // popover nhảy về góc trên-trái). Tìm lại nút MỚI theo đúng vị trí dòng
+    // (advPickerBtnIdx) thay vì dùng tham chiếu cũ.
+    const idx = advPickerBtnIdx;
     closeFieldPicker();
-    if (btn) toggleFieldPicker(btn);
+    const btn = document.querySelectorAll('.adv-field-picker-btn')[idx];
+    if (btn) toggleFieldPicker(btn, idx);
   }
 
   function positionPopover(pop, btnEl) {
@@ -387,9 +395,10 @@ const ListView = (() => {
     return pop;
   }
 
-  function toggleFieldPicker(btnEl) {
+  function toggleFieldPicker(btnEl, idx) {
     if (advPickerEl) { closeFieldPicker(); return; }
     advPickerBtnEl = btnEl;
+    advPickerBtnIdx = idx;
     advPickerEl = buildFieldPickerPopover();
     document.body.appendChild(advPickerEl);
     positionPopover(advPickerEl, btnEl);
