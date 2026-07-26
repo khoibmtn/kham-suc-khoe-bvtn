@@ -138,6 +138,16 @@ const FIELD_DEFS = [
   { code: 'ten_benh_kem', label: 'Tên bệnh kèm', widget: 'readonly', group: 'F', nguon: 'trong' },
   { code: 'ghi_chu_ra_soat', label: 'Ghi chú rà soát (hệ thống)', widget: 'textarea', group: 'F', nguon: 'trong' },
   { code: 'ghi_chu_can_bo', label: 'Ghi chú nhân viên', widget: 'textarea', group: 'F', nguon: 'trong' },
+
+  // ===== Trường nội bộ/tính toán — CHỈ phục vụ "Box điều kiện" của Bộ lọc
+  // nâng cao (list.js), KHÔNG có group A-F nên KHÔNG xuất hiện ở panel chi
+  // tiết (detail.js chỉ duyệt fieldsOfGroup() theo FIELD_GROUPS A-F). =====
+  { code: 'chan_doan_goc', label: 'Chẩn đoán gốc (chuỗi nhập)', widget: 'text', nguon: 'trong' },
+  { code: 'co_qc', label: 'Cờ cảnh báo (mã cờ)', widget: 'text', nguon: 'trong' },
+  { code: 'so_loi', label: 'Số lỗi', widget: 'number', nguon: 'trong' },
+  { code: 'trang_thai', label: 'Trạng thái rà soát', widget: 'text', nguon: 'trong' },
+  { code: 'nguoi_ra_soat_id', label: 'Người rà soát (đã phân công)', widget: 'text', nguon: 'trong' },
+  { code: 'thoi_diem_hoan_thanh', label: 'Thời điểm hoàn thành', widget: 'text', nguon: 'trong' },
 ];
 
 const FIELD_BY_CODE = Object.fromEntries(FIELD_DEFS.map((f) => [f.code, f]));
@@ -152,6 +162,15 @@ const NUMERIC_FIELD_CODES = new Set([
 ]);
 
 const RADIO5_LABELS = { 1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V' };
+
+// "Box điều kiện" (Bộ lọc nâng cao, list.js) — 8 trường CƠ BẢN mặc định hiện
+// (khớp đúng các bộ lọc đã có sẵn hôm nay: Xã/phường, Cờ cảnh báo, ngày
+// khám, Phân loại SK, Trạng thái, Cơ quan bệnh chính, Nhân viên, họ tên).
+// Bấm nút "hiện thêm trường" mới lộ ra phần còn lại của FIELD_DEFS.
+const ADV_BASIC_FIELD_CODES = [
+  'maxa_cu_tru', 'co_qc', 'ngay_vao', 'phan_loai_sk', 'trang_thai',
+  'co_quan_benh_chinh', 'nguoi_ra_soat_id', 'ho_ten',
+];
 
 function fieldsOfGroup(g) {
   return FIELD_DEFS.filter((f) => f.group === g);
