@@ -16,7 +16,11 @@ CREATE TABLE IF NOT EXISTS nguoi_dung (
   -- JSON danh sách khóa các luồng dashboard được BẬT (Việc 2), lưu THEO TÀI
   -- KHOẢN — vd '["tongQuan","theoXa","chatLuong"]'. NULL = chưa đặt (frontend
   -- coi như mặc định tick hết).
-  dashboard_tuy_chon TEXT
+  dashboard_tuy_chon TEXT,
+  -- JSON {show_extra, field_order} — trạng thái "hiện thêm trường" + thứ tự
+  -- trường của Box điều kiện (Bộ lọc nâng cao, list.js), lưu THEO TÀI KHOẢN.
+  -- NULL = chưa đặt (frontend dùng mặc định: chỉ hiện 8 trường cơ bản).
+  bo_loc_nang_cao_tuy_chon TEXT
 );
 
 -- ========== HỒ SƠ ==========

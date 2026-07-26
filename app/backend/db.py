@@ -29,11 +29,22 @@ def _is_serverless():
 # LOCAL (sqlite3) — hành vi y nguyên như trước khi có Giai đoạn 1.
 # =====================================================================
 
+def _ksk_token_match(value, tokens_str, mode):
+    """UDF SQLite cho Box điều kiện (Bộ lọc nâng cao, ho_so.py) — khớp
+    Chứa/Không chứa/Bắt đầu bằng/Kết thúc bằng: từng tiếng TRỌN VẸN, ĐÚNG
+    THỨ TỰ, không dấu/không phân biệt hoa thường. Import trễ (như
+    services/fuzzy.py:build_search_cols đã làm) để tránh phụ thuộc thứ tự
+    import ở module-load của db.py (module lõi, nạp rất sớm)."""
+    from services import fuzzy  # noqa: E402
+    return 1 if fuzzy.token_order_whole_word_match(tokens_str, value, mode) else 0
+
+
 def _get_connection_local():
     config.ensure_dirs()
     conn = sqlite3.connect(config.DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute('PRAGMA foreign_keys = ON')
+    conn.create_function('ksk_token_match', 3, _ksk_token_match)
     return conn
 
 
@@ -226,6 +237,12 @@ def _get_connection_serverless():
         database=os.environ['TURSO_URL'],
         auth_token=os.environ.get('TURSO_AUTH_TOKEN'),
     )
+    # TODO: ksk_token_match (Chứa/Không chứa/Bắt đầu bằng/Kết thúc bằng — Box
+    # điều kiện của Bộ lọc nâng cao, xem ho_so.py:_dk_condition_sql) CHƯA
+    # được đăng ký ở nhánh serverless này vì libsql_experimental không hỗ trợ
+    # conn.create_function (Python UDF). Nhánh serverless hiện là legacy/
+    # không dùng cho triển khai LAN thực tế (xem ghi chú đầu file) nên chưa
+    # tối ưu — nếu bật lại Turso, 4 toán tử trên sẽ lỗi "no such function".
     return ConnWrapper(raw)
 
 
@@ -250,6 +267,7 @@ def init_schema(conn=None):
     conn.commit()
     _migrate_search_cols(conn)
     _migrate_khoa_phong(conn)
+    _migrate_bo_loc_nang_cao(conn)
     if own:
         conn.close()
 
@@ -327,6 +345,27 @@ def _migrate_khoa_phong(conn):
         pass
     if changed:
         conn.commit()
+
+
+def _migrate_bo_loc_nang_cao(conn):
+    """ALTER TABLE nguoi_dung ADD COLUMN bo_loc_nang_cao_tuy_chon nếu DB đã
+    tồn tại TRƯỚC KHI schema.sql có cột này — cùng khuôn với
+    _migrate_khoa_phong ở trên. JSON {show_extra, field_order} lưu THEO TÀI
+    KHOẢN cho "Box điều kiện" (Bộ lọc nâng cao, list.js) — xem auth.py."""
+    try:
+        cols = {r['name'] for r in conn.execute('PRAGMA table_info(nguoi_dung)')}
+    except Exception:
+        return
+    if 'bo_loc_nang_cao_tuy_chon' in cols:
+        return
+    try:
+        conn.execute(
+            'ALTER TABLE nguoi_dung ADD COLUMN bo_loc_nang_cao_tuy_chon TEXT')
+        conn.commit()
+    except Exception:
+        # cột đã được instance khác thêm đồng thời, hoặc lỗi tạm — không
+        # chặn khởi động server vì việc này.
+        pass
 
 
 def table_counts(conn):

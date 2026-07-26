@@ -132,6 +132,48 @@ def build_search_cols(rec):
     return ho_ten_kd, blob
 
 
+def token_order_whole_word_match(tokens_str, candidate_raw, mode='contains'):
+    """Dùng bởi UDF `ksk_token_match` (db.py) cho Box điều kiện (Bộ lọc nâng
+    cao, ho_so.py) — toán tử Chứa/Không chứa/Bắt đầu bằng/Kết thúc bằng.
+
+    Khác match_score() ở trên (dùng để XẾP HẠNG gợi ý tên, CHO PHÉP khớp
+    chuỗi con/đầu từ): ở đây mỗi từ khóa phải khớp NGUYÊN 1 TỪ của
+    candidate_raw (vd 'nam' KHÔNG khớp 'namy'), các từ khớp phải xuất hiện
+    ĐÚNG THỨ TỰ đã gõ (không cần liền kề). `;` trong candidate được coi là
+    ranh giới từ (đổi thành khoảng trắng) — cùng chuẩn hoá với
+    build_search_cols ở trên, để trường dạng ';'-joined (co_qc, ma_benh_kem…)
+    test được từng mã như 1 từ.
+
+    mode: 'contains' (Chứa — dùng luôn cho "Không chứa", phủ định ở phía gọi)
+          | 'starts' (Bắt đầu bằng — thêm: từ khóa ĐẦU phải khớp từ ĐẦU của
+            candidate) | 'ends' (Kết thúc bằng — thêm: từ khóa CUỐI phải
+            khớp từ CUỐI của candidate)."""
+    cand = strip_diacritics(str(candidate_raw or '')).replace(';', ' ')
+    words = cand.split()
+    tokens = [strip_diacritics(t) for t in str(tokens_str or '').split() if t]
+    if not tokens or not words:
+        return False
+
+    pos = 0
+    positions = []
+    for t in tokens:
+        found = None
+        for i in range(pos, len(words)):
+            if words[i] == t:
+                found = i
+                break
+        if found is None:
+            return False
+        positions.append(found)
+        pos = found + 1
+
+    if mode == 'starts' and positions[0] != 0:
+        return False
+    if mode == 'ends' and positions[-1] != len(words) - 1:
+        return False
+    return True
+
+
 def rank_by_name(rows, query, name_key='ho_ten', threshold=None, limit=50):
     """rows: list[dict-like] có khoá `name_key`. Trả về list đã lọc + sắp
     theo điểm giảm dần (ổn định — giữ thứ tự gốc trong cùng mức điểm), tối đa
