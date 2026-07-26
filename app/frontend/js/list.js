@@ -54,6 +54,348 @@ const ListView = (() => {
     msRefs.coQc = ms;
   }
 
+  // ===== "Box điều kiện" — bộ lọc nâng cao dạng field + toán tử + giá trị,
+  // nhiều dòng nối AND. advFieldOrder/advShowExtra (thứ tự + trạng thái
+  // "hiện thêm trường") lưu THEO TÀI KHOẢN qua Api.capNhatBoLocNangCao
+  // (PATCH /api/me); advConditions (các dòng điều kiện) CHỈ sống trong
+  // phiên — ngoài phạm vi: không lưu preset nhiều bộ lọc. =====
+  let advFieldOrder = null;
+  let advShowExtra = false;
+  let advConditions = [];
+  let advCondRowsEl = null;
+  let advCondAddWrapEl = null;
+  let advDebounceTimer = null;
+  let advPickerEl = null;   // popover chọn/sắp trường đang mở (null = đóng)
+  let advPickerBtnEl = null;
+
+  const ADV_OP_LABELS = {
+    '': '(chưa chọn)',
+    trong: 'Trống',
+    khong_trong: 'Không trống',
+    toan_tu: 'Toán tử',
+    chua: 'Chứa',
+    khong_chua: 'Không chứa',
+    bat_dau: 'Bắt đầu bằng',
+    ket_thuc: 'Kết thúc bằng',
+  };
+  const ADV_SUB_OPS = ['>', '<', '=', '>=', '<='];
+  const ADV_TEXT_VALUE_OPS = new Set(['chua', 'khong_chua', 'bat_dau', 'ket_thuc']);
+
+  function newAdvConditionRow() {
+    return { field: '', op: '', sub_op: '>', value: '' };
+  }
+
+  function defaultAdvFieldOrder() {
+    const basic = ADV_BASIC_FIELD_CODES.slice();
+    const rest = FIELD_DEFS.map((f) => f.code).filter((c) => !basic.includes(c));
+    return basic.concat(rest);
+  }
+
+  // Nạp trạng thái đã lưu của tài khoản (user.bo_loc_nang_cao_tuy_chon, trả
+  // về từ /api/me) — hợp lệ hoá + NỐI THÊM mã trường MỚI (vd fields.js vừa
+  // bổ sung) chưa có trong danh sách đã lưu, tránh mất trường mới khi nạp.
+  function loadAdvFieldSetting() {
+    const saved = user && user.bo_loc_nang_cao_tuy_chon;
+    const allCodes = FIELD_DEFS.map((f) => f.code);
+    if (saved && Array.isArray(saved.field_order) && saved.field_order.length) {
+      const known = new Set(allCodes);
+      const savedValid = saved.field_order.filter((c) => known.has(c));
+      const savedSet = new Set(savedValid);
+      const missing = allCodes.filter((c) => !savedSet.has(c));
+      advFieldOrder = savedValid.concat(missing);
+      advShowExtra = !!saved.show_extra;
+    } else {
+      advFieldOrder = defaultAdvFieldOrder();
+      advShowExtra = false;
+    }
+  }
+
+  function persistAdvFieldSetting() {
+    Api.capNhatBoLocNangCao({ show_extra: advShowExtra, field_order: advFieldOrder })
+      .catch(() => { /* lỗi mạng tạm — không chặn thao tác, thử lại ở lần đổi kế tiếp */ });
+  }
+
+  function visibleAdvFieldCodes() {
+    if (advShowExtra) return advFieldOrder.slice();
+    const basicSet = new Set(ADV_BASIC_FIELD_CODES);
+    return advFieldOrder.filter((c) => basicSet.has(c));
+  }
+
+  // Kéo-thả sắp lại thứ tự TRONG PHẠM VI đang hiển thị (8 trường cơ bản khi
+  // đang thu gọn, hoặc toàn bộ khi đã "hiện thêm trường") — giữ nguyên vị
+  // trí tương đối của các mã đang ẨN trong advFieldOrder gốc.
+  function reorderAdvField(fromCode, toCode) {
+    if (fromCode === toCode) return;
+    const visible = visibleAdvFieldCodes();
+    const fromIdx = visible.indexOf(fromCode);
+    const toIdx = visible.indexOf(toCode);
+    if (fromIdx < 0 || toIdx < 0) return;
+    visible.splice(toIdx, 0, visible.splice(fromIdx, 1)[0]);
+    const basicSet = new Set(ADV_BASIC_FIELD_CODES);
+    let vi = 0;
+    advFieldOrder = advFieldOrder.map((c) => {
+      if (advShowExtra || basicSet.has(c)) return visible[vi++];
+      return c;
+    });
+    persistAdvFieldSetting();
+  }
+
+  function advRowIsComplete(row) {
+    if (!row.field || !row.op) return false;
+    if (row.op === 'toan_tu') return !!row.sub_op && String(row.value || '').trim() !== '';
+    if (ADV_TEXT_VALUE_OPS.has(row.op)) return String(row.value || '').trim() !== '';
+    return true; // trong / khong_trong — không cần giá trị
+  }
+
+  function advConditionsPayload() {
+    return advConditions.filter(advRowIsComplete).map((r) => {
+      const out = { field: r.field, op: r.op };
+      if (r.op === 'toan_tu') { out.sub_op = r.sub_op; out.value = r.value; }
+      else if (ADV_TEXT_VALUE_OPS.has(r.op)) out.value = r.value;
+      return out;
+    });
+  }
+
+  function onAdvConditionChanged() {
+    page = 1;
+    reload();
+  }
+
+  function renderAdvAddButton() {
+    if (!advCondAddWrapEl) return;
+    advCondAddWrapEl.innerHTML = '';
+    const last = advConditions[advConditions.length - 1];
+    if (!last || !advRowIsComplete(last)) return;
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'adv-cond-add';
+    addBtn.textContent = '+ Thêm điều kiện';
+    addBtn.addEventListener('click', () => {
+      advConditions.push(newAdvConditionRow());
+      renderAdvConditionsFull();
+    });
+    advCondAddWrapEl.appendChild(addBtn);
+  }
+
+  function wireAdvValueInput(inp, row) {
+    inp.addEventListener('input', () => {
+      row.value = inp.value;
+      clearTimeout(advDebounceTimer);
+      advDebounceTimer = setTimeout(() => {
+        // Chỉ cập nhật nút "+" (KHÔNG dựng lại toàn bộ dòng — tránh mất
+        // focus ô đang gõ) rồi mới lọc lại kết quả.
+        renderAdvAddButton();
+        onAdvConditionChanged();
+      }, 250);
+    });
+  }
+
+  function buildAdvConditionRow(row, idx) {
+    const line = document.createElement('div');
+    line.className = 'adv-cond-row';
+
+    // ----- Box 1: chọn trường -----
+    const fieldWrap = document.createElement('div');
+    fieldWrap.className = 'adv-cond-field-wrap';
+    const sel = document.createElement('select');
+    sel.className = 'filter-select adv-cond-field';
+    const optBlank = document.createElement('option');
+    optBlank.value = ''; optBlank.textContent = '(chọn trường)';
+    sel.appendChild(optBlank);
+    const codes = visibleAdvFieldCodes();
+    if (row.field && !codes.includes(row.field)) codes.unshift(row.field); // giữ lựa chọn dù đang ẩn (đợt "thu gọn")
+    codes.forEach((c) => {
+      const def = FIELD_BY_CODE[c];
+      if (!def) return;
+      const o = document.createElement('option');
+      o.value = c; o.textContent = def.label;
+      if (c === row.field) o.selected = true;
+      sel.appendChild(o);
+    });
+    sel.addEventListener('change', () => {
+      row.field = sel.value;
+      row.op = ''; row.value = ''; row.sub_op = '>';
+      renderAdvConditionsFull();
+      onAdvConditionChanged();
+    });
+    fieldWrap.appendChild(sel);
+
+    const pickerBtn = document.createElement('button');
+    pickerBtn.type = 'button';
+    pickerBtn.className = 'adv-field-picker-btn';
+    pickerBtn.title = 'Hiện thêm trường / sắp xếp lại danh sách trường';
+    pickerBtn.textContent = '⚙';
+    pickerBtn.addEventListener('click', () => toggleFieldPicker(pickerBtn));
+    fieldWrap.appendChild(pickerBtn);
+
+    line.appendChild(fieldWrap);
+
+    // ----- Box 2: toán tử — chỉ hiện khi Box 1 đã chọn trường (tiêu chí 10) -----
+    if (row.field) {
+      const opSel = document.createElement('select');
+      opSel.className = 'filter-select adv-cond-op';
+      Object.keys(ADV_OP_LABELS).forEach((k) => {
+        const o = document.createElement('option');
+        o.value = k; o.textContent = ADV_OP_LABELS[k];
+        if (k === row.op) o.selected = true;
+        opSel.appendChild(o);
+      });
+      opSel.addEventListener('change', () => {
+        row.op = opSel.value;
+        row.value = '';
+        renderAdvConditionsFull();
+        onAdvConditionChanged();
+      });
+      line.appendChild(opSel);
+
+      if (row.op === 'toan_tu') {
+        const subSel = document.createElement('select');
+        subSel.className = 'filter-select adv-cond-subop';
+        ADV_SUB_OPS.forEach((s) => {
+          const o = document.createElement('option');
+          o.value = s; o.textContent = s;
+          if (s === row.sub_op) o.selected = true;
+          subSel.appendChild(o);
+        });
+        subSel.addEventListener('change', () => {
+          row.sub_op = subSel.value;
+          renderAdvAddButton();
+          onAdvConditionChanged();
+        });
+        line.appendChild(subSel);
+
+        const def = FIELD_BY_CODE[row.field];
+        const valInp = document.createElement('input');
+        valInp.type = def && def.widget === 'date' ? 'date' : 'text';
+        valInp.className = 'adv-cond-value';
+        valInp.value = row.value;
+        valInp.placeholder = 'Giá trị';
+        wireAdvValueInput(valInp, row);
+        line.appendChild(valInp);
+      } else if (ADV_TEXT_VALUE_OPS.has(row.op)) {
+        const valInp = document.createElement('input');
+        valInp.type = 'text';
+        valInp.className = 'adv-cond-value';
+        valInp.value = row.value;
+        valInp.placeholder = 'vd: nguyễn nam';
+        wireAdvValueInput(valInp, row);
+        line.appendChild(valInp);
+      }
+    }
+
+    // ----- Xóa dòng — mọi dòng TỪ DÒNG 2 trở đi (tiêu chí 20/21) -----
+    if (idx > 0) {
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'adv-cond-del';
+      delBtn.title = 'Xóa điều kiện này';
+      delBtn.textContent = '✕';
+      delBtn.addEventListener('click', () => {
+        advConditions.splice(idx, 1);
+        renderAdvConditionsFull();
+        onAdvConditionChanged();
+      });
+      line.appendChild(delBtn);
+    }
+
+    return line;
+  }
+
+  function renderAdvConditionsFull() {
+    if (!advCondRowsEl) return;
+    advCondRowsEl.innerHTML = '';
+    advConditions.forEach((row, idx) => advCondRowsEl.appendChild(buildAdvConditionRow(row, idx)));
+    renderAdvAddButton();
+  }
+
+  // ----- Popover "⚙" — toggle hiện thêm trường + kéo-thả sắp thứ tự -----
+  function closeFieldPicker() {
+    if (advPickerEl) { advPickerEl.remove(); advPickerEl = null; }
+    document.removeEventListener('mousedown', onAdvPickerOutsideClick, true);
+  }
+
+  function onAdvPickerOutsideClick(e) {
+    if (advPickerEl && !advPickerEl.contains(e.target) && e.target !== advPickerBtnEl) {
+      closeFieldPicker();
+    }
+  }
+
+  function reopenFieldPicker() {
+    const btn = advPickerBtnEl;
+    closeFieldPicker();
+    if (btn) toggleFieldPicker(btn);
+  }
+
+  function positionPopover(pop, btnEl) {
+    const r = btnEl.getBoundingClientRect();
+    pop.style.position = 'fixed';
+    pop.style.top = `${r.bottom + 4}px`;
+    pop.style.left = `${Math.max(4, Math.min(r.left, window.innerWidth - 296))}px`;
+  }
+
+  function buildFieldPickerPopover() {
+    const pop = document.createElement('div');
+    pop.className = 'adv-field-picker-pop';
+    pop.tabIndex = -1;
+    pop.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeFieldPicker(); }
+    });
+
+    // Toggle DUY NHẤT hiện/ẩn trường mở rộng (tiêu chí 4/5) — mặc định TẮT.
+    const toggleBtn = document.createElement('button');
+    toggleBtn.type = 'button';
+    toggleBtn.className = 'adv-field-picker-toggle';
+    toggleBtn.textContent = advShowExtra ? '▾ Đang hiện tất cả trường — bấm để thu gọn'
+                                          : '▸ Hiện thêm trường';
+    toggleBtn.addEventListener('click', () => {
+      advShowExtra = !advShowExtra;
+      persistAdvFieldSetting();
+      renderAdvConditionsFull();
+      reopenFieldPicker();
+    });
+    pop.appendChild(toggleBtn);
+
+    const list = document.createElement('div');
+    list.className = 'adv-field-picker-list';
+    let dragCode = null;
+    visibleAdvFieldCodes().forEach((code) => {
+      const def = FIELD_BY_CODE[code];
+      if (!def) return;
+      const item = document.createElement('div');
+      item.className = 'adv-field-picker-item';
+      item.draggable = true;
+      item.textContent = '⠿ ' + def.label;
+      item.dataset.code = code;
+      item.addEventListener('dragstart', (e) => {
+        dragCode = code;
+        e.dataTransfer.effectAllowed = 'move';
+        item.classList.add('dragging');
+      });
+      item.addEventListener('dragend', () => item.classList.remove('dragging'));
+      item.addEventListener('dragover', (e) => { e.preventDefault(); });
+      item.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (dragCode && dragCode !== code) {
+          reorderAdvField(dragCode, code);
+          renderAdvConditionsFull();
+          reopenFieldPicker();
+        }
+      });
+      list.appendChild(item);
+    });
+    pop.appendChild(list);
+    return pop;
+  }
+
+  function toggleFieldPicker(btnEl) {
+    if (advPickerEl) { closeFieldPicker(); return; }
+    advPickerBtnEl = btnEl;
+    advPickerEl = buildFieldPickerPopover();
+    document.body.appendChild(advPickerEl);
+    positionPopover(advPickerEl, btnEl);
+    document.addEventListener('mousedown', onAdvPickerOutsideClick, true);
+  }
+
   function defaultFilters() {
     return {
       xa: [], trang_thai: [], co_qc: [], phan_loai_sk: [], co_quan_benh_chinh: [],
@@ -68,6 +410,8 @@ const ListView = (() => {
     user = u;
     onOpen = opts.onOpen;
     filters = defaultFilters();
+    loadAdvFieldSetting();
+    advConditions = [newAdvConditionRow()];
     buildLayout();
     reload();
     // Nạp số lượng hồ sơ theo từng cờ (không chặn giao diện) -> gắn count vào
@@ -274,6 +618,24 @@ const ListView = (() => {
       return sel;
     }));
 
+    // ---- "Box điều kiện": chọn 1 trường bất kỳ (Box 1) + toán tử (Box 2),
+    // nhiều dòng nối AND, kèm nút "⚙" mở popover hiện thêm trường/sắp thứ
+    // tự (xem khối hàm phía trên: renderAdvConditionsFull, toggleFieldPicker). ----
+    const advCondSection = document.createElement('div');
+    advCondSection.className = 'adv-cond-section';
+    const condLabel = document.createElement('div');
+    condLabel.className = 'filter-label';
+    condLabel.textContent = 'Điều kiện lọc (Box điều kiện)';
+    advCondSection.appendChild(condLabel);
+    advCondRowsEl = document.createElement('div');
+    advCondRowsEl.id = 'adv-cond-rows';
+    advCondSection.appendChild(advCondRowsEl);
+    advCondAddWrapEl = document.createElement('div');
+    advCondAddWrapEl.id = 'adv-cond-add-wrap';
+    advCondSection.appendChild(advCondAddWrapEl);
+    advPanel.appendChild(advCondSection);
+    renderAdvConditionsFull();
+
     const advOpen = localStorage.getItem(ADV_FILTERS_KEY) === '1';
     advPanel.hidden = !advOpen;
 
@@ -402,17 +764,25 @@ const ListView = (() => {
     if (msRefs.hotenOnlyCb) msRefs.hotenOnlyCb.checked = true; // giữ "Chỉ tìm họ tên"
     if (msRefs.tuInput) msRefs.tuInput.value = '';
     if (msRefs.denInput) msRefs.denInput.value = '';
+    // Tiêu chí 24: "Xóa hết bộ lọc" cũng xóa sạch mọi dòng Box điều kiện,
+    // về lại đúng 1 dòng trống.
+    advConditions = [newAdvConditionRow()];
+    renderAdvConditionsFull();
     page = 1;
     reload();
   }
 
   function currentFilterParams() {
+    const dk = advConditionsPayload();
     return {
       xa: filters.xa, ngay_tu: filters.ngay_tu, ngay_den: filters.ngay_den,
       q: filters.q, q_hoten_only: filters.q_hoten_only ? 'true' : '',
       trang_thai: filters.trang_thai, nguoi_ra_soat_id: filters.nguoi_ra_soat_id,
       co_qc: filters.co_qc, phan_loai_sk: filters.phan_loai_sk,
       co_quan_benh_chinh: filters.co_quan_benh_chinh,
+      // "Box điều kiện" (Bộ lọc nâng cao) — JSON các dòng điều kiện ĐÃ ĐỦ
+      // điều kiện gửi lên (rỗng -> '' -> bị api.js:qs() bỏ qua, không gửi).
+      dieu_kien: dk.length ? JSON.stringify(dk) : '',
     };
   }
 
