@@ -879,10 +879,42 @@ const ListView = (() => {
       return `<th>${esc(def ? def.label : code)}</th>`;
     }).join('');
     thead.innerHTML = `<tr>
-        <th class="col-danhdauxuat" title="Đánh dấu xuất file">Xuất</th>
+        <th class="col-danhdauxuat" title="Tích/bỏ tích đánh dấu xuất file cho TẤT CẢ hồ sơ khớp bộ lọc hiện tại (mọi trang)">
+          <input type="checkbox" id="danhdauxuat-all-cb"></th>
         <th>STT</th><th>Họ tên</th><th>Ngày sinh</th><th>Giới</th><th>CCCD</th>
         <th>Xã</th><th>Ngày khám</th><th>Phân loại SK</th><th>Bệnh chính</th>
         <th>Số cờ</th><th>Trạng thái</th>${extraTh}<th>Mã hồ sơ</th></tr>`;
+    const allCb = thead.querySelector('#danhdauxuat-all-cb');
+    allCb.addEventListener('click', (e) => e.stopPropagation());
+    allCb.addEventListener('change', () => onDanhDauHangLoat(allCb));
+  }
+
+  // Ô check ở đầu cột "Xuất" — tích/bỏ tích danh_dau_xuat cho TOÀN BỘ hồ sơ
+  // khớp bộ lọc hiện tại, qua MỌI TRANG (phản hồi anh Khôi: không chỉ 20
+  // dòng đang hiển thị). Không cố phản ánh trạng thái "đã chọn hết" thật sự
+  // của toàn bộ tập lọc (sẽ cần thêm 1 lượt đếm mỗi lần tải trang) — ô check
+  // chỉ đơn thuần là NÚT BẤM 2 chiều: tích = đánh dấu hết, bỏ tích = bỏ dấu
+  // hết, luôn reset về bỏ tích sau khi thao tác xong (không lưu trạng thái).
+  async function onDanhDauHangLoat(cb) {
+    const target = cb.checked ? 1 : 0;
+    const soLuong = total;
+    const hanhDong = target ? 'ĐÁNH DẤU XUẤT FILE' : 'BỎ ĐÁNH DẤU XUẤT FILE';
+    if (!confirm(`${hanhDong} cho TẤT CẢ ${soLuong} hồ sơ đang khớp bộ lọc hiện tại (qua mọi trang)?`)) {
+      cb.checked = !cb.checked;
+      return;
+    }
+    cb.disabled = true;
+    try {
+      const res = await Api.danhDauHangLoat(currentFilterParams(), target);
+      cb.checked = false;
+      alert(`Đã ${target ? 'đánh dấu' : 'bỏ đánh dấu'} ${res.so_luong_doi}/${res.tong_pham_vi} hồ sơ.`);
+      reload();
+    } catch (err) {
+      cb.checked = !cb.checked;
+      alert('Lỗi: ' + err.message);
+    } finally {
+      cb.disabled = false;
+    }
   }
 
   function esc(s) {

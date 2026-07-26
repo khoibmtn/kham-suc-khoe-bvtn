@@ -526,6 +526,44 @@ def _filtered_where_q(params, conn=None):
     return where_sql, args
 
 
+@router.post('/ho-so/danh-dau-hang-loat')
+def danh_dau_hang_loat(request: Request, gia_tri: int = Query(...),
+                       user=Depends(auth.get_current_user)):
+    """Ô check "Xuất" ở đầu bảng Danh sách (list.js) — tích/bỏ tích
+    `danh_dau_xuat` cho TOÀN BỘ hồ sơ khớp bộ lọc hiện tại, qua MỌI trang
+    (không chỉ 20 dòng đang hiển thị) — tái dùng ĐÚNG bộ lọc của
+    GET /api/ho-so (kể cả Box điều kiện) qua _filtered_where_q(). Chỉ ghi
+    những hồ sơ THẬT SỰ đổi giá trị (tránh rác nhat_ky cho hồ sơ đã khớp
+    sẵn)."""
+    if gia_tri not in (0, 1):
+        raise HTTPException(400, 'gia_tri phải là 0 hoặc 1')
+    params = _parse_list_params(request)
+    conn = db.get_connection()
+    try:
+        where_sql, args = _filtered_where_q(params, conn)
+        rows = conn.execute(
+            f'SELECT ma_ho_so FROM ho_so WHERE ({where_sql}) AND '
+            f'(danh_dau_xuat IS NULL OR danh_dau_xuat != ?)', args + [gia_tri]).fetchall()
+        ma_list = [r['ma_ho_so'] for r in rows]
+        if ma_list:
+            placeholders = ','.join('?' * len(ma_list))
+            conn.execute(
+                f'UPDATE ho_so SET danh_dau_xuat=? WHERE ma_ho_so IN ({placeholders})',
+                [gia_tri] + ma_list)
+            gia_tri_cu = '0' if gia_tri == 1 else '1'
+            conn.executemany(
+                'INSERT INTO nhat_ky(ma_ho_so, nguoi_dung_id, ten_truong, '
+                'gia_tri_cu, gia_tri_moi) VALUES (?,?,?,?,?)',
+                [(ma, user['id'], 'danh_dau_xuat', gia_tri_cu, str(gia_tri))
+                 for ma in ma_list])
+            conn.commit()
+        tong = conn.execute(
+            f'SELECT COUNT(*) FROM ho_so WHERE {where_sql}', args).fetchone()[0]
+    finally:
+        conn.close()
+    return {'ok': True, 'so_luong_doi': len(ma_list), 'tong_pham_vi': tong}
+
+
 # Cột nội bộ (khóa tìm kiếm bỏ dấu) — không đưa vào file xuất cho người dùng.
 _EXPORT_SKIP_COLS = {'ho_ten_kd', 'search_blob_kd'}
 

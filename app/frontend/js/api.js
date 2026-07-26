@@ -76,6 +76,10 @@ const Api = (() => {
     capNhatNgay: () => req('POST', '/api/admin/cap-nhat-ngay'),
 
     listHoSo: (params) => req('GET', '/api/ho-so?' + qs(params)),
+    // Ô check "Xuất" ở đầu bảng Danh sách — tích/bỏ tích hàng loạt theo
+    // ĐÚNG bộ lọc hiện tại, qua mọi trang (list.js).
+    danhDauHangLoat: (params, giaTri) => req('POST',
+      `/api/ho-so/danh-dau-hang-loat?gia_tri=${giaTri}&` + qs(params)),
     getHoSo: (ma) => req('GET', `/api/ho-so/${encodeURIComponent(ma)}`),
     patchHoSo: (ma, fields) => req('PATCH', `/api/ho-so/${encodeURIComponent(ma)}`, fields),
     hoanThanh: (ma, filterParams) => req('POST', `/api/ho-so/${encodeURIComponent(ma)}/hoan-thanh?` + qs(filterParams)),
