@@ -78,6 +78,7 @@ def tong_quan(user=Depends(auth.get_current_user)):
               SUM(CASE WHEN rs_the_luc=1 THEN 1 ELSE 0 END) AS rs_tl,
               SUM(CASE WHEN rs_canh_bao_khac=1 THEN 1 ELSE 0 END) AS rs_cbk,
               SUM(CASE WHEN rs_hanh_chinh=1 OR rs_sinh_ton=1 OR rs_the_luc=1
+                       OR rs_canh_bao_khac=1
                        THEN 1 ELSE 0 END) AS rs_it_nhat_1,
               SUM(CASE WHEN {RS_XONG_SQL} THEN 1 ELSE 0 END) AS rs_tat_ca
             FROM ho_so
