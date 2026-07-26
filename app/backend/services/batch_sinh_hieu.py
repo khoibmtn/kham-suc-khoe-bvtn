@@ -23,28 +23,8 @@ Idempotent: chạy lại không đổi gì thêm. Dùng chung bởi:
   - routers/cai_dat.py POST /api/admin/ra-soat-sinh-hieu (nút bấm trong app,
     Cài đặt -> admin có thể chạy từ XA qua tunnel, không cần CMD trên máy
     server)."""
-import re
-
-from services import qc, the_luc
+from services import csst, qc, the_luc
 from routers.benh import chan_doan_tu_sinh_hieu
-
-
-def _tuoi(row):
-    t = row['tuoi']
-    if t not in (None, ''):
-        try:
-            t = int(t)
-            if t > 0:
-                return t
-        except (ValueError, TypeError):
-            pass
-    m = re.search(r'(\d{4})$', str(row['ngay_sinh'] or ''))
-    if m:
-        nam = int(m.group(1))
-        if nam > 1900:
-            import datetime
-            return datetime.date.today().year - nam
-    return None
 
 
 def _mach_bpm(s):
@@ -52,72 +32,6 @@ def _mach_bpm(s):
         return float(str(s or '').replace(',', '.'))
     except ValueError:
         return None
-
-
-def classify_mach(bpm):
-    if bpm is None or bpm <= 0:
-        return None
-    if bpm < 55:
-        return 4
-    if bpm <= 59:
-        return 3
-    if bpm <= 75:
-        return 1
-    if bpm <= 85:
-        return 2
-    if bpm <= 95:
-        return 3
-    return 4
-
-
-def _cls_sys(sys_val, tuoi):
-    if tuoi is not None and tuoi < 30:      # 45.1 (<30t)
-        if sys_val < 100:
-            return 4
-        if sys_val <= 125:
-            return 1
-        if sys_val <= 135:
-            return 2
-        if sys_val <= 140:
-            return 3
-        return 4
-    if sys_val < 140:                        # 45.2 (>=30t)
-        return 1
-    if sys_val <= 150:
-        return 3
-    return 4
-
-
-def _cls_dia(dia, tuoi):
-    if tuoi is not None and tuoi < 30:       # 45.1
-        if dia < 60:
-            return 4
-        if dia <= 64:
-            return 2
-        if dia <= 85:
-            return 1
-        if dia <= 89:
-            return 2
-        if dia <= 95:
-            return 3
-        return 4
-    if dia < 90:                             # 45.2
-        return 1
-    if dia <= 95:
-        return 3
-    return 4
-
-
-def _parse_ha(s):
-    m = re.search(r'(\d{2,3})\s*[/\-]\s*(\d{2,3})', s or '')
-    return (int(m.group(1)), int(m.group(2))) if m else (None, None)
-
-
-def classify_huyet_ap(ha, tuoi):
-    sys_val, dia = _parse_ha(ha)
-    if sys_val is None:
-        return None, sys_val, dia
-    return max(_cls_sys(sys_val, tuoi), _cls_dia(dia, tuoi)), sys_val, dia
 
 
 def _resolve_icd(conn, ma_icd):
@@ -157,10 +71,10 @@ def chay(conn, apply, nguoi_dung_id):
             conn.commit()
         done += 1
         ma = r['ma_ho_so']
-        tuoi = _tuoi(r)
+        tuoi = csst.tuoi(r)
         mach = _mach_bpm(r['mach'])
-        l_mach = classify_mach(mach)
-        l_ha, sys_val, dia = classify_huyet_ap(r['huyet_ap'], tuoi)
+        l_mach = csst.classify_mach(mach)
+        l_ha, sys_val, dia = csst.classify_huyet_ap(r['huyet_ap'], tuoi)
 
         # 0) Điền BMI + Phân loại thể lực còn TRỐNG.
         if r['chieu_cao'] not in (None, '') and r['can_nang'] not in (None, ''):
