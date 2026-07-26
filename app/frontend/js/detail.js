@@ -471,6 +471,14 @@ const DetailView = (() => {
       const th = document.getElementById('f_noi_khoa_tuan_hoan');
       if (th) th.value = current.noi_khoa_tuan_hoan || '';
     }
+    // Z00.0 auto-fill: server có thể đã tự điền "Tình trạng sức khỏe (ghi
+    // chú)" (cac_benh_tat_neu_co) NGAY CẢ KHI added=[] — cùng lý do Đợt 14
+    // ở trên, nên cũng xử lý TRƯỚC early-return theo added bên dưới.
+    if (res.cac_benh_tat_neu_co !== undefined && res.cac_benh_tat_neu_co !== current.cac_benh_tat_neu_co) {
+      current.cac_benh_tat_neu_co = res.cac_benh_tat_neu_co;
+      const ghichu = document.getElementById('f_cac_benh_tat_neu_co');
+      if (ghichu) ghichu.value = current.cac_benh_tat_neu_co || '';
+    }
     if (!res.added || !res.added.length) return;
     current.benh = res.benh;
     current.ma_benh_chinh = res.ma_benh_chinh;

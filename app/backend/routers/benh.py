@@ -348,6 +348,7 @@ def tu_chan_doan_sinh_ton(ma_ho_so: str, user=Depends(auth.get_current_user)):
             'so_loi': hs['so_loi'],
             'qd1613': qc.check_invariant(hs),
             'noi_khoa_tuan_hoan': hs['noi_khoa_tuan_hoan'],
+            'cac_benh_tat_neu_co': hs['cac_benh_tat_neu_co'],
         }
 
     conn = db.get_connection()
@@ -372,6 +373,33 @@ def tu_chan_doan_sinh_ton(ma_ho_so: str, user=Depends(auth.get_current_user)):
                      hs['noi_khoa_tuan_hoan'], moi)
                 conn.execute('UPDATE ho_so SET noi_khoa_tuan_hoan=? WHERE ma_ho_so=?',
                              (moi, ma_ho_so))
+                conn.commit()
+                hs = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?',
+                                  (ma_ho_so,)).fetchone()
+
+        # Z00.0 auto-fill (bối cảnh anh Khôi): Z00.0 = "khỏe mạnh, không
+        # bệnh" -> loại trừ lẫn nhau với MỌI bệnh khác. Nếu hồ sơ vẫn có
+        # ma_benh_chinh='Z00.0' mà phan_loai_sk >= 2, nguyên nhân chỉ có
+        # thể là Thể lực hoặc sinh hiệu (Mạch/HA) -> tự điền lý do vào ô
+        # "Tình trạng sức khỏe (ghi chú)" (cac_benh_tat_neu_co) NẾU ô này
+        # đang trống — tái dùng ly_do đã tính ở khối trên (KHÔNG tính lại),
+        # KHÔNG ghi đè giá trị đã có sẵn trong ô.
+        pl_sk_i = (int(hs['phan_loai_sk'])
+                   if hs['phan_loai_sk'] not in (None, '') else 0)
+        if (hs['ma_benh_chinh'] == 'Z00.0' and pl_sk_i >= 2
+                and not (hs['cac_benh_tat_neu_co'] or '').strip()):
+            inv_z00 = qc.check_invariant(hs)
+            ghi_chu_moi = None
+            if inv_z00['co_quan_max'] == 'TH' and ly_do:
+                ghi_chu_moi = ly_do
+            elif inv_z00['co_quan_max'] == 'THELUC':
+                ghi_chu_moi = 'Thể lực'
+            if ghi_chu_moi:
+                _log(conn, ma_ho_so, user['id'], 'cac_benh_tat_neu_co',
+                     hs['cac_benh_tat_neu_co'], ghi_chu_moi)
+                conn.execute(
+                    'UPDATE ho_so SET cac_benh_tat_neu_co=? WHERE ma_ho_so=?',
+                    (ghi_chu_moi, ma_ho_so))
                 conn.commit()
                 hs = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?',
                                   (ma_ho_so,)).fetchone()
