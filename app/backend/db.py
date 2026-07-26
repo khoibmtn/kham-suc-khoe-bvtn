@@ -373,20 +373,44 @@ def _migrate_danh_dau_xuat(conn):
     """ALTER TABLE ho_so ADD COLUMN danh_dau_xuat nếu DB đã tồn tại TRƯỚC KHI
     schema.sql có cột này — cùng khuôn với _migrate_bo_loc_nang_cao ở trên.
     Cờ "đánh dấu xuất file" (checkbox chọn tay ở Danh sách + Chi tiết) —
-    INTEGER DEFAULT 0."""
+    mặc định CHỌN HẾT (phản hồi anh Khôi) để hành vi xuất file GIỮ NGUYÊN
+    như trước khi có tính năng này (xuất toàn bộ theo phạm vi) trừ khi
+    nhân viên chủ động BỎ chọn từng hồ sơ muốn loại trừ.
+
+    ALTER ... DEFAULT 1 tự backfill 1 cho MỌI hồ sơ hiện có nếu đây là lần
+    ĐẦU TIÊN thêm cột (DB chưa từng chạy qua bản trước đó). Nếu cột đã tồn
+    tại (server đã từng chạy bản CŨ với DEFAULT 0), backfill 1 LẦN DUY NHẤT
+    thêm — đánh dấu đã backfill trong bảng cai_dat để KHÔNG lặp lại mỗi lần
+    khởi động (lặp lại sẽ ghi đè mất lựa chọn bỏ-chọn thủ công của nhân
+    viên về sau)."""
     try:
         cols = {r['name'] for r in conn.execute('PRAGMA table_info(ho_so)')}
     except Exception:
         return
-    if 'danh_dau_xuat' in cols:
+    if 'danh_dau_xuat' not in cols:
+        try:
+            conn.execute(
+                'ALTER TABLE ho_so ADD COLUMN danh_dau_xuat INTEGER DEFAULT 1')
+            conn.commit()
+        except Exception:
+            # cột đã được instance khác thêm đồng thời, hoặc lỗi tạm — không
+            # chặn khởi động server vì việc này.
+            pass
         return
+
+    _KHOA_BACKFILL = 'danh_dau_xuat_da_backfill'
     try:
+        da_backfill = conn.execute(
+            'SELECT 1 FROM cai_dat WHERE khoa=?', (_KHOA_BACKFILL,)).fetchone()
+        if da_backfill:
+            return
+        conn.execute('UPDATE ho_so SET danh_dau_xuat=1 '
+                     'WHERE danh_dau_xuat=0 OR danh_dau_xuat IS NULL')
         conn.execute(
-            'ALTER TABLE ho_so ADD COLUMN danh_dau_xuat INTEGER DEFAULT 0')
+            'INSERT INTO cai_dat(khoa, gia_tri) VALUES (?, ?) '
+            'ON CONFLICT(khoa) DO NOTHING', (_KHOA_BACKFILL, 'true'))
         conn.commit()
     except Exception:
-        # cột đã được instance khác thêm đồng thời, hoặc lỗi tạm — không
-        # chặn khởi động server vì việc này.
         pass
 
 

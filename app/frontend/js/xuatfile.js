@@ -61,8 +61,9 @@ const ExportView = (() => {
       </div>
 
       <div class="xf-block">
-        <label class="xf-toggle"><input type="checkbox" id="xf-chi-danh-dau-xuat">
-          Chỉ xuất hồ sơ đã đánh dấu xuất file — mặc định TẮT</label>
+        <label class="xf-toggle"><input type="checkbox" id="xf-chi-danh-dau-xuat" checked>
+          Chỉ xuất hồ sơ đã đánh dấu xuất file — mặc định BẬT (mọi hồ sơ mặc định
+          đã đánh dấu sẵn, bỏ chọn từng hồ sơ ở Danh sách/Chi tiết để loại trừ)</label>
       </div>
 
       <div class="xf-block">
