@@ -100,12 +100,9 @@ def suy_luan(findings, benh_chinh, ten_chinh_thuc):
     # --- Bệnh khác + ghi rõ tên ---
     khac = [f for f in man_tinh if not _covered(f)]
     out['TSBT_BENH_KHAC'] = CO if khac else KHONG
-    # cột AW chỉ nhận 1 giá trị -> lấy bệnh nặng nhất trong nhóm khác;
-    # hoà mức độ nặng thì ưu tiên theo chương bệnh TH > HH > TK
-    _CHUONG_UU_TIEN = {'TH': 0, 'HH': 1, 'TK': 2}
+    # cột AW chỉ nhận 1 giá trị -> lấy bệnh nặng nhất trong nhóm khác
     if khac:
-        khac_sorted = sorted(khac, key=lambda f: (-f.get('_sev', 3),
-                                                   _CHUONG_UU_TIEN.get(f['co_quan'], 99)))
+        khac_sorted = sorted(khac, key=lambda f: -f.get('_sev', 3))
         out['TSBT_MA_BENH_KHAC'] = ten_chinh_thuc(khac_sorted[0]['icd'],
                                                   khac_sorted[0]['ten_icd'])
     else:
