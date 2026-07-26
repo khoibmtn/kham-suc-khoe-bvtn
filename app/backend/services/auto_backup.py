@@ -62,7 +62,7 @@ def backup_now(sub='auto'):
 
 
 def _prune(giu_so_ban):
-    d = _thu_muc_auto()
+    d = _thu_muc('auto')
     files = sorted(
         (os.path.join(d, f) for f in os.listdir(d) if f.endswith('.db')),
         key=os.path.getmtime, reverse=True)
@@ -98,9 +98,18 @@ def _loop():
             if cfg.get('backup_bat', True):
                 interval = max(1, int(cfg.get('backup_phut', 10))) * 60
                 if time.time() - last >= interval:
+                    # `last` cập nhật NGAY sau backup_now() (trước _prune) —
+                    # phản hồi anh Khôi: bug cũ ở _prune() (gọi nhầm hàm
+                    # không tồn tại) ném lỗi trước dòng `last = ...`, khiến
+                    # `last` KHÔNG BAO GIỜ cập nhật -> mỗi vòng poll (30s)
+                    # đều tưởng "đã quá hạn" -> sao lưu dồn dập mỗi 30s suốt
+                    # ngày dù cài đặt là 30 phút, ĐỒNG THỜI _prune() luôn lỗi
+                    # nên không dọn bản cũ -> đầy ổ cứng rất nhanh. Cập nhật
+                    # `last` NGAY để lỗi ở bước dọn dẹp (nếu có, dù đã sửa)
+                    # không bao giờ làm hỏng lại nhịp sao lưu.
                     backup_now()
-                    _prune(cfg.get('backup_giu_so_ban', 100))
                     last = time.time()
+                    _prune(cfg.get('backup_giu_so_ban', 100))
         except Exception:
             pass  # lỗi 1 vòng không được làm chết luồng nền
         time.sleep(_POLL_GIAY)
