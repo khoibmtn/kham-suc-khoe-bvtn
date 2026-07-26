@@ -269,6 +269,7 @@ def init_schema(conn=None):
     _migrate_khoa_phong(conn)
     _migrate_bo_loc_nang_cao(conn)
     _migrate_danh_dau_xuat(conn)
+    _migrate_don_thi_luc_tu_do(conn)
     if own:
         conn.close()
 
@@ -409,6 +410,42 @@ def _migrate_danh_dau_xuat(conn):
         conn.execute(
             'INSERT INTO cai_dat(khoa, gia_tri) VALUES (?, ?) '
             'ON CONFLICT(khoa) DO NOTHING', (_KHOA_BACKFILL, 'true'))
+        conn.commit()
+    except Exception:
+        pass
+
+
+_THI_LUC_COLS = ('khong_kinh_mat_phai', 'khong_kinh_mat_trai',
+                  'co_kinh_mat_phai', 'co_kinh_mat_trai')
+
+
+def _migrate_don_thi_luc_tu_do(conn):
+    """Đợt trước từng cho gõ chữ tự do (vd "ĐNT") ở 4 ô thị lực — phản hồi
+    anh Khôi: KHÓA lại, chỉ cho chọn đúng x/10 trong danh mục như cũ. Dọn 1
+    LẦN DUY NHẤT (đánh dấu qua cai_dat, tránh chạy lại mỗi lần khởi động —
+    lặp lại sẽ xoá cả giá trị x/10 hợp lệ mới nhập SAU migration): giá trị
+    nào KHÔNG khớp danh mục thi_luc (0/10..10/10) thì xoá về NULL (coi như
+    chưa nhập, đúng yêu cầu)."""
+    _KHOA = 'thi_luc_tu_do_da_don'
+    try:
+        da_don = conn.execute(
+            'SELECT 1 FROM cai_dat WHERE khoa=?', (_KHOA,)).fetchone()
+        if da_don:
+            return
+        hop_le = {r['ten'] for r in conn.execute(
+            "SELECT ten FROM danh_muc WHERE loai='thi_luc'")}
+        if not hop_le:
+            return
+        placeholders = ','.join('?' * len(hop_le))
+        for col in _THI_LUC_COLS:
+            conn.execute(
+                f"UPDATE ho_so SET {col}=NULL "
+                f"WHERE {col} IS NOT NULL AND {col} != '' "
+                f"AND {col} NOT IN ({placeholders})",
+                tuple(hop_le))
+        conn.execute(
+            'INSERT INTO cai_dat(khoa, gia_tri) VALUES (?, ?) '
+            'ON CONFLICT(khoa) DO NOTHING', (_KHOA, 'true'))
         conn.commit()
     except Exception:
         pass
