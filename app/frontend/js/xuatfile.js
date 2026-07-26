@@ -61,6 +61,11 @@ const ExportView = (() => {
       </div>
 
       <div class="xf-block">
+        <label class="xf-toggle"><input type="checkbox" id="xf-chi-danh-dau-xuat">
+          Chỉ xuất hồ sơ đã đánh dấu xuất file — mặc định TẮT</label>
+      </div>
+
+      <div class="xf-block">
         <label class="xf-toggle"><input type="checkbox" id="xf-include-errors">
           Xuất kèm cả hồ sơ lỗi (còn cờ 🔴) — mặc định TẮT</label>
       </div>
@@ -220,6 +225,10 @@ const ExportView = (() => {
     return {
       include_errors: panel.querySelector('#xf-include-errors').checked,
       chi_rs_xong: panel.querySelector('#xf-chi-rs-xong').checked,
+      // Dùng chung cho cả 4 luồng (preview/start/plain/chỉnh-sửa) — luồng
+      // "Xuất để chỉnh sửa" vẫn nhận field này nhưng backend CỐ Ý bỏ qua
+      // (xem xuat_file.py:xuat_xlsx_chinh_sua), nên gửi chung không sao.
+      chi_danh_dau_xuat: panel.querySelector('#xf-chi-danh-dau-xuat').checked,
     };
   }
 
