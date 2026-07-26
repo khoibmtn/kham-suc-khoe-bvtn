@@ -72,7 +72,10 @@ def _cell_range(ws, col_letter, row_start, row_end):
 # ============================= DANH MỤC (§1.2) =============================
 def load_danh_muc(conn):
     """Nạp danh mục dropdown từ doc/Import_KSK_Tren 18.xlsm — xóa & nạp lại
-    mỗi lần chạy (không phải dữ liệu người dùng sửa)."""
+    mỗi lần chạy (không phải dữ liệu người dùng sửa). KHÔNG đụng tới
+    'ma_cskcb'/'ma_gtin_cskcb' — 2 danh mục đó do admin tự quản lý qua màn
+    Cài đặt (db.py _migrate_ma_cskcb + routers/ho_so.py danh-muc-quan-ly),
+    xóa theo file nguồn ở đây sẽ mất trắng dữ liệu admin đã thêm."""
     wb = openpyxl.load_workbook(config.CATALOG_XLSM, read_only=True,
                                  data_only=True, keep_vba=False)
     rows = []  # (loai, ma, ten, thu_tu)
@@ -121,7 +124,7 @@ def load_danh_muc(conn):
 
     wb.close()
 
-    conn.execute('DELETE FROM danh_muc')
+    conn.execute("DELETE FROM danh_muc WHERE loai NOT IN ('ma_cskcb', 'ma_gtin_cskcb')")
     conn.executemany(
         'INSERT INTO danh_muc(loai, ma, ten, thu_tu) VALUES (?,?,?,?)', rows)
     conn.commit()
