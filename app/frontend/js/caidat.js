@@ -5,6 +5,20 @@
 const CaiDatView = (() => {
   let panel;
   let khoaPhongList = [];
+  let danhMucQuanLy = {};
+
+  // Danh mục mã CSKCB / mã GLN (criterion 5) — 2 khối UI giống hệt nhau về
+  // hình dạng nên dùng chung 1 hàm render/xử lý, khác nhau qua cfg.
+  const DANH_MUC_QUAN_LY_CONFIG = [
+    { loai: 'ma_cskcb', prefix: 'mcs', tieuDe: 'Danh mục mã CSKCB',
+      moTa: 'Dùng cho ô "Mã CSKCB" ở màn Chi tiết (gợi ý khi gõ). Mã theo '
+        + 'quy định hiện hành đã được nạp sẵn.',
+      placeholder: 'vd: 8934285050981' },
+    { loai: 'ma_gtin_cskcb', prefix: 'mgl', tieuDe: 'Danh mục mã GLN 13 ký tự',
+      moTa: 'Dùng cho ô "Mã GLN 13 ký tự" ở màn Chi tiết (gợi ý khi gõ). '
+        + 'Danh mục này TRỐNG mặc định — thêm mã khi cần.',
+      placeholder: 'vd: 8938502017218' },
+  ];
 
   const FIELDS = [
     { key: 'chieu_cao', label: 'Chiều cao', unit: 'cm' },
@@ -33,6 +47,7 @@ const CaiDatView = (() => {
       saoLuuGanNhat = res.sao_luu_gan_nhat;
       NguongCheck.setNguong(nguong);
       khoaPhongList = await Api.listKhoaPhong();
+      danhMucQuanLy = await Api.listDanhMucQuanLy();
     } catch (err) {
       panel.innerHTML = `<div class="xf-error">Lỗi tải cài đặt: ${esc(err.message)}</div>`;
       return;
@@ -141,6 +156,8 @@ const CaiDatView = (() => {
         <thead><tr><th>Tên khoa/phòng</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
         <tbody id="cd-kp-table-body"></tbody>
       </table>
+
+      ${DANH_MUC_QUAN_LY_CONFIG.map(renderDanhMucQuanLySection).join('')}
     `;
     panel.querySelector('#cd-form').addEventListener('submit', onSubmit);
     panel.querySelector('#cd-tudong-form').addEventListener('submit', onSubmitTuDong);
@@ -149,6 +166,81 @@ const CaiDatView = (() => {
     panel.querySelector('#cd-rasoat-apply').addEventListener('click', () => onRaSoat(true));
     panel.querySelector('#cd-kp-create-form').addEventListener('submit', onKhoaPhongCreate);
     renderKhoaPhongRows();
+    DANH_MUC_QUAN_LY_CONFIG.forEach((cfg) => {
+      panel.querySelector(`#cd-${cfg.prefix}-create-form`)
+        .addEventListener('submit', (e) => onDanhMucQuanLyCreate(e, cfg));
+      renderDanhMucQuanLyRows(cfg);
+    });
+  }
+
+  // ---------------- Danh mục mã CSKCB / mã GLN (criterion 5) ----------------
+  function renderDanhMucQuanLySection(cfg) {
+    return `
+      <h2>${esc(cfg.tieuDe)}</h2>
+      <p class="cd-hint">${cfg.moTa}</p>
+      <form id="cd-${cfg.prefix}-create-form" class="cd-form">
+        <div class="cd-row">
+          <label>Mã mới
+            <input type="text" id="cd-${cfg.prefix}-ten-moi" placeholder="${esc(cfg.placeholder)}" required>
+          </label>
+          <button type="submit">Thêm mã</button>
+        </div>
+      </form>
+      <div id="cd-${cfg.prefix}-result"></div>
+      <table class="nd-table" id="cd-${cfg.prefix}-table">
+        <thead><tr><th>Mã</th><th>Thao tác</th></tr></thead>
+        <tbody id="cd-${cfg.prefix}-table-body"></tbody>
+      </table>
+    `;
+  }
+
+  function renderDanhMucQuanLyRows(cfg) {
+    const tbody = panel.querySelector(`#cd-${cfg.prefix}-table-body`);
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    (danhMucQuanLy[cfg.loai] || []).forEach((row) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${esc(row.ten)}</td><td class="nd-actions"></td>`;
+      const actions = tr.querySelector('.nd-actions');
+
+      const btnXoa = document.createElement('button');
+      btnXoa.type = 'button';
+      btnXoa.textContent = 'Xóa';
+      btnXoa.addEventListener('click', () => onDanhMucQuanLyDelete(row, cfg));
+      actions.appendChild(btnXoa);
+
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function onDanhMucQuanLyCreate(e, cfg) {
+    e.preventDefault();
+    const resultBox = panel.querySelector(`#cd-${cfg.prefix}-result`);
+    const input = panel.querySelector(`#cd-${cfg.prefix}-ten-moi`);
+    const ten = input.value.trim();
+    if (!ten) return;
+    try {
+      await Api.createDanhMucQuanLy({ loai: cfg.loai, ten });
+      input.value = '';
+      resultBox.textContent = 'Đã thêm mã.';
+      resultBox.className = 'ok';
+      danhMucQuanLy = await Api.listDanhMucQuanLy();
+      renderDanhMucQuanLyRows(cfg);
+    } catch (err) {
+      resultBox.textContent = err.message;
+      resultBox.className = 'error';
+    }
+  }
+
+  async function onDanhMucQuanLyDelete(row, cfg) {
+    if (!confirm(`Xóa mã "${row.ten}" khỏi danh mục?`)) return;
+    try {
+      await Api.deleteDanhMucQuanLy(row.id);
+      danhMucQuanLy = await Api.listDanhMucQuanLy();
+      renderDanhMucQuanLyRows(cfg);
+    } catch (err) {
+      alert(err.message);
+    }
   }
 
   // ---------------- Danh mục khoa/phòng (criterion 3) ----------------

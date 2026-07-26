@@ -109,6 +109,10 @@ const Api = (() => {
     createKhoaPhong: (body) => req('POST', '/api/khoa-phong', body),
     patchKhoaPhong: (id, body) => req('PATCH', `/api/khoa-phong/${id}`, body),
 
+    listDanhMucQuanLy: () => req('GET', '/api/danh-muc-quan-ly'),
+    createDanhMucQuanLy: (body) => req('POST', '/api/danh-muc-quan-ly', body),
+    deleteDanhMucQuanLy: (id) => req('DELETE', `/api/danh-muc-quan-ly/${id}`),
+
     listPhanCongKhoa: () => req('GET', '/api/phan-cong-khoa'),
     phanCongKhoa: (body) => req('POST', '/api/phan-cong-khoa', body),
     patchPhanCongKhoa: (id, body) => req('PATCH', `/api/phan-cong-khoa/${id}`, body),

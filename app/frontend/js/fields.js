@@ -15,8 +15,8 @@ const FIELD_GROUPS = [
 
 const FIELD_DEFS = [
   // ===== A. Hành chính =====
-  { code: 'ma_cskcb', label: 'Mã CSKCB', widget: 'text', group: 'A', nguon: 'data' },
-  { code: 'ma_gtin_cskcb', label: 'Mã GLN 13 ký tự', widget: 'text', group: 'A', nguon: 'trong' },
+  { code: 'ma_cskcb', label: 'Mã CSKCB', widget: 'dropdown', catalog: 'ma_cskcb', group: 'A', nguon: 'data' },
+  { code: 'ma_gtin_cskcb', label: 'Mã GLN 13 ký tự', widget: 'dropdown', catalog: 'ma_gtin_cskcb', group: 'A', nguon: 'trong' },
   { code: 'ngay_vao', label: 'Ngày khám sức khỏe', widget: 'date', group: 'A', nguon: 'data' },
   { code: 'ho_ten', label: 'Họ tên (IN HOA)', widget: 'text', group: 'A', nguon: 'data', uppercase: true },
   { code: 'gioi_tinh', label: 'Giới tính', widget: 'dropdown', catalog: 'gioi_tinh', group: 'A', nguon: 'data' },
