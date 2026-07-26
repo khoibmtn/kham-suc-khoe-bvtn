@@ -65,6 +65,9 @@ const Api = (() => {
     logout: () => req('POST', '/api/logout'),
     me: () => req('GET', '/api/me'),
     updateMe: (body) => req('PATCH', '/api/me', body),
+    // Box điều kiện (Bộ lọc nâng cao, list.js) — lưu {show_extra, field_order}
+    // theo tài khoản đang đăng nhập (tái dùng PATCH /api/me).
+    capNhatBoLocNangCao: (tuyChon) => req('PATCH', '/api/me', { bo_loc_nang_cao_tuy_chon: tuyChon }),
     danhMuc: () => req('GET', '/api/danh-muc'),
     coQcThongKe: () => req('GET', '/api/co-qc-thong-ke'),
     caiDatGet: () => req('GET', '/api/cai-dat'),

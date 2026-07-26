@@ -25,6 +25,7 @@ Mật khẩu lưu dạng 'pbkdf2$iter$salt_hex$hash_hex' (khớp import_data.py:
 import base64
 import hashlib
 import hmac
+import json
 import os
 import secrets
 import sys
@@ -140,12 +141,28 @@ class LoginBody(BaseModel):
     mat_khau: str
 
 
+def _bo_loc_nang_cao_of(row):
+    """Đọc + parse JSON cột bo_loc_nang_cao_tuy_chon (Box điều kiện, Bộ lọc
+    nâng cao list.js) — None nếu chưa đặt/hỏng (frontend tự dùng mặc định)."""
+    try:
+        raw = row['bo_loc_nang_cao_tuy_chon']
+    except (KeyError, IndexError):
+        return None
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except (TypeError, ValueError):
+        return None
+
+
 def _user_public(row):
     return {
         'id': row['id'],
         'ten_dang_nhap': row['ten_dang_nhap'],
         'ho_ten': row['ho_ten'],
         'vai_tro': row['vai_tro'],
+        'bo_loc_nang_cao_tuy_chon': _bo_loc_nang_cao_of(row),
     }
 
 
@@ -217,19 +234,31 @@ class MeUpdateBody(BaseModel):
     ho_ten: Optional[str] = None
     mat_khau_cu: Optional[str] = None
     mat_khau_moi: Optional[str] = None
+    # Box điều kiện (Bộ lọc nâng cao, list.js) — {show_extra: bool,
+    # field_order: [mã trường,...]}, lưu THEO TÀI KHOẢN. None = không đổi.
+    bo_loc_nang_cao_tuy_chon: Optional[dict] = None
 
 
 @router.patch('/me')
 def update_me(body: MeUpdateBody, user=Depends(get_current_user)):
     """Màn "Tài khoản của tôi" (mọi user, criterion 3): đổi họ tên và/hoặc
     đổi mật khẩu (bắt nhập mật khẩu cũ). ten_dang_nhap và vai_tro KHÔNG đổi
-    được qua endpoint này (không nhận field đó ở BaseModel)."""
+    được qua endpoint này (không nhận field đó ở BaseModel). Tái dùng CHUNG
+    endpoint này cho việc lưu bo_loc_nang_cao_tuy_chon (list.js gọi qua
+    Api.capNhatBoLocNangCao) — vẫn là "cài đặt theo tài khoản đăng nhập",
+    khớp bản chất của /me, không cần endpoint riêng."""
     ho_ten_moi = (body.ho_ten or '').strip()
     conn = db.get_connection()
     try:
         if ho_ten_moi:
             conn.execute('UPDATE nguoi_dung SET ho_ten=? WHERE id=?',
                          (ho_ten_moi, user['id']))
+
+        if body.bo_loc_nang_cao_tuy_chon is not None:
+            conn.execute(
+                'UPDATE nguoi_dung SET bo_loc_nang_cao_tuy_chon=? WHERE id=?',
+                (json.dumps(body.bo_loc_nang_cao_tuy_chon, ensure_ascii=False),
+                 user['id']))
 
         if body.mat_khau_moi:
             if not body.mat_khau_cu or not _pbkdf2_verify(
