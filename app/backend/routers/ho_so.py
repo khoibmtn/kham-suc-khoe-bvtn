@@ -3,6 +3,7 @@
 ho_so.py — danh sách (9 bộ lọc §3.2), chi tiết & PATCH autosave (§3.4),
 hoàn thành + xác nhận suy (§3.4.5).
 """
+import json
 import os
 import sys
 
@@ -54,13 +55,93 @@ def _ymd(ddmmyyyy_col):
             f"||'-'||substr({ddmmyyyy_col},1,2))")
 
 
-def build_where(params, user):
+# ===== "Box điều kiện" (Bộ lọc nâng cao, list.js) — mỗi điều kiện:
+# {field, op, sub_op?, value?}, nhiều điều kiện nối AND. field PHẢI nằm
+# trong danh sách cột THẬT của bảng ho_so (whitelist chống inject, xem
+# _parse_dieu_kien — tên cột phải nối thẳng vào SQL, không tham số hoá được).
+_DK_OPS = {'trong', 'khong_trong', 'toan_tu', 'chua', 'khong_chua', 'bat_dau', 'ket_thuc'}
+_DK_SUB_OPS = {'>', '<', '=', '>=', '<='}
+# widget:'date' trong fields.js (dd/mm/yyyy trong DB) — dùng _ymd() thay vì
+# so sánh chuỗi thường khi so_operator là Toán tử.
+_DK_DATE_FIELDS = {'ngay_vao', 'ngay_sinh', 'ngaycap_cccd'}
+
+
+def _parse_dieu_kien(raw_json, allowed_cols):
+    """Parse + validate JSON điều kiện từ query string `dieu_kien`. Hỏng/rỗng
+    -> [] (bỏ qua an toàn, không chặn danh sách khi frontend gửi sai)."""
+    if not raw_json:
+        return []
+    try:
+        arr = json.loads(raw_json)
+    except (TypeError, ValueError):
+        return []
+    if not isinstance(arr, list):
+        return []
+    out = []
+    for it in arr:
+        if not isinstance(it, dict):
+            continue
+        field = it.get('field')
+        op = it.get('op')
+        if field not in allowed_cols or op not in _DK_OPS:
+            continue
+        sub_op = it.get('sub_op')
+        value = it.get('value')
+        if op == 'toan_tu':
+            if sub_op not in _DK_SUB_OPS or value in (None, ''):
+                continue
+        elif op in ('chua', 'khong_chua', 'bat_dau', 'ket_thuc'):
+            if not value or not str(value).strip():
+                continue
+        out.append({'field': field, 'op': op, 'sub_op': sub_op, 'value': value})
+    return out
+
+
+def _dk_condition_sql(cond, numeric_fields):
+    """Trả (sql, args) SQL cho 1 điều kiện ĐÃ validate (_parse_dieu_kien)."""
+    col = cond['field']  # đã whitelist ở _parse_dieu_kien — an toàn nối SQL
+    op = cond['op']
+
+    if op == 'trong':
+        return f"({col} IS NULL OR {col} = '')", []
+    if op == 'khong_trong':
+        return f"({col} IS NOT NULL AND {col} != '')", []
+
+    if op == 'toan_tu':
+        sub = cond['sub_op']
+        value = cond['value']
+        if col in numeric_fields:
+            try:
+                num = float(str(value).strip().replace(',', '.'))
+            except (TypeError, ValueError):
+                return '1=0', []  # giá trị không phải số — không khớp gì cả
+            return f'CAST({col} AS REAL) {sub} ?', [num]
+        if col in _DK_DATE_FIELDS:
+            return f'{_ymd(col)} {sub} ?', [str(value).strip()]
+        return f'{col} {sub} ?', [value]
+
+    # chua/khong_chua/bat_dau/ket_thuc — UDF ksk_token_match đăng ký ở
+    # db.py:_get_connection_local (chỉ hoạt động chế độ LOCAL sqlite3 — xem
+    # ghi chú TODO ở db.py:_get_connection_serverless).
+    mode = {'chua': 'contains', 'khong_chua': 'contains',
+            'bat_dau': 'starts', 'ket_thuc': 'ends'}[op]
+    expr = f'ksk_token_match({col}, ?, ?)'
+    if op == 'khong_chua':
+        return f'({expr} = 0)', [cond['value'], mode]
+    return f'({expr} = 1)', [cond['value'], mode]
+
+
+def build_where(params, user, conn=None):
     """Trả (where_sql, args) dùng chung cho GET list & hoàn thành.
 
     Đợt 12 (phản hồi anh Khôi): MỌI người dùng (kể cả nhân viên) xem được TOÀN
     BỘ hồ sơ + thống kê — không còn giới hạn phạm vi theo vai trò. Bộ lọc
     "Nhân viên" = hồ sơ có DẤU VẾT người đó THAM GIA SỬA (nhat_ky), KHÔNG phải
-    theo phân công (nguoi_ra_soat_id)."""
+    theo phân công (nguoi_ra_soat_id).
+
+    `conn` (tuỳ chọn): cần để validate whitelist cột của "Box điều kiện"
+    (params['dieu_kien'], JSON thô) qua PRAGMA table_info — bỏ qua điều kiện
+    nếu không truyền conn (giữ tương thích ngược cho lời gọi cũ không có)."""
     where = ['1=1']
     args = []
 
@@ -118,6 +199,17 @@ def build_where(params, user):
         where.append(f"co_quan_benh_chinh IN ({','.join('?' * len(cq))})")
         args.extend(cq)
 
+    dk_raw = params.get('dieu_kien')
+    if dk_raw and conn is not None:
+        allowed_cols = {r['name'] for r in conn.execute('PRAGMA table_info(ho_so)')}
+        conditions = _parse_dieu_kien(dk_raw, allowed_cols)
+        if conditions:
+            numeric_fields = set(sinh_hieu_valid.NUMERIC_FIELDS) | {'so_loi'}
+            for cond in conditions:
+                sql, cargs = _dk_condition_sql(cond, numeric_fields)
+                where.append(sql)
+                args.extend(cargs)
+
     return ' AND '.join(where), args
 
 
@@ -161,6 +253,9 @@ def _parse_list_params(request: Request):
         'co_qc': qp.getlist('co_qc'),
         'phan_loai_sk': qp.getlist('phan_loai_sk'),
         'co_quan_benh_chinh': qp.getlist('co_quan_benh_chinh'),
+        # "Box điều kiện" (Bộ lọc nâng cao) — JSON thô, parse ở build_where
+        # (cần `conn` để validate whitelist tên cột qua PRAGMA table_info).
+        'dieu_kien': qp.get('dieu_kien'),
     }
 
 
@@ -241,7 +336,7 @@ def list_ho_so(request: Request, page: int = Query(1, ge=1),
     params = _parse_list_params(request)
     conn = db.get_connection()
     try:
-        where_sql, args = build_where(params, user)
+        where_sql, args = build_where(params, user, conn)
 
         # Đợt 7 criterion 4/5: `q` = từ khóa tìm kiếm; `q_hoten_only` = chỉ
         # tìm cột họ tên. `ho_ten` (tên cũ) vẫn hoạt động như bí danh của chế
@@ -317,10 +412,10 @@ def list_ho_so(request: Request, page: int = Query(1, ge=1),
     return {'total': total, 'page': page, 'page_size': page_size, 'items': items}
 
 
-def _filtered_where_q(params):
+def _filtered_where_q(params, conn=None):
     """(where_sql, args) áp DÙNG CHUNG bộ lọc + từ khóa `q` như list_ho_so
     (không phân trang) — cho xuất Excel toàn bộ danh sách đã lọc."""
-    where_sql, args = build_where(params, None)
+    where_sql, args = build_where(params, None, conn)
     legacy_ho_ten = (params.get('ho_ten') or '').strip()
     q_raw = (params.get('q') or legacy_ho_ten or '').strip()
     hoten_only = bool(legacy_ho_ten) or (
@@ -350,7 +445,7 @@ def xuat_excel_danh_sach(request: Request, user=Depends(auth.get_current_user)):
     params = _parse_list_params(request)
     conn = db.get_connection()
     try:
-        where_sql, args = _filtered_where_q(params)
+        where_sql, args = _filtered_where_q(params, conn)
         order = _order_by(params)
         cols = [c['name'] for c in conn.execute('PRAGMA table_info(ho_so)').fetchall()]
         cols = [c for c in cols if c not in _EXPORT_SKIP_COLS]
@@ -662,7 +757,7 @@ def hoan_thanh(ma_ho_so: str, request: Request,
 
         # hồ sơ kế tiếp theo đúng thứ tự bộ lọc hiện tại (Ctrl+S §3.2)
         params = _parse_list_params(request)
-        where_sql, args = build_where(params, user)
+        where_sql, args = build_where(params, user, conn)
         cur_tt = row['tt']
         next_row = conn.execute(
             f'SELECT ma_ho_so FROM ho_so WHERE {where_sql} AND '
