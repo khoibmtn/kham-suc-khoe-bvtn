@@ -18,6 +18,10 @@ const ListView = (() => {
   let total = 0;
   let debounceTimer = null;
   let lastQStripped = ''; // dùng để highlight (chỉ khi tìm toàn cột)
+  // Mã trường Box điều kiện KHÔNG có sẵn cột riêng trong bảng — server trả về
+  // kèm mỗi item (xem ho_so.py list_ho_so `extra_fields`), hiện thêm cột động
+  // trước "Mã hồ sơ" để nhìn thấy giá trị đang lọc (phản hồi anh Khôi).
+  let extraFieldCodes = [];
   const msRefs = {}; // tham chiếu Multiselect + input ngày để "Xóa hết bộ lọc"
   let coQcCounts = null; // {mã cờ: số hồ sơ} — nạp sau, để hiện count + ẩn cờ rỗng
 
@@ -682,10 +686,8 @@ const ListView = (() => {
     const table = document.createElement('table');
     table.id = 'ho-so-table';
     // Đợt 7 criterion 2/3: STT liên tục ở ĐẦU bảng, "Mã hồ sơ" trở lại CUỐI.
-    table.innerHTML = `<thead><tr>
-        <th>STT</th><th>Họ tên</th><th>Năm sinh</th><th>Giới</th><th>CCCD</th>
-        <th>Xã</th><th>Ngày khám</th><th>Phân loại SK</th><th>Bệnh chính</th>
-        <th>Số cờ</th><th>Trạng thái</th><th>Mã hồ sơ</th></tr></thead><tbody></tbody>`;
+    // <thead> dựng ĐỘNG ở renderTableHead() (cột phụ theo Box điều kiện).
+    table.innerHTML = '<thead></thead><tbody></tbody>';
     tableWrap.appendChild(table);
     root.appendChild(tableWrap);
 
@@ -759,7 +761,7 @@ const ListView = (() => {
     root.appendChild(footer);
   }
 
-  const TABLE_COLSPAN = 12;
+  function tableColspan() { return 12 + extraFieldCodes.length; }
 
   function clearAllFilters() {
     filters = defaultFilters();
@@ -815,7 +817,7 @@ const ListView = (() => {
     // chờ mạng (Vercel↔Turso ~1s). + chống race: gõ nhanh -> chỉ hiện kết quả
     // của request MỚI NHẤT.
     const tbodyL = document.querySelector('#ho-so-table tbody');
-    if (tbodyL) tbodyL.innerHTML = `<tr><td colspan="${TABLE_COLSPAN}" class="list-loading">Đang tải…</td></tr>`;
+    if (tbodyL) tbodyL.innerHTML = `<tr><td colspan="${tableColspan()}" class="list-loading">Đang tải…</td></tr>`;
     const sumL = document.getElementById('list-summary');
     if (sumL) sumL.textContent = 'Đang tải…';
     const statusEl = document.getElementById('search-status');
@@ -827,7 +829,7 @@ const ListView = (() => {
     } catch (e) {
       if (seq === _reloadSeq) {
         if (statusEl) statusEl.hidden = true;
-        if (tbodyL) tbodyL.innerHTML = `<tr><td colspan="${TABLE_COLSPAN}" class="list-empty">Lỗi tải dữ liệu — thử lại</td></tr>`;
+        if (tbodyL) tbodyL.innerHTML = `<tr><td colspan="${tableColspan()}" class="list-empty">Lỗi tải dữ liệu — thử lại</td></tr>`;
       }
       return;
     }
@@ -837,14 +839,32 @@ const ListView = (() => {
     total = data.total;
     page = data.page;
     pageSize = data.page_size;
+    extraFieldCodes = data.extra_fields || [];
     selectedIdx = items.length ? 0 : -1;
     // highlight chỉ khi tìm TOÀN CỘT (checkbox tắt) và có từ khóa
     lastQStripped = (!filters.q_hoten_only && filters.q && filters.q.trim())
       ? Fuzzy.stripDiacriticsAligned(filters.q.trim())
       : '';
+    renderTableHead();
     renderTable();
     renderPager();
     renderSummary();
+  }
+
+  // Box điều kiện (Bộ lọc nâng cao): lọc theo trường CHƯA có cột riêng trong
+  // bảng (vd "Ghi chú nhân viên") -> server trả kèm `extra_fields`, tự thêm
+  // cột động ngay TRƯỚC "Mã hồ sơ" để nhìn thấy giá trị đang lọc.
+  function renderTableHead() {
+    const thead = document.querySelector('#ho-so-table thead');
+    if (!thead) return;
+    const extraTh = extraFieldCodes.map((code) => {
+      const def = FIELD_BY_CODE[code];
+      return `<th>${esc(def ? def.label : code)}</th>`;
+    }).join('');
+    thead.innerHTML = `<tr>
+        <th>STT</th><th>Họ tên</th><th>Năm sinh</th><th>Giới</th><th>CCCD</th>
+        <th>Xã</th><th>Ngày khám</th><th>Phân loại SK</th><th>Bệnh chính</th>
+        <th>Số cờ</th><th>Trạng thái</th>${extraTh}<th>Mã hồ sơ</th></tr>`;
   }
 
   function esc(s) {
@@ -873,7 +893,7 @@ const ListView = (() => {
     const tbody = document.querySelector('#ho-so-table tbody');
     tbody.innerHTML = '';
     if (!items.length) {
-      tbody.innerHTML = `<tr><td colspan="${TABLE_COLSPAN}" class="list-empty">Không có hồ sơ phù hợp bộ lọc</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="${tableColspan()}" class="list-empty">Không có hồ sơ phù hợp bộ lọc</td></tr>`;
       return;
     }
     items.forEach((it, idx) => {
@@ -883,6 +903,7 @@ const ListView = (() => {
       if (it.muc_co === 'do') tr.classList.add('row-do');
       else if (it.muc_co === 'vang') tr.classList.add('row-vang');
       if (idx === selectedIdx) tr.classList.add('selected');
+      const extraTd = extraFieldCodes.map((code) => `<td>${highlightCell(it[code])}</td>`).join('');
       tr.innerHTML = `<td>${stt}</td>
         <td>${highlightCell(it.ho_ten)}</td>
         <td>${highlightCell(it.nam_sinh)}</td><td>${highlightCell(it.gioi_tinh)}</td>
@@ -890,7 +911,7 @@ const ListView = (() => {
         <td>${highlightCell(it.maxa_cu_tru)}</td><td>${highlightCell(it.ngay_vao)}</td>
         <td>${highlightCell(it.phan_loai_sk)}</td><td>${highlightCell(it.ket_luan_benh)}</td>
         <td>${esc(it.so_loi)}</td><td>${highlightCell(it.trang_thai_nhan)}</td>
-        <td>${highlightCell(it.ma_ho_so)}</td>`;
+        ${extraTd}<td>${highlightCell(it.ma_ho_so)}</td>`;
       tr.addEventListener('click', () => { selectedIdx = idx; renderTable(); openSelected(); });
       tbody.appendChild(tr);
     });

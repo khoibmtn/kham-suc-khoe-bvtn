@@ -29,9 +29,14 @@ TRANG_THAI_NHAN = {
     'hoan_thanh': 'Hoàn thành', 'can_doi_chieu_giay': 'Cần đối chiếu giấy',
 }
 
+
+# Mã trường ĐÃ có cột riêng sẵn trong bảng Danh sách (xem list.js renderTable
+# + items.append bên dưới) — "Box điều kiện" (Bộ lọc nâng cao) dùng danh sách
+# này để quyết định trường nào cần thêm CỘT PHỤ khi user lọc theo trường đó
+# mà bảng chưa hiện sẵn (phản hồi anh Khôi).
 LIST_COLUMNS = [
-    'ma_ho_so', 'ho_ten', 'ngay_sinh', 'gioi_tinh', 'maxa_cu_tru', 'ngay_vao',
-    'phan_loai_sk', 'ket_luan_benh', 'co_qc', 'so_loi', 'trang_thai',
+    'ma_ho_so', 'ho_ten', 'ngay_sinh', 'gioi_tinh', 'so_cccd', 'maxa_cu_tru',
+    'ngay_vao', 'phan_loai_sk', 'ket_luan_benh', 'co_qc', 'so_loi', 'trang_thai',
     'nguoi_ra_soat_id',
 ]
 
@@ -338,6 +343,19 @@ def list_ho_so(request: Request, page: int = Query(1, ge=1),
     try:
         where_sql, args = build_where(params, user, conn)
 
+        # Box điều kiện (Bộ lọc nâng cao) — nếu user lọc theo trường CHƯA có
+        # cột riêng trong bảng (vd "Ghi chú nhân viên"), tự thêm cột đó vào
+        # kết quả để nhìn thấy giá trị đang lọc, không cần mở từng hồ sơ
+        # (phản hồi anh Khôi). Whitelist lại y hệt build_where/_parse_dieu_kien
+        # (chỉ tên cột thật của ho_so mới lọt qua).
+        allowed_cols = {r['name'] for r in conn.execute('PRAGMA table_info(ho_so)')}
+        dk_conditions = _parse_dieu_kien(params.get('dieu_kien'), allowed_cols)
+        extra_codes = []
+        for c in dk_conditions:
+            f = c['field']
+            if f not in LIST_COLUMNS and f not in extra_codes:
+                extra_codes.append(f)
+
         # Đợt 7 criterion 4/5: `q` = từ khóa tìm kiếm; `q_hoten_only` = chỉ
         # tìm cột họ tên. `ho_ten` (tên cũ) vẫn hoạt động như bí danh của chế
         # độ q_hoten_only=true — tương thích ngược.
@@ -391,7 +409,7 @@ def list_ho_so(request: Request, page: int = Query(1, ge=1),
 
         items = []
         for r in page_rows:
-            items.append({
+            item = {
                 'ma_ho_so': r['ma_ho_so'],
                 'ho_ten': r['ho_ten'],
                 'nam_sinh': (r['ngay_sinh'] or '')[-4:] or None,
@@ -406,10 +424,14 @@ def list_ho_so(request: Request, page: int = Query(1, ge=1),
                 'trang_thai_nhan': TRANG_THAI_NHAN.get(r['trang_thai'], r['trang_thai']),
                 'nguoi_ra_soat_id': r['nguoi_ra_soat_id'],
                 'muc_co': qc.row_severity(r['co_qc']),
-            })
+            }
+            for code in extra_codes:
+                item[code] = r[code]
+            items.append(item)
     finally:
         conn.close()
-    return {'total': total, 'page': page, 'page_size': page_size, 'items': items}
+    return {'total': total, 'page': page, 'page_size': page_size, 'items': items,
+            'extra_fields': extra_codes}
 
 
 def _filtered_where_q(params, conn=None):
