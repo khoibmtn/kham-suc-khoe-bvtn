@@ -302,6 +302,75 @@ def danh_muc(user=Depends(auth.get_current_user)):
     return out
 
 
+# ===== Danh mục mã CSKCB / mã GLN (GTIN CSKCB) — quản lý qua màn Cài đặt =====
+# Chỉ 2 loai này được thêm/xóa qua các endpoint dưới đây (KHÔNG cho đụng vào
+# các danh mục khác như xa/dmtinh/thi_luc... — những danh mục đó nạp từ file
+# nguồn BYT qua import_data.py, không phải admin tự quản lý).
+_DANH_MUC_QUAN_LY = ('ma_cskcb', 'ma_gtin_cskcb')
+
+
+@router.get('/danh-muc-quan-ly')
+def list_danh_muc_quan_ly(admin=Depends(auth.require_admin)):
+    """Bảng quản lý (màn Cài đặt) — trả kèm `id` để xóa từng dòng (khác với
+    GET /api/danh-muc vốn chỉ trả {ma, ten} cho dropdown, không có id)."""
+    conn = db.get_connection()
+    try:
+        placeholders = ','.join('?' * len(_DANH_MUC_QUAN_LY))
+        rows = conn.execute(
+            f'SELECT id, loai, ma, ten FROM danh_muc WHERE loai IN ({placeholders}) '
+            'ORDER BY loai, thu_tu, id', _DANH_MUC_QUAN_LY).fetchall()
+    finally:
+        conn.close()
+    out = {loai: [] for loai in _DANH_MUC_QUAN_LY}
+    for r in rows:
+        out[r['loai']].append({'id': r['id'], 'ma': r['ma'], 'ten': r['ten']})
+    return out
+
+
+class DanhMucQuanLyBody(BaseModel):
+    loai: str
+    ten: str
+
+
+@router.post('/danh-muc-quan-ly')
+def create_danh_muc_quan_ly(body: DanhMucQuanLyBody, admin=Depends(auth.require_admin)):
+    if body.loai not in _DANH_MUC_QUAN_LY:
+        raise HTTPException(400, 'loai không hợp lệ')
+    ten = body.ten.strip()
+    if not ten:
+        raise HTTPException(400, 'Mã không được để trống')
+    conn = db.get_connection()
+    try:
+        trung = conn.execute(
+            'SELECT 1 FROM danh_muc WHERE loai=? AND ten=?', (body.loai, ten)).fetchone()
+        if trung:
+            raise HTTPException(409, 'Mã đã tồn tại trong danh mục này')
+        cur = conn.execute(
+            'INSERT INTO danh_muc(loai, ma, ten) VALUES (?, NULL, ?)', (body.loai, ten))
+        conn.commit()
+        new_id = cur.lastrowid
+    finally:
+        conn.close()
+    return {'id': new_id, 'loai': body.loai, 'ma': None, 'ten': ten}
+
+
+@router.delete('/danh-muc-quan-ly/{id}')
+def delete_danh_muc_quan_ly(id: int, admin=Depends(auth.require_admin)):
+    conn = db.get_connection()
+    try:
+        placeholders = ','.join('?' * len(_DANH_MUC_QUAN_LY))
+        row = conn.execute(
+            f'SELECT id FROM danh_muc WHERE id=? AND loai IN ({placeholders})',
+            (id, *_DANH_MUC_QUAN_LY)).fetchone()
+        if not row:
+            raise HTTPException(404, 'Không tìm thấy mã này')
+        conn.execute('DELETE FROM danh_muc WHERE id=?', (id,))
+        conn.commit()
+    finally:
+        conn.close()
+    return {'ok': True}
+
+
 _CO_QC_CACHE = {'t': 0.0, 'data': None}
 _CO_QC_TTL = 300  # giây — số cờ đổi chậm, cache 5' để không quét 13k dòng mỗi lần
 
