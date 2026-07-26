@@ -271,6 +271,9 @@ def init_schema(conn=None):
     _migrate_danh_dau_xuat(conn)
     _migrate_don_thi_luc_tu_do(conn)
     _migrate_ma_cskcb(conn)
+    _migrate_xoa_san_phu_khoa_nam(conn)
+    _migrate_chuan_hoa_bt(conn)
+    _migrate_dong_bo_ten_icd(conn)
     if own:
         conn.close()
 
@@ -481,6 +484,159 @@ def _migrate_ma_cskcb(conn):
         conn.execute(
             'UPDATE ho_so SET ma_cskcb=? WHERE ma_cskcb=?',
             (_MA_CSKCB_MOI, _MA_CSKCB_CU))
+        conn.execute(
+            'INSERT INTO cai_dat(khoa, gia_tri) VALUES (?, ?) '
+            'ON CONFLICT(khoa) DO NOTHING', (_KHOA, 'true'))
+        conn.commit()
+    except Exception:
+        pass
+
+
+_SAN_PHU_KHOA_PL_COLS = (
+    'noi_khoa_tuan_hoan_pl', 'noi_khoa_ho_hap_pl', 'noi_khoa_tieu_hoa_pl',
+    'noi_khoa_than_tietnieu_pl', 'noi_khoa_noi_tiet_pl',
+    'noi_khoa_co_xuong_khop_pl', 'noi_khoa_than_kinh_pl',
+    'noi_khoa_tam_than_pl', 'kham_ngoai_khoa_pl', 'kham_da_lieu_pl',
+    'kham_san_phu_khoa_pl', 'kham_mat_pl', 'kham_tai_mui_hong_pl',
+    'kham_rang_ham_mat_pl',
+)
+
+
+def _migrate_xoa_san_phu_khoa_nam(conn):
+    """Nam giới không khám sản phụ khoa — phản hồi anh Khôi: dữ liệu nguồn
+    từng nạp nhầm/thừa kết quả khám sản phụ khoa (ket_qua_kham_san_phu_khoa)
+    và phân loại (kham_san_phu_khoa_pl) cho hồ sơ Nam. Xoá về NULL 1 LẦN
+    DUY NHẤT (đánh dấu qua cai_dat, cùng khuôn với các hàm _migrate_* khác ở
+    trên) — lặp lại sẽ xoá luôn dữ liệu Nam mà nhân viên có thể đã cố tình
+    backfill lại sau migration (dù hiếm khi hợp lệ về nghiệp vụ).
+
+    Hồ sơ Nam bị đổi (2 cột trên VỐN đã có giá trị trước khi xoá) có thể
+    làm co_quan "nặng nhất" trong bất biến QĐ1613 thay đổi (mất hẳn 1 ứng
+    viên max) -> phải tính lại check_invariant()/sync_vi_pham_flag() cho
+    ĐÚNG các hồ sơ đó (giống cách routers/ho_so.py, routers/benh.py làm sau
+    mọi lần ghi ảnh hưởng phan_loai_sk/*_pl) để banner "vi phạm bất biến"
+    không bị lệch. Hồ sơ Nam mà 2 cột này vốn đã NULL/rỗng thì bỏ qua, tránh
+    gọi check_invariant/sync_vi_pham_flag tràn lan không cần thiết."""
+    _KHOA = 'san_phu_khoa_nam_da_xoa'
+    try:
+        da_xoa = conn.execute(
+            'SELECT 1 FROM cai_dat WHERE khoa=?', (_KHOA,)).fetchone()
+        if da_xoa:
+            return
+        from services import qc  # noqa: E402 — import trễ, xem _ksk_token_match
+
+        anh_huong = conn.execute(
+            "SELECT ma_ho_so FROM ho_so WHERE gioi_tinh='Nam' AND ("
+            "kham_san_phu_khoa_pl IS NOT NULL OR "
+            "(ket_qua_kham_san_phu_khoa IS NOT NULL AND "
+            "ket_qua_kham_san_phu_khoa<>''))").fetchall()
+        ma_ho_so_anh_huong = [r['ma_ho_so'] for r in anh_huong]
+
+        conn.execute(
+            "UPDATE ho_so SET ket_qua_kham_san_phu_khoa=NULL, "
+            "kham_san_phu_khoa_pl=NULL WHERE gioi_tinh='Nam'")
+
+        cols_sql = ', '.join(_SAN_PHU_KHOA_PL_COLS)
+        for ma_ho_so in ma_ho_so_anh_huong:
+            row = conn.execute(
+                f'SELECT {cols_sql}, kham_the_luc_pl, phan_loai_sk '
+                'FROM ho_so WHERE ma_ho_so=?', (ma_ho_so,)).fetchone()
+            if row is None:
+                continue
+            inv = qc.check_invariant(row)
+            qc.sync_vi_pham_flag(conn, ma_ho_so, inv)
+
+        conn.execute(
+            'INSERT INTO cai_dat(khoa, gia_tri) VALUES (?, ?) '
+            'ON CONFLICT(khoa) DO NOTHING', (_KHOA, 'true'))
+        conn.commit()
+    except Exception:
+        pass
+
+
+_BT_COLS = ('ham_tren', 'ham_duoi', 'kq_dien_tim', 'kq_sieu_am_o_bung',
+            'cac_benh_tat_neu_co')
+
+
+def _migrate_chuan_hoa_bt(conn):
+    """Chuẩn hoá viết tắt "bt"/"BT" (và mọi biến thể hoa/thường khác) thành
+    "Bình thường" cho ĐÚNG 5 cột đã khảo sát toàn bộ 97 cột TEXT của ho_so
+    còn dùng viết tắt này (_BT_COLS) — phản hồi anh Khôi: dữ liệu nguồn gõ
+    tắt không nhất quán, cần hiển thị đầy đủ chữ khi xuất/xem hồ sơ. So khớp
+    TOÀN BỘ giá trị (LOWER(cot)='bt'), KHÔNG dùng LIKE — tránh đụng các giá
+    trị chỉ CHỨA chuỗi con "bt" (ví dụ tên người, địa chỉ, chẩn đoán có lẫn
+    "bt" ở giữa). KHÔNG áp dụng cho cột khác dù trùng pattern (ho_ten,
+    dia_chi, ho_ten_kd, chan_doan_goc — chan_doan_goc là cột CHỈ ĐỌC theo
+    §3.4.2, tuyệt đối không đụng) và KHÔNG đụng bảng benh.
+
+    1 LẦN DUY NHẤT (đánh dấu qua cai_dat) — lặp lại vô hại về mặt dữ liệu
+    (WHERE LOWER(cot)='bt' sẽ không còn khớp gì sau lần đầu) nhưng vẫn dùng
+    cờ cho nhất quán với các hàm _migrate_* khác và tránh quét 5 cột x toàn
+    bộ ho_so mỗi lần khởi động server."""
+    _KHOA = 'bt_binh_thuong_da_chuan_hoa'
+    try:
+        da_chuan_hoa = conn.execute(
+            'SELECT 1 FROM cai_dat WHERE khoa=?', (_KHOA,)).fetchone()
+        if da_chuan_hoa:
+            return
+        for col in _BT_COLS:
+            conn.execute(
+                f"UPDATE ho_so SET {col}='Bình thường' "
+                f"WHERE LOWER({col})='bt'")
+        conn.execute(
+            'INSERT INTO cai_dat(khoa, gia_tri) VALUES (?, ?) '
+            'ON CONFLICT(khoa) DO NOTHING', (_KHOA, 'true'))
+        conn.commit()
+    except Exception:
+        pass
+
+
+def _migrate_dong_bo_ten_icd(conn):
+    """Đồng bộ benh.ten_icd theo danh mục dm_icd mới nhất (dm_icd có thể đã
+    được nạp lại/sửa tên sau khi bản ghi benh.ten_icd đã lưu nguyên văn từ
+    lúc nạp — phản hồi anh Khôi: tên ICD hiển thị bị lệch so với danh mục
+    hiện hành). 2 tầng join, ưu tiên CHÍNH XÁC trước:
+      1) benh.ma_icd = dm_icd.ma (giữ nguyên †/*) — khớp ĐÚNG mã gốc.
+      2) fallback qua dm_icd.ma_tran (đã bỏ †/*) CHỈ cho dòng KHÔNG khớp ở
+         tầng 1 — dữ liệu có 88 nhóm ma_tran bị trùng bởi 2 dm_icd.ma khác
+         nhau (12 nhóm có ten THỰC SỰ khác nhau, vd 'A02.2'/'A02.2†') nên
+         PHẢI chọn 1 kết quả XÁC ĐỊNH (ORDER BY ma LIMIT 1), không để SQLite
+         tự chọn ngẫu nhiên giữa các dòng dm_icd trùng ma_tran.
+    Dòng ma_icd không khớp dm_icd ở CẢ 2 tầng thì giữ nguyên ten_icd.
+
+    1 LẦN DUY NHẤT (đánh dấu qua cai_dat) — lặp lại sẽ ghi đè mất ten_icd mà
+    nhân viên có thể đã tự sửa tay lệch khỏi danh mục sau khi migration đã
+    chạy 1 lần (cùng lý do dùng cờ như _migrate_ma_cskcb ở trên)."""
+    _KHOA = 'ten_icd_da_dong_bo'
+    try:
+        da_dong_bo = conn.execute(
+            'SELECT 1 FROM cai_dat WHERE khoa=?', (_KHOA,)).fetchone()
+        if da_dong_bo:
+            return
+        # Tầng 1 — khớp CHÍNH XÁC ma_icd = dm_icd.ma.
+        conn.execute(
+            "UPDATE benh SET ten_icd = ("
+            "  SELECT ten FROM dm_icd WHERE dm_icd.ma = benh.ma_icd) "
+            "WHERE ma_icd IS NOT NULL AND ma_icd <> '' "
+            "AND EXISTS (SELECT 1 FROM dm_icd WHERE dm_icd.ma = benh.ma_icd) "
+            "AND ten_icd IS NOT ("
+            "  SELECT ten FROM dm_icd WHERE dm_icd.ma = benh.ma_icd)")
+        # Tầng 2 — fallback qua ma_tran (đã bỏ †/*), CHỈ cho dòng KHÔNG khớp
+        # tầng 1. ORDER BY ma LIMIT 1 để chọn xác định khi ma_tran bị trùng
+        # bởi nhiều dm_icd.ma khác nhau.
+        conn.execute(
+            "UPDATE benh SET ten_icd = ("
+            "  SELECT ten FROM dm_icd "
+            "  WHERE dm_icd.ma_tran = REPLACE(REPLACE(benh.ma_icd,'†',''),'*','') "
+            "  ORDER BY ma LIMIT 1) "
+            "WHERE ma_icd IS NOT NULL AND ma_icd <> '' "
+            "AND NOT EXISTS (SELECT 1 FROM dm_icd WHERE dm_icd.ma = benh.ma_icd) "
+            "AND EXISTS (SELECT 1 FROM dm_icd "
+            "  WHERE dm_icd.ma_tran = REPLACE(REPLACE(benh.ma_icd,'†',''),'*','')) "
+            "AND ten_icd IS NOT ("
+            "  SELECT ten FROM dm_icd "
+            "  WHERE dm_icd.ma_tran = REPLACE(REPLACE(benh.ma_icd,'†',''),'*','') "
+            "  ORDER BY ma LIMIT 1)")
         conn.execute(
             'INSERT INTO cai_dat(khoa, gia_tri) VALUES (?, ?) '
             'ON CONFLICT(khoa) DO NOTHING', (_KHOA, 'true'))
