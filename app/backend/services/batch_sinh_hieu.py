@@ -10,6 +10,13 @@ nhân viên tự chỉnh tay):
      điền khi đang TRỐNG — không đụng giá trị đã có.
   1) Phân loại CSST (Mạch + Huyết áp theo băng tuổi, QĐ1613 mục 45/46) ->
      NÂNG cơ quan Tuần hoàn (noi_khoa_tuan_hoan_pl) nếu đang thấp hơn.
+  1b) NGOẠI LỆ CÓ CHỦ ĐÍCH với nguyên tắc "chỉ nâng/điền chỗ trống" ở trên:
+     CSST Loại II+ (Mạch hoặc HA, ĐỘC LẬP nhau) -> cập nhật TEXT tự do
+     "Khám Tuần hoàn" (noi_khoa_tuan_hoan) nêu lý do (vd "Mạch 92 l/ph") —
+     THAY THẾ nếu đang là "Bình thường"/trống, NỐI THÊM (bằng '; ') nếu đang
+     có nội dung khác — xem services/csst.ap_dung_ly_do_tuan_hoan(). Đây là
+     field TEXT diễn giải của bác sĩ, không phải mã phân loại, nên được phép
+     ghi đè/nối thêm thay vì chỉ điền khi trống.
   2) Tự thêm chẩn đoán theo sinh hiệu (HA cao->I10, mạch nhanh->R00.0, mạch
      chậm->R00.1) — CHẠY dù hồ sơ đã có bệnh chính khác. Chỉ ĐẶT làm bệnh
      chính khi Tuần hoàn (cơ quan của các mã này) đang là cơ quan NẶNG NHẤT
@@ -43,8 +50,8 @@ def chay(conn, apply, nguoi_dung_id):
     """Chạy 1 lượt rà soát. `conn` do caller mở/đóng. `nguoi_dung_id` gắn vào
     nhat_ky (CLI dùng tài khoản 'admin'; endpoint dùng admin đang đăng nhập).
     Trả dict đếm — {'apply', 'tong_quet', 'dien_bmi', 'dien_pl_the_luc',
-    'nang_tuan_hoan', 'them_benh_chinh', 'them_benh_chinh_theo_ma', 'go_co',
-    'nang_suc_khoe_chung'}."""
+    'nang_tuan_hoan', 'nang_ly_do_tuan_hoan', 'them_benh_chinh',
+    'them_benh_chinh_theo_ma', 'go_co', 'nang_suc_khoe_chung'}."""
     try:
         conn.execute('PRAGMA busy_timeout=15000')
     except Exception:
@@ -64,6 +71,7 @@ def chay(conn, apply, nguoi_dung_id):
         "    AND can_nang IS NOT NULL AND can_nang<>'')").fetchall()
 
     n_bmi = n_plth = n_th = n_dx = n_dx_chinh = n_sk = n_flag = 0
+    n_ly_do_tuan_hoan = 0
     dx_dem = {'I10': 0, 'R00.0': 0, 'R00.1': 0}
     done = 0
     for r in rows:
@@ -96,21 +104,41 @@ def chay(conn, apply, nguoi_dung_id):
                     n_plth += 1
 
         # 1) NÂNG Tuần hoàn theo CSST
-        csst = max(l_mach or 0, l_ha or 0)
+        # Đặt tên csst_loai (không phải `csst`) để KHÔNG che khuất module
+        # `services.csst` import ở đầu file — Python coi biến gán ở BẤT KỲ
+        # đâu trong hàm là local cho TOÀN hàm, nên đặt trùng tên sẽ vỡ các
+        # lệnh gọi `csst.tuoi()/classify_mach()/...` phía trên (UnboundLocalError).
+        csst_loai = max(l_mach or 0, l_ha or 0)
         cur_th = r['noi_khoa_tuan_hoan_pl']
         cur_th_i = int(cur_th) if cur_th not in (None, '') else 0
-        if csst > 0 and csst > cur_th_i:
+        if csst_loai > 0 and csst_loai > cur_th_i:
             if apply:
                 conn.execute('UPDATE ho_so SET noi_khoa_tuan_hoan_pl=? '
-                             'WHERE ma_ho_so=?', (csst, ma))
-                log(ma, 'noi_khoa_tuan_hoan_pl', cur_th, csst)
+                             'WHERE ma_ho_so=?', (csst_loai, ma))
+                log(ma, 'noi_khoa_tuan_hoan_pl', cur_th, csst_loai)
             n_th += 1
+
+        # 1b) NÂNG text "Khám Tuần hoàn" theo lý do CSST Loại II+ — NGOẠI LỆ
+        # có chủ đích với nguyên tắc "chỉ nâng/điền chỗ trống" ở đầu file:
+        # đây là field TEXT tự do, có thể THAY THẾ "Bình thường" hoặc NỐI
+        # THÊM vào nội dung đã có (không chỉ điền khi trống) — xem
+        # services/csst.ap_dung_ly_do_tuan_hoan() để biết logic thay thế/nối.
+        ly_do = csst.ly_do_tang_csst(l_mach, r['mach'], l_ha, sys_val, dia)
+        if ly_do:
+            hien_tai = r['noi_khoa_tuan_hoan']
+            moi = csst.ap_dung_ly_do_tuan_hoan(hien_tai, ly_do)
+            if moi != hien_tai:
+                if apply:
+                    conn.execute('UPDATE ho_so SET noi_khoa_tuan_hoan=? '
+                                 'WHERE ma_ho_so=?', (moi, ma))
+                    log(ma, 'noi_khoa_tuan_hoan', hien_tai, moi)
+                n_ly_do_tuan_hoan += 1
 
         # Trạng thái cơ quan SAU bước 1 (Tuần hoàn có thể đã nâng) — dùng
         # chung cho quyết định bệnh chính (bước 2) VÀ nâng phan_loai_sk (bước
         # 3), tính 1 lần duy nhất.
         fresh = dict(r)
-        fresh['noi_khoa_tuan_hoan_pl'] = max(cur_th_i, csst) if csst > 0 else cur_th
+        fresh['noi_khoa_tuan_hoan_pl'] = max(cur_th_i, csst_loai) if csst_loai > 0 else cur_th
         inv = qc.check_invariant(fresh)
 
         # 2) Tự thêm chẩn đoán theo sinh hiệu — CHẠY dù hồ sơ đã có bệnh
@@ -229,6 +257,7 @@ def chay(conn, apply, nguoi_dung_id):
         'apply': apply, 'tong_quet': len(rows),
         'dien_bmi': n_bmi, 'dien_pl_the_luc': n_plth,
         'nang_tuan_hoan': n_th,
+        'nang_ly_do_tuan_hoan': n_ly_do_tuan_hoan,
         'them_benh_chinh': n_dx, 'them_benh_chinh_theo_ma': dx_dem,
         'dat_benh_chinh': n_dx_chinh,
         'go_co': n_flag, 'nang_suc_khoe_chung': n_sk,
