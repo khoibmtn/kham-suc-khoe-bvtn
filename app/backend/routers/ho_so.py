@@ -429,6 +429,7 @@ def list_ho_so(request: Request, page: int = Query(1, ge=1),
                 'trang_thai_nhan': TRANG_THAI_NHAN.get(r['trang_thai'], r['trang_thai']),
                 'nguoi_ra_soat_id': r['nguoi_ra_soat_id'],
                 'muc_co': qc.row_severity(r['co_qc']),
+                'danh_dau_xuat': r['danh_dau_xuat'],
             }
             for code in extra_codes:
                 item[code] = r[code]

@@ -761,7 +761,20 @@ const ListView = (() => {
     root.appendChild(footer);
   }
 
-  function tableColspan() { return 12 + extraFieldCodes.length; }
+  function tableColspan() { return 13 + extraFieldCodes.length; }
+
+  function toast(msg) {
+    let t = document.getElementById('toast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 'toast';
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('show'), 1200);
+  }
 
   function clearAllFilters() {
     filters = defaultFilters();
@@ -866,6 +879,7 @@ const ListView = (() => {
       return `<th>${esc(def ? def.label : code)}</th>`;
     }).join('');
     thead.innerHTML = `<tr>
+        <th class="col-danhdauxuat" title="Đánh dấu xuất file">Xuất</th>
         <th>STT</th><th>Họ tên</th><th>Ngày sinh</th><th>Giới</th><th>CCCD</th>
         <th>Xã</th><th>Ngày khám</th><th>Phân loại SK</th><th>Bệnh chính</th>
         <th>Số cờ</th><th>Trạng thái</th>${extraTh}<th>Mã hồ sơ</th></tr>`;
@@ -908,7 +922,8 @@ const ListView = (() => {
       else if (it.muc_co === 'vang') tr.classList.add('row-vang');
       if (idx === selectedIdx) tr.classList.add('selected');
       const extraTd = extraFieldCodes.map((code) => `<td>${highlightCell(it[code])}</td>`).join('');
-      tr.innerHTML = `<td>${stt}</td>
+      tr.innerHTML = `<td class="col-danhdauxuat"><input type="checkbox" class="danhdauxuat-cb" ${Number(it.danh_dau_xuat) ? 'checked' : ''}></td>
+        <td>${stt}</td>
         <td>${highlightCell(it.ho_ten)}</td>
         <td>${highlightCell(it.ngay_sinh)}</td><td>${highlightCell(it.gioi_tinh)}</td>
         <td>${highlightCell(it.so_cccd)}</td>
@@ -916,6 +931,28 @@ const ListView = (() => {
         <td>${highlightCell(it.phan_loai_sk)}</td><td>${highlightCell(it.ket_luan_benh)}</td>
         <td>${esc(it.so_loi)}</td><td>${highlightCell(it.trang_thai_nhan)}</td>
         ${extraTd}<td>${highlightCell(it.ma_ho_so)}</td>`;
+      // Checkbox "Đánh dấu xuất file" — sửa được ngay tại bảng, KHÔNG cần mở
+      // chi tiết. stopPropagation() để không kích hoạt tr.click (mở chi tiết).
+      const cb = tr.querySelector('.danhdauxuat-cb');
+      cb.addEventListener('click', (e) => e.stopPropagation());
+      cb.addEventListener('change', async (e) => {
+        e.stopPropagation();
+        const target = cb.checked ? 1 : 0;
+        const truoc = it.danh_dau_xuat;
+        cb.disabled = true;
+        try {
+          const res = await Api.patchHoSo(it.ma_ho_so, {
+            danh_dau_xuat: target, _base: { danh_dau_xuat: truoc },
+          });
+          it.danh_dau_xuat = (res.updated && 'danh_dau_xuat' in res.updated)
+            ? res.updated.danh_dau_xuat : target;
+        } catch (err) {
+          cb.checked = !cb.checked;
+          toast('Lỗi: ' + (err.message || 'không lưu được'));
+        } finally {
+          cb.disabled = false;
+        }
+      });
       tr.addEventListener('click', () => { selectedIdx = idx; renderTable(); openSelected(); });
       tbody.appendChild(tr);
     });

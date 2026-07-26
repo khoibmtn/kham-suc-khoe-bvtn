@@ -273,6 +273,12 @@ tr.row-vang { background: #fff8e1; }
   display: inline-flex; align-items: center; gap: 4px; cursor: pointer; font-weight: 600;
 }
 .detail-rasoat-item input { cursor: pointer; }
+/* Checkbox "Đánh dấu xuất file" — nằm cạnh hàng rà soát, trên nút Hoàn thành */
+.detail-danhdauxuat {
+  display: inline-flex; align-items: center; gap: 4px; cursor: pointer;
+  font-weight: 600; font-size: 13px; margin-bottom: 8px;
+}
+.detail-danhdauxuat input { cursor: pointer; }
 
 details { margin-bottom: 6px; border: 1px solid #e5e7eb; border-radius: 6px; }
 details summary {

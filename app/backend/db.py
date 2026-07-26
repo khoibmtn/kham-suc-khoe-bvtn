@@ -268,6 +268,7 @@ def init_schema(conn=None):
     _migrate_search_cols(conn)
     _migrate_khoa_phong(conn)
     _migrate_bo_loc_nang_cao(conn)
+    _migrate_danh_dau_xuat(conn)
     if own:
         conn.close()
 
@@ -361,6 +362,27 @@ def _migrate_bo_loc_nang_cao(conn):
     try:
         conn.execute(
             'ALTER TABLE nguoi_dung ADD COLUMN bo_loc_nang_cao_tuy_chon TEXT')
+        conn.commit()
+    except Exception:
+        # cột đã được instance khác thêm đồng thời, hoặc lỗi tạm — không
+        # chặn khởi động server vì việc này.
+        pass
+
+
+def _migrate_danh_dau_xuat(conn):
+    """ALTER TABLE ho_so ADD COLUMN danh_dau_xuat nếu DB đã tồn tại TRƯỚC KHI
+    schema.sql có cột này — cùng khuôn với _migrate_bo_loc_nang_cao ở trên.
+    Cờ "đánh dấu xuất file" (checkbox chọn tay ở Danh sách + Chi tiết) —
+    INTEGER DEFAULT 0."""
+    try:
+        cols = {r['name'] for r in conn.execute('PRAGMA table_info(ho_so)')}
+    except Exception:
+        return
+    if 'danh_dau_xuat' in cols:
+        return
+    try:
+        conn.execute(
+            'ALTER TABLE ho_so ADD COLUMN danh_dau_xuat INTEGER DEFAULT 0')
         conn.commit()
     except Exception:
         # cột đã được instance khác thêm đồng thời, hoặc lỗi tạm — không

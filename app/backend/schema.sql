@@ -99,7 +99,13 @@ CREATE TABLE IF NOT EXISTS ho_so (
   rs_canh_bao_khac INTEGER DEFAULT 0,  -- Tất cả cảnh báo khác (trong ghi chú)
   thoi_diem_hoan_thanh TEXT,
   da_xuat_file  INTEGER DEFAULT 0,
-  lan_xuat_cuoi TEXT
+  lan_xuat_cuoi TEXT,
+  -- cờ "đánh dấu xuất file" (checkbox chọn tay ở Danh sách + Chi tiết) —
+  -- 0/1, mặc định 0. Dùng cho tuỳ chọn "Chỉ xuất hồ sơ đã đánh dấu" ở màn
+  -- Xuất file (2/3 luồng: .xlsm nộp Bộ + Excel đơn thuần — KHÔNG áp dụng
+  -- luồng "Xuất Excel để chỉnh sửa"). Độc lập với da_xuat_file (lịch sử tự
+  -- động sau khi xuất) và các cờ rs_* (rà soát xong) ở trên.
+  danh_dau_xuat INTEGER DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_hoso_xa      ON ho_so(maxa_cu_tru);
 CREATE INDEX IF NOT EXISTS idx_hoso_nguoi   ON ho_so(nguoi_ra_soat_id);
