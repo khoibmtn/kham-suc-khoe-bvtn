@@ -270,6 +270,7 @@ def init_schema(conn=None):
     _migrate_bo_loc_nang_cao(conn)
     _migrate_danh_dau_xuat(conn)
     _migrate_don_thi_luc_tu_do(conn)
+    _migrate_ma_cskcb(conn)
     if own:
         conn.close()
 
@@ -443,6 +444,43 @@ def _migrate_don_thi_luc_tu_do(conn):
                 f"WHERE {col} IS NOT NULL AND {col} != '' "
                 f"AND {col} NOT IN ({placeholders})",
                 tuple(hop_le))
+        conn.execute(
+            'INSERT INTO cai_dat(khoa, gia_tri) VALUES (?, ?) '
+            'ON CONFLICT(khoa) DO NOTHING', (_KHOA, 'true'))
+        conn.commit()
+    except Exception:
+        pass
+
+
+_MA_CSKCB_MOI = '8934285050981'
+_MA_CSKCB_CU = '31006'
+
+
+def _migrate_ma_cskcb(conn):
+    """Đổi mã CSKCB cũ '31006' -> mã mới '8934285050981' + seed danh mục
+    'ma_cskcb' với mã mới (dropdown ô "Mã CSKCB" màn Chi tiết). Backfill
+    ho_so 1 LẦN DUY NHẤT (đánh dấu qua cai_dat, cùng khuôn với
+    _migrate_danh_dau_xuat/_migrate_don_thi_luc_tu_do ở trên) — lặp lại sẽ
+    ghi đè mất giá trị ma_cskcb mà nhân viên đã CHỦ ĐỘNG sửa lại thành
+    '31006' sau khi migration đã chạy 1 lần."""
+    _KHOA = 'ma_cskcb_da_backfill'
+    try:
+        da_backfill = conn.execute(
+            'SELECT 1 FROM cai_dat WHERE khoa=?', (_KHOA,)).fetchone()
+        if da_backfill:
+            return
+        # Seed danh mục — existence check riêng (belt & braces) dù guard
+        # cai_dat ở trên đã đảm bảo cả hàm này chỉ chạy trọn vẹn 1 lần.
+        da_co = conn.execute(
+            "SELECT COUNT(*) FROM danh_muc WHERE loai='ma_cskcb' AND ten=?",
+            (_MA_CSKCB_MOI,)).fetchone()[0]
+        if da_co == 0:
+            conn.execute(
+                "INSERT INTO danh_muc(loai, ma, ten) VALUES ('ma_cskcb', NULL, ?)",
+                (_MA_CSKCB_MOI,))
+        conn.execute(
+            'UPDATE ho_so SET ma_cskcb=? WHERE ma_cskcb=?',
+            (_MA_CSKCB_MOI, _MA_CSKCB_CU))
         conn.execute(
             'INSERT INTO cai_dat(khoa, gia_tri) VALUES (?, ?) '
             'ON CONFLICT(khoa) DO NOTHING', (_KHOA, 'true'))
