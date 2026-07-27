@@ -47,7 +47,20 @@ def _spawn_restart(app_dir):
     LẪN start đều không chạy — server cũ không tắt, server mới không mở,
     "Cập nhật ngay" âm thầm không có tác dụng gì (bug thật, đã gặp trên máy
     chủ). Dùng thẳng PID hiện tại loại bỏ hẳn việc dò netstat nên không còn
-    vòng lặp có thể chạy 0 lần."""
+    vòng lặp có thể chạy 0 lần.
+
+    BẢN TIẾP sau đó (bỏ vòng lặp) vẫn lỗi: gọi
+    `Popen(['cmd', '/c', cmd], ...)` với `cmd` là 1 chuỗi CHỨA sẵn dấu ngoặc
+    kép (`start "KSK Server" cmd /k "..."`) — trên Windows, khi args là 1
+    LIST, Python tự chạy list2cmdline() để dựng dòng lệnh, và nó ESCAPE các
+    dấu " có sẵn trong chuỗi thành \" (đúng quy tắc argv của C runtime,
+    nhưng cmd.exe KHÔNG hiểu \" là 1 dấu " thoát — nó chỉ thấy dấu " trần
+    và bật/tắt chế độ trong-ngoặc bất kể có \ đứng trước hay không) — dấu
+    ngoặc bị lệch cấu trúc, khiến `start` nhận nhầm tham số đầu và báo lỗi
+    hộp thoại "Windows cannot find '\"KSK Server\"'" (bug thật, đã gặp trên
+    máy chủ). Truyền `cmd` dưới dạng CHUỖI (không phải list) kèm
+    `shell=True` để Python tự bọc ĐÚNG 1 LỚP `comspec /c "<cmd>"`, không
+    escape lại các dấu " đã có sẵn."""
     py = os.path.join(app_dir, '.venv', 'Scripts', 'python.exe')
     pid = os.getpid()
     cmd = (
@@ -57,7 +70,7 @@ def _spawn_restart(app_dir):
         f'{py} -m uvicorn main:app --app-dir backend --host 0.0.0.0 --port 8000"'
     )
     subprocess.Popen(
-        ['cmd', '/c', cmd], cwd=app_dir,
+        cmd, shell=True, cwd=app_dir,
         creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
 
 
