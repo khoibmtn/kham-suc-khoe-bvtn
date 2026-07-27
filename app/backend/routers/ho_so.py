@@ -6,6 +6,7 @@ hoàn thành + xác nhận suy (§3.4.5).
 import json
 import os
 import sys
+from typing import List
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config  # noqa: E402
@@ -204,6 +205,20 @@ def build_where(params, user, conn=None):
         where.append(f"co_quan_benh_chinh IN ({','.join('?' * len(cq))})")
         args.extend(cq)
 
+    # Lọc theo "Danh sách tùy chỉnh" (dropdown "Xem theo danh sách", list.js)
+    # — đặt ở build_where (DÙNG CHUNG) để tự lan sang "tìm hồ sơ kế tiếp"
+    # (hoan_thanh) và xuất Excel (_filtered_where_q), không chỉ GET /api/ho-so.
+    danh_sach_id_raw = params.get('danh_sach_id')
+    if danh_sach_id_raw:
+        try:
+            ds_id = int(danh_sach_id_raw)
+        except (TypeError, ValueError):
+            ds_id = None
+        if ds_id is not None:
+            where.append('ma_ho_so IN '
+                         '(SELECT ma_ho_so FROM danh_sach_ho_so WHERE danh_sach_id = ?)')
+            args.append(ds_id)
+
     dk_raw = params.get('dieu_kien')
     if dk_raw and conn is not None:
         allowed_cols = {r['name'] for r in conn.execute('PRAGMA table_info(ho_so)')}
@@ -258,6 +273,8 @@ def _parse_list_params(request: Request):
         'co_qc': qp.getlist('co_qc'),
         'phan_loai_sk': qp.getlist('phan_loai_sk'),
         'co_quan_benh_chinh': qp.getlist('co_quan_benh_chinh'),
+        # "Xem theo danh sách" (list.js) — id danh_sach đang chọn, '' = Tất cả.
+        'danh_sach_id': qp.get('danh_sach_id'),
         # "Box điều kiện" (Bộ lọc nâng cao) — JSON thô, parse ở build_where
         # (cần `conn` để validate whitelist tên cột qua PRAGMA table_info).
         'dieu_kien': qp.get('dieu_kien'),
@@ -481,6 +498,20 @@ def list_ho_so(request: Request, page: int = Query(1, ge=1),
                 f'ORDER BY {order} LIMIT ? OFFSET ?',
                 args + [page_size, offset]).fetchall()
 
+        # Cột "Danh sách" (criterion 23): mỗi hồ sơ của TRANG HIỆN TẠI thuộc
+        # những danh sách tùy chỉnh nào — 1 TRUY VẤN PHỤ DUY NHẤT theo mã hồ
+        # sơ của cả trang (không N+1 theo từng dòng).
+        ma_list_trang = [r['ma_ho_so'] for r in page_rows]
+        danh_sach_map = {}
+        if ma_list_trang:
+            ph_ds = ','.join('?' * len(ma_list_trang))
+            for r_ds in conn.execute(
+                    f'SELECT dsh.ma_ho_so AS ma_ho_so, ds.id AS id, ds.ten AS ten '
+                    f'FROM danh_sach_ho_so dsh JOIN danh_sach ds ON ds.id = dsh.danh_sach_id '
+                    f'WHERE dsh.ma_ho_so IN ({ph_ds})', ma_list_trang):
+                danh_sach_map.setdefault(r_ds['ma_ho_so'], []).append(
+                    {'id': r_ds['id'], 'ten': r_ds['ten']})
+
         items = []
         for r in page_rows:
             item = {
@@ -499,6 +530,7 @@ def list_ho_so(request: Request, page: int = Query(1, ge=1),
                 'nguoi_ra_soat_id': r['nguoi_ra_soat_id'],
                 'muc_co': qc.row_severity(r['co_qc']),
                 'danh_dau_xuat': r['danh_dau_xuat'],
+                '_danh_sach': danh_sach_map.get(r['ma_ho_so'], []),
             }
             for code in extra_codes:
                 item[code] = r[code]
@@ -562,6 +594,49 @@ def danh_dau_hang_loat(request: Request, gia_tri: int = Query(...),
     finally:
         conn.close()
     return {'ok': True, 'so_luong_doi': len(ma_list), 'tong_pham_vi': tong}
+
+
+class DanhDauTheoDanhSachMaBody(BaseModel):
+    ma_ho_so_list: List[str]
+    gia_tri: int
+
+
+@router.post('/ho-so/danh-dau-theo-danh-sach-ma')
+def danh_dau_theo_danh_sach_ma(body: DanhDauTheoDanhSachMaBody,
+                                user=Depends(auth.get_current_user)):
+    """Thanh hành động "N đã chọn" (list.js, tính năng Danh sách tùy chỉnh) —
+    đánh dấu/bỏ đánh dấu xuất file theo DANH SÁCH MÃ HỒ SƠ TƯỜNG MINH (chọn
+    tạm ở frontend), KHÁC với danh_dau_hang_loat ở trên vốn áp theo BỘ LỌC
+    hiện tại qua mọi trang. Cùng khuôn ghi nhat_ky: chỉ UPDATE + ghi log cho
+    mã THỰC SỰ đổi giá trị (tránh rác nhat_ky cho mã đã khớp sẵn). Endpoint
+    danh_dau_hang_loat ở trên GIỮ NGUYÊN, không đụng tới."""
+    if body.gia_tri not in (0, 1):
+        raise HTTPException(400, 'gia_tri phải là 0 hoặc 1')
+    if not body.ma_ho_so_list:
+        raise HTTPException(400, 'Danh sách mã hồ sơ không được để trống')
+    conn = db.get_connection()
+    try:
+        placeholders = ','.join('?' * len(body.ma_ho_so_list))
+        rows = conn.execute(
+            f'SELECT ma_ho_so FROM ho_so WHERE ma_ho_so IN ({placeholders}) '
+            f'AND (danh_dau_xuat IS NULL OR danh_dau_xuat != ?)',
+            body.ma_ho_so_list + [body.gia_tri]).fetchall()
+        ma_list = [r['ma_ho_so'] for r in rows]
+        if ma_list:
+            ph2 = ','.join('?' * len(ma_list))
+            conn.execute(
+                f'UPDATE ho_so SET danh_dau_xuat=? WHERE ma_ho_so IN ({ph2})',
+                [body.gia_tri] + ma_list)
+            gia_tri_cu = '0' if body.gia_tri == 1 else '1'
+            conn.executemany(
+                'INSERT INTO nhat_ky(ma_ho_so, nguoi_dung_id, ten_truong, '
+                'gia_tri_cu, gia_tri_moi) VALUES (?,?,?,?,?)',
+                [(ma, user['id'], 'danh_dau_xuat', gia_tri_cu, str(body.gia_tri))
+                 for ma in ma_list])
+            conn.commit()
+    finally:
+        conn.close()
+    return {'ok': True, 'so_luong_doi': len(ma_list)}
 
 
 # Cột nội bộ (khóa tìm kiếm bỏ dấu) — không đưa vào file xuất cho người dùng.

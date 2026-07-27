@@ -25,6 +25,18 @@ const ListView = (() => {
   const msRefs = {}; // tham chiếu Multiselect + input ngày để "Xóa hết bộ lọc"
   let coQcCounts = null; // {mã cờ: số hồ sơ} — nạp sau, để hiện count + ẩn cờ rỗng
 
+  // ===== "Danh sách tùy chỉnh" (collection) — checkbox dòng/đầu bảng đổi
+  // thành "chọn tạm" ở FRONTEND, KHÔNG ghi DB ngay. selectedSet sống suốt
+  // phiên làm việc: KHÔNG reset khi reload()/renderTable()/đổi bộ lọc (kể cả
+  // đổi danh_sach_id) — CHỈ reset khi bấm "Bỏ chọn tất cả" hoặc F5. =====
+  let selectedSet = new Set();
+  let danhSachList = []; // [{id, ten, thoi_diem_tao, so_luong}] — cache cho
+                          // dropdown "Xem theo danh sách" (nạp lại sau tạo/xóa).
+  let danhSachSelectEl = null;
+  let danhSachDeleteBtnEl = null;
+  let addListPopoverEl = null;    // popover "Thêm vào danh sách" đang mở (null = đóng)
+  let addListPopoverBtnEl = null;
+
   // Tùy chọn cho dropdown "Cờ cảnh báo": khi đã có coQcCounts thì gắn số lượng
   // vào nhãn + BỎ cờ 0 hồ sơ (giữ lại cờ đang được chọn dù = 0 để không mất
   // lựa chọn hiện tại). Chưa có count -> hiện toàn bộ như cũ.
@@ -414,6 +426,8 @@ const ListView = (() => {
       xa: [], trang_thai: [], co_qc: [], phan_loai_sk: [], co_quan_benh_chinh: [],
       ngay_tu: '', ngay_den: '', q: '', q_hoten_only: true,
       nguoi_ra_soat_id: '',
+      // "Xem theo danh sách" — id danh_sach đang chọn, '' = Tất cả.
+      danh_sach_id: '',
     };
   }
 
@@ -426,6 +440,7 @@ const ListView = (() => {
     loadAdvFieldSetting();
     advConditions = [newAdvConditionRow()];
     buildLayout();
+    refreshDanhSachDropdown(); // nạp dropdown "Xem theo danh sách" (tiêu chí 40)
     reload();
     // Nạp số lượng hồ sơ theo từng cờ (không chặn giao diện) -> gắn count vào
     // dropdown + ẩn cờ 0 hồ sơ. Chỉ nạp 1 lần cho mỗi phiên mở danh sách.
@@ -556,6 +571,10 @@ const ListView = (() => {
       return ms.el;
     }));
 
+    // "Danh sách tùy chỉnh" — dropdown lọc theo 1 danh sách cụ thể (tiêu chí
+    // 40) + nút xóa danh sách đang chọn (tiêu chí 43).
+    rowBasic.appendChild(fieldBox('Xem theo danh sách', () => buildDanhSachFilterBox()));
+
     bar.appendChild(rowBasic);
 
     // ---- Hàng 3: ngày khám (mặc định hiện) ----
@@ -680,6 +699,14 @@ const ListView = (() => {
     filterFrame.appendChild(bar);
     root.appendChild(filterFrame);
 
+    // ---- Thanh hành động "N đã chọn" (chọn tạm, Danh sách tùy chỉnh) —
+    // chèn GIỮA filter và bảng (tiêu chí 32), ẩn khi chưa chọn gì. ----
+    const actionBar = document.createElement('div');
+    actionBar.id = 'action-bar';
+    actionBar.className = 'action-bar';
+    actionBar.hidden = true;
+    root.appendChild(actionBar);
+
     // ---- Vùng GIỮA: bảng danh sách (cuộn dọc — tiêu chí 1) ----
     const tableWrap = document.createElement('div');
     tableWrap.className = 'table-wrap';
@@ -761,7 +788,8 @@ const ListView = (() => {
     root.appendChild(footer);
   }
 
-  function tableColspan() { return 13 + extraFieldCodes.length; }
+  // +1 so với trước (13) vì thêm cột "Danh sách" ở cuối bảng (tiêu chí 46).
+  function tableColspan() { return 14 + extraFieldCodes.length; }
 
   function toast(msg) {
     let t = document.getElementById('toast');
@@ -788,6 +816,10 @@ const ListView = (() => {
     if (msRefs.hotenOnlyCb) msRefs.hotenOnlyCb.checked = true; // giữ "Chỉ tìm họ tên"
     if (msRefs.tuInput) msRefs.tuInput.value = '';
     if (msRefs.denInput) msRefs.denInput.value = '';
+    // "Xem theo danh sách" cũng về "Tất cả" — KHÔNG đụng selectedSet (chọn
+    // tạm sống độc lập với bộ lọc, tiêu chí 27).
+    if (danhSachSelectEl) danhSachSelectEl.value = '';
+    if (danhSachDeleteBtnEl) danhSachDeleteBtnEl.disabled = true;
     // Tiêu chí 24: "Xóa hết bộ lọc" cũng xóa sạch mọi dòng Box điều kiện,
     // về lại đúng 1 dòng trống.
     advConditions = [newAdvConditionRow()];
@@ -804,6 +836,9 @@ const ListView = (() => {
       trang_thai: filters.trang_thai, nguoi_ra_soat_id: filters.nguoi_ra_soat_id,
       co_qc: filters.co_qc, phan_loai_sk: filters.phan_loai_sk,
       co_quan_benh_chinh: filters.co_quan_benh_chinh,
+      // "Xem theo danh sách" (tiêu chí 42) — buildExcelUrl() tự kế thừa vì
+      // tái dùng currentFilterParams().
+      danh_sach_id: filters.danh_sach_id || '',
       // "Box điều kiện" (Bộ lọc nâng cao) — JSON các dòng điều kiện ĐÃ ĐỦ
       // điều kiện gửi lên (rỗng -> '' -> bị api.js:qs() bỏ qua, không gửi).
       dieu_kien: dk.length ? JSON.stringify(dk) : '',
@@ -866,6 +901,10 @@ const ListView = (() => {
     renderTable();
     renderPager();
     renderSummary();
+    // selectedSet SỐNG SUỐT PHIÊN (tiêu chí 26) — sau mỗi reload, đồng bộ lại
+    // action bar + checkbox đầu bảng theo trạng thái chọn hiện tại (vd khi
+    // đổi trang / đổi bộ lọc / sau khi thêm-vào-danh-sách reload()).
+    renderActionBar();
   }
 
   // Box điều kiện (Bộ lọc nâng cao): lọc theo trường CHƯA có cột riêng trong
@@ -879,42 +918,37 @@ const ListView = (() => {
       return `<th>${esc(def ? def.label : code)}</th>`;
     }).join('');
     thead.innerHTML = `<tr>
-        <th class="col-danhdauxuat" title="Tích/bỏ tích đánh dấu xuất file cho TẤT CẢ hồ sơ khớp bộ lọc hiện tại (mọi trang)">
+        <th class="col-danhdauxuat" title="Chọn/bỏ chọn tất cả hồ sơ ở TRANG NÀY (chọn tạm — dùng thanh hành động bên dưới để đánh dấu xuất file/thêm vào danh sách)">
           <input type="checkbox" id="danhdauxuat-all-cb"></th>
         <th>STT</th><th>Họ tên</th><th>Ngày sinh</th><th>Giới</th><th>CCCD</th>
         <th>Xã</th><th>Ngày khám</th><th>Phân loại SK</th><th>Bệnh chính</th>
-        <th>Số cờ</th><th>Trạng thái</th>${extraTh}<th>Mã hồ sơ</th></tr>`;
+        <th>Số cờ</th><th>Trạng thái</th>${extraTh}<th>Mã hồ sơ</th><th>Danh sách</th></tr>`;
     const allCb = thead.querySelector('#danhdauxuat-all-cb');
     allCb.addEventListener('click', (e) => e.stopPropagation());
-    allCb.addEventListener('change', () => onDanhDauHangLoat(allCb));
+    allCb.checked = items.length > 0 && items.every((it) => selectedSet.has(it.ma_ho_so));
+    allCb.addEventListener('change', onToggleSelectAllPage);
   }
 
-  // Ô check ở đầu cột "Xuất" — tích/bỏ tích danh_dau_xuat cho TOÀN BỘ hồ sơ
-  // khớp bộ lọc hiện tại, qua MỌI TRANG (phản hồi anh Khôi: không chỉ 20
-  // dòng đang hiển thị). Không cố phản ánh trạng thái "đã chọn hết" thật sự
-  // của toàn bộ tập lọc (sẽ cần thêm 1 lượt đếm mỗi lần tải trang) — ô check
-  // chỉ đơn thuần là NÚT BẤM 2 chiều: tích = đánh dấu hết, bỏ tích = bỏ dấu
-  // hết, luôn reset về bỏ tích sau khi thao tác xong (không lưu trạng thái).
-  async function onDanhDauHangLoat(cb) {
-    const target = cb.checked ? 1 : 0;
-    const soLuong = total;
-    const hanhDong = target ? 'ĐÁNH DẤU XUẤT FILE' : 'BỎ ĐÁNH DẤU XUẤT FILE';
-    if (!confirm(`${hanhDong} cho TẤT CẢ ${soLuong} hồ sơ đang khớp bộ lọc hiện tại (qua mọi trang)?`)) {
-      cb.checked = !cb.checked;
-      return;
-    }
-    cb.disabled = true;
-    try {
-      const res = await Api.danhDauHangLoat(currentFilterParams(), target);
-      cb.checked = false;
-      alert(`Đã ${target ? 'đánh dấu' : 'bỏ đánh dấu'} ${res.so_luong_doi}/${res.tong_pham_vi} hồ sơ.`);
-      reload();
-    } catch (err) {
-      cb.checked = !cb.checked;
-      alert('Lỗi: ' + err.message);
-    } finally {
-      cb.disabled = false;
-    }
+  // Ô check ở đầu cột — chọn/bỏ chọn TẠM (frontend only, KHÔNG gọi mạng)
+  // toàn bộ hồ sơ đang hiển thị ở TRANG NÀY vào/khỏi selectedSet. Tích khi
+  // MỌI hồ sơ trang hiện tại đã có trong Set thì XOÁ hết; ngược lại THÊM hết
+  // (tiêu chí 30/31) — không confirm().
+  function onToggleSelectAllPage() {
+    const allSelected = items.length > 0 && items.every((it) => selectedSet.has(it.ma_ho_so));
+    if (allSelected) items.forEach((it) => selectedSet.delete(it.ma_ho_so));
+    else items.forEach((it) => selectedSet.add(it.ma_ho_so));
+    renderTable();
+    updateHeaderCheckbox();
+    renderActionBar();
+    renderSummary();
+  }
+
+  // Đồng bộ trạng thái checked của checkbox đầu bảng theo selectedSet hiện
+  // tại — gọi ngay sau MỌI thay đổi selectedSet không kèm reload() (tiêu chí
+  // 48: cập nhật NGAY, không chờ reload()).
+  function updateHeaderCheckbox() {
+    const cb = document.getElementById('danhdauxuat-all-cb');
+    if (cb) cb.checked = items.length > 0 && items.every((it) => selectedSet.has(it.ma_ho_so));
   }
 
   function esc(s) {
@@ -954,7 +988,10 @@ const ListView = (() => {
       else if (it.muc_co === 'vang') tr.classList.add('row-vang');
       if (idx === selectedIdx) tr.classList.add('selected');
       const extraTd = extraFieldCodes.map((code) => `<td>${highlightCell(it[code])}</td>`).join('');
-      tr.innerHTML = `<td class="col-danhdauxuat"><input type="checkbox" class="danhdauxuat-cb" ${Number(it.danh_dau_xuat) ? 'checked' : ''}></td>
+      const dsText = (it._danh_sach && it._danh_sach.length)
+        ? it._danh_sach.map((d) => esc(d.ten)).join(', ')
+        : '–';
+      tr.innerHTML = `<td class="col-danhdauxuat"><input type="checkbox" class="danhdauxuat-cb" ${selectedSet.has(it.ma_ho_so) ? 'checked' : ''}></td>
         <td>${stt}</td>
         <td>${highlightCell(it.ho_ten)}</td>
         <td>${highlightCell(it.ngay_sinh)}</td><td>${highlightCell(it.gioi_tinh)}</td>
@@ -962,28 +999,19 @@ const ListView = (() => {
         <td>${highlightCell(it.maxa_cu_tru)}</td><td>${highlightCell(it.ngay_vao)}</td>
         <td>${highlightCell(it.phan_loai_sk)}</td><td>${highlightCell(it.ket_luan_benh)}</td>
         <td>${esc(it.so_loi)}</td><td>${highlightCell(it.trang_thai_nhan)}</td>
-        ${extraTd}<td>${highlightCell(it.ma_ho_so)}</td>`;
-      // Checkbox "Đánh dấu xuất file" — sửa được ngay tại bảng, KHÔNG cần mở
-      // chi tiết. stopPropagation() để không kích hoạt tr.click (mở chi tiết).
+        ${extraTd}<td>${highlightCell(it.ma_ho_so)}</td><td>${dsText}</td>`;
+      // Checkbox "chọn tạm" — CHỈ toggle ma_ho_so trong selectedSet (frontend
+      // only, KHÔNG gọi Api.patchHoSo/mạng, KHÔNG confirm() — tiêu chí 28).
+      // stopPropagation() để không kích hoạt tr.click (mở chi tiết).
       const cb = tr.querySelector('.danhdauxuat-cb');
       cb.addEventListener('click', (e) => e.stopPropagation());
-      cb.addEventListener('change', async (e) => {
+      cb.addEventListener('change', (e) => {
         e.stopPropagation();
-        const target = cb.checked ? 1 : 0;
-        const truoc = it.danh_dau_xuat;
-        cb.disabled = true;
-        try {
-          const res = await Api.patchHoSo(it.ma_ho_so, {
-            danh_dau_xuat: target, _base: { danh_dau_xuat: truoc },
-          });
-          it.danh_dau_xuat = (res.updated && 'danh_dau_xuat' in res.updated)
-            ? res.updated.danh_dau_xuat : target;
-        } catch (err) {
-          cb.checked = !cb.checked;
-          toast('Lỗi: ' + (err.message || 'không lưu được'));
-        } finally {
-          cb.disabled = false;
-        }
+        if (cb.checked) selectedSet.add(it.ma_ho_so);
+        else selectedSet.delete(it.ma_ho_so);
+        updateHeaderCheckbox();
+        renderActionBar();
+        renderSummary();
       });
       tr.addEventListener('click', () => { selectedIdx = idx; renderTable(); openSelected(); });
       tbody.appendChild(tr);
@@ -993,10 +1021,18 @@ const ListView = (() => {
   function renderSummary() {
     const box = document.getElementById('list-summary');
     if (!box) return;
-    if (total === 0) { box.textContent = 'Hiển thị 0–0 / 0 kết quả'; return; }
-    const a = (page - 1) * pageSize + 1;
-    const b = Math.min(page * pageSize, total);
-    box.textContent = `Hiển thị ${a}–${b} / ${total} kết quả`;
+    let text;
+    if (total === 0) {
+      text = 'Hiển thị 0–0 / 0 kết quả';
+    } else {
+      const a = (page - 1) * pageSize + 1;
+      const b = Math.min(page * pageSize, total);
+      text = `Hiển thị ${a}–${b} / ${total} kết quả`;
+    }
+    // "N đã chọn" — CHỈ hiện khi có ít nhất 1 hồ sơ đang chọn tạm (tiêu chí
+    // 47/49), cập nhật đồng thời với renderActionBar() ở mọi nơi selectedSet đổi.
+    if (selectedSet.size > 0) text += ` — ${selectedSet.size} đã chọn`;
+    box.textContent = text;
   }
 
   function renderPager() {
@@ -1034,6 +1070,296 @@ const ListView = (() => {
 
   function currentSelectedMa() {
     return selectedIdx >= 0 && items[selectedIdx] ? items[selectedIdx].ma_ho_so : null;
+  }
+
+  // ===================================================================
+  // "Danh sách tùy chỉnh" — thanh hành động (action bar), popover "Thêm vào
+  // danh sách", dropdown "Xem theo danh sách" + nút xóa danh sách.
+  // ===================================================================
+
+  // ---- Thanh hành động: hiện khi selectedSet.size>0 (tiêu chí 32/33/49) ----
+  function renderActionBar() {
+    const bar = document.getElementById('action-bar');
+    if (!bar) return;
+    if (selectedSet.size === 0) {
+      bar.hidden = true;
+      bar.innerHTML = '';
+      closeAddListPopover();
+      return;
+    }
+    bar.hidden = false;
+    bar.innerHTML = '';
+
+    const countEl = document.createElement('span');
+    countEl.className = 'action-bar-count';
+    countEl.textContent = `${selectedSet.size} đã chọn`;
+    bar.appendChild(countEl);
+
+    const clearBtn = document.createElement('button');
+    clearBtn.type = 'button';
+    clearBtn.textContent = 'Bỏ chọn tất cả';
+    clearBtn.addEventListener('click', () => {
+      selectedSet.clear();
+      renderTable();
+      updateHeaderCheckbox();
+      renderActionBar();
+      renderSummary();
+    });
+    bar.appendChild(clearBtn);
+
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.id = 'action-bar-add-btn';
+    addBtn.textContent = 'Thêm vào danh sách ▾';
+    addBtn.addEventListener('click', () => toggleAddToListPopover(addBtn));
+    bar.appendChild(addBtn);
+
+    const markBtn = document.createElement('button');
+    markBtn.type = 'button';
+    markBtn.textContent = 'Đánh dấu xuất file';
+    markBtn.addEventListener('click', () => onDanhDauTheoChon(1));
+    bar.appendChild(markBtn);
+
+    const unmarkBtn = document.createElement('button');
+    unmarkBtn.type = 'button';
+    unmarkBtn.textContent = 'Bỏ đánh dấu xuất file';
+    unmarkBtn.addEventListener('click', () => onDanhDauTheoChon(0));
+    bar.appendChild(unmarkBtn);
+
+    // Chỉ hiện khi đang xem 1 danh sách cụ thể (tiêu chí 34).
+    if (filters.danh_sach_id) {
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.textContent = 'Gỡ khỏi danh sách này';
+      removeBtn.addEventListener('click', onGoKhoiDanhSachHienTai);
+      bar.appendChild(removeBtn);
+    }
+  }
+
+  // ---- "Đánh dấu xuất file" / "Bỏ đánh dấu xuất file" theo ĐÚNG các hồ sơ
+  // đang chọn tạm (tiêu chí 38) — KHÔNG dùng Api.danhDauHangLoat cũ (vốn áp
+  // theo bộ lọc). selectedSet giữ nguyên sau thao tác. ----
+  async function onDanhDauTheoChon(giaTri) {
+    const maList = Array.from(selectedSet);
+    try {
+      const res = await Api.danhDauTheoDanhSachMa(maList, giaTri);
+      toast(`Đã ${giaTri ? 'đánh dấu' : 'bỏ đánh dấu'} xuất file ${res.so_luong_doi} hồ sơ.`);
+      reload();
+    } catch (err) {
+      toast('Lỗi: ' + (err.message || 'không thực hiện được'));
+    }
+  }
+
+  // ---- "Gỡ khỏi danh sách này" — chỉ hiện khi đang lọc theo 1 danh sách cụ
+  // thể (tiêu chí 39): thành công thì XOÁ các mã vừa gỡ khỏi selectedSet. ----
+  async function onGoKhoiDanhSachHienTai() {
+    const dsId = filters.danh_sach_id;
+    if (!dsId) return;
+    const maList = Array.from(selectedSet);
+    try {
+      const res = await Api.goHoSoKhoiDanhSach(dsId, maList);
+      maList.forEach((ma) => selectedSet.delete(ma));
+      toast(`Đã gỡ ${res.so_luong_go} hồ sơ khỏi danh sách.`);
+      reload();
+    } catch (err) {
+      toast('Lỗi: ' + (err.message || 'không thực hiện được'));
+    }
+  }
+
+  // ---- Popover "Thêm vào danh sách ▾" — khuôn mẫu buildFieldPickerPopover/
+  // toggleFieldPicker (đóng bằng ESC/click ra ngoài, định vị bằng positionPopover). ----
+  function closeAddListPopover() {
+    if (addListPopoverEl) { addListPopoverEl.remove(); addListPopoverEl = null; }
+    document.removeEventListener('mousedown', onAddListPopoverOutsideClick, true);
+  }
+
+  function onAddListPopoverOutsideClick(e) {
+    if (addListPopoverEl && !addListPopoverEl.contains(e.target) && e.target !== addListPopoverBtnEl) {
+      closeAddListPopover();
+    }
+  }
+
+  async function toggleAddToListPopover(btnEl) {
+    if (addListPopoverEl) { closeAddListPopover(); return; }
+    addListPopoverBtnEl = btnEl;
+    const pop = document.createElement('div');
+    pop.className = 'adv-field-picker-pop action-add-list-pop';
+    pop.tabIndex = -1;
+    pop.textContent = 'Đang tải…';
+    pop.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeAddListPopover(); }
+    });
+    document.body.appendChild(pop);
+    positionPopover(pop, btnEl);
+    addListPopoverEl = pop;
+    document.addEventListener('mousedown', onAddListPopoverOutsideClick, true);
+
+    // Gọi Api.listDanhSach() MỖI LẦN MỞ — KHÔNG cache tĩnh (tiêu chí 35).
+    let list;
+    try {
+      list = await Api.listDanhSach();
+    } catch (err) {
+      if (addListPopoverEl) pop.textContent = 'Lỗi tải danh sách: ' + (err.message || '');
+      return;
+    }
+    if (addListPopoverEl !== pop) return; // đã đóng trong lúc chờ mạng
+    danhSachList = list;
+    populateDanhSachSelect();
+    renderAddListPopoverContent(pop, list);
+  }
+
+  function renderAddListPopoverContent(pop, list) {
+    pop.innerHTML = '';
+    const listEl = document.createElement('div');
+    listEl.className = 'adv-field-picker-list';
+    if (!list.length) {
+      const empty = document.createElement('div');
+      empty.className = 'action-add-list-empty';
+      empty.textContent = '(Chưa có danh sách nào — tạo mới bên dưới)';
+      listEl.appendChild(empty);
+    }
+    list.forEach((ds) => {
+      const item = document.createElement('div');
+      item.className = 'adv-field-picker-item';
+      item.textContent = `${ds.ten} (${ds.so_luong})`;
+      item.addEventListener('click', () => onChonThemVaoDanhSach(ds.id));
+      listEl.appendChild(item);
+    });
+    pop.appendChild(listEl);
+
+    // Ô nhập tên mới + "Tạo & thêm" (tiêu chí 37).
+    const createWrap = document.createElement('div');
+    createWrap.className = 'action-add-list-create';
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.placeholder = 'Tên danh sách mới…';
+    const errEl = document.createElement('div');
+    errEl.className = 'action-add-list-err';
+    errEl.hidden = true;
+    const createBtn = document.createElement('button');
+    createBtn.type = 'button';
+    createBtn.textContent = 'Tạo & thêm';
+    createBtn.addEventListener('click', async () => {
+      const ten = inp.value.trim();
+      errEl.hidden = true;
+      if (!ten) {
+        errEl.textContent = 'Tên danh sách không được để trống';
+        errEl.hidden = false;
+        return;
+      }
+      createBtn.disabled = true;
+      try {
+        const ds = await Api.createDanhSach({ ten });
+        await refreshDanhSachDropdown();
+        await onChonThemVaoDanhSach(ds.id);
+      } catch (err) {
+        // 409 (tên trùng) hiện lỗi TẠI CHỖ trong popover.
+        errEl.textContent = err.message || 'Không tạo được danh sách';
+        errEl.hidden = false;
+      } finally {
+        createBtn.disabled = false;
+      }
+    });
+    createWrap.appendChild(inp);
+    createWrap.appendChild(createBtn);
+    createWrap.appendChild(errEl);
+    pop.appendChild(createWrap);
+  }
+
+  async function onChonThemVaoDanhSach(id) {
+    try {
+      const res = await Api.themHoSoVaoDanhSach(id, Array.from(selectedSet));
+      closeAddListPopover();
+      toast(`Đã thêm ${res.so_luong_them} hồ sơ vào danh sách.`);
+      // KHÔNG xóa selectedSet sau hành động (tiêu chí 36).
+      reload();
+    } catch (err) {
+      toast('Lỗi: ' + (err.message || 'không thêm được'));
+    }
+  }
+
+  // ---- Dropdown "Xem theo danh sách" + nút xóa danh sách đang chọn ----
+  function buildDanhSachFilterBox() {
+    const wrap = document.createElement('div');
+    wrap.className = 'danh-sach-filter-wrap';
+
+    const sel = document.createElement('select');
+    sel.className = 'filter-select';
+    sel.id = 'danh-sach-filter-sel';
+    danhSachSelectEl = sel;
+    sel.addEventListener('change', () => {
+      filters.danh_sach_id = sel.value;
+      if (danhSachDeleteBtnEl) danhSachDeleteBtnEl.disabled = !filters.danh_sach_id;
+      page = 1;
+      reload();
+    });
+    wrap.appendChild(sel);
+
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.id = 'danh-sach-delete-btn';
+    delBtn.title = 'Xóa danh sách đang chọn (không xóa hồ sơ)';
+    delBtn.textContent = '🗑';
+    delBtn.disabled = !filters.danh_sach_id;
+    delBtn.addEventListener('click', onXoaDanhSachHienTai);
+    danhSachDeleteBtnEl = delBtn;
+    wrap.appendChild(delBtn);
+
+    populateDanhSachSelect();
+    return wrap;
+  }
+
+  // Dựng lại <option> của dropdown "Xem theo danh sách" từ danhSachList —
+  // giữ lựa chọn hiện tại (filters.danh_sach_id) nếu danh sách đó còn tồn
+  // tại (tiêu chí 41), về "Tất cả" nếu đã bị xóa.
+  function populateDanhSachSelect() {
+    if (!danhSachSelectEl) return;
+    const cur = String(filters.danh_sach_id || '');
+    danhSachSelectEl.innerHTML = '';
+    const optAll = document.createElement('option');
+    optAll.value = '';
+    optAll.textContent = 'Tất cả';
+    danhSachSelectEl.appendChild(optAll);
+    let found = !cur;
+    danhSachList.forEach((ds) => {
+      const o = document.createElement('option');
+      o.value = String(ds.id);
+      o.textContent = `${ds.ten} (${ds.so_luong})`;
+      if (String(ds.id) === cur) { o.selected = true; found = true; }
+      danhSachSelectEl.appendChild(o);
+    });
+    if (!found) {
+      // Danh sách đang chọn đã bị xóa ở đâu đó -> về "Tất cả".
+      optAll.selected = true;
+      filters.danh_sach_id = '';
+    }
+    if (danhSachDeleteBtnEl) danhSachDeleteBtnEl.disabled = !filters.danh_sach_id;
+  }
+
+  async function refreshDanhSachDropdown() {
+    try {
+      danhSachList = await Api.listDanhSach();
+    } catch (err) {
+      danhSachList = [];
+    }
+    populateDanhSachSelect();
+  }
+
+  async function onXoaDanhSachHienTai() {
+    const id = filters.danh_sach_id;
+    if (!id) return;
+    const ds = danhSachList.find((d) => String(d.id) === String(id));
+    const ten = ds ? ds.ten : '';
+    if (!confirm(`Xóa danh sách "${ten}"? Thao tác này KHÔNG xóa hồ sơ, chỉ xóa danh sách.`)) return;
+    try {
+      await Api.deleteDanhSach(id);
+      filters.danh_sach_id = '';
+      await refreshDanhSachDropdown();
+      page = 1;
+      reload();
+    } catch (err) {
+      toast('Lỗi: ' + (err.message || 'không xóa được'));
+    }
   }
 
   return {
