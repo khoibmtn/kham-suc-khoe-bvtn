@@ -6,7 +6,6 @@ hoàn thành + xác nhận suy (§3.4.5).
 import json
 import os
 import sys
-from typing import Optional
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config  # noqa: E402
@@ -434,69 +433,88 @@ _CO_QC_TTL = 300  # giây — số cờ đổi chậm, cache 5' để không qu�
 
 
 @router.get('/co-qc-thong-ke')
-def co_qc_thong_ke(danh_sach_id: Optional[int] = Query(None),
-                    user=Depends(auth.get_current_user)):
+def co_qc_thong_ke(request: Request, user=Depends(auth.get_current_user)):
     """Đếm SỐ HỒ SƠ theo TỪNG mã cờ — dùng cho bộ lọc "Cờ cảnh báo". Response
     thống nhất {'counts': {mã_cờ: N,...}, 'tong': X}.
 
-    KHÔNG truyền `danh_sach_id` (None) -> đếm TOÀN BỘ dữ liệu (hành vi CŨ,
-    `tong`=None/null). Query dùng 11 LIKE '%;X;%' KHÔNG index được -> quét
-    toàn bảng (~14s trên 13k dòng Turso serverless), lại gọi MỖI lần mở danh
-    sách. Vì con số đổi chậm nên CACHE trong tiến trình 5' — CHỈ khi chạy
-    SERVERLESS (Turso, có TURSO_URL) để giảm tải Turso dưới tải cao 25 người.
-    Khi chạy LOCAL sqlite (không có TURSO_URL) thì quét toàn bảng RẤT NHANH ->
-    BỎ QUA cache, luôn tính TƯƠI, tránh số đếm bị cũ (vd xử lý xong 1 cờ nhưng
-    số dropdown vẫn giữ nguyên vì cache 5 phút chưa hết hạn).
+    TỬ SỐ (`counts`, cả 13 cờ, KỂ CẢ CCCD_TRUNG — đơn giản hoá theo yêu cầu
+    anh Khôi: đếm CỜ TĨNH `co_qc` đã lưu sẵn, KHÔNG tính lại quan hệ trùng
+    CCCD) scoped theo TOÀN BỘ bộ lọc đang áp dụng trên bảng chính (Xã/phường,
+    ngày, Box điều kiện, tìm kiếm, trạng thái, phân loại SK, cơ quan bệnh
+    chính, nhân viên, "Xem theo danh sách" — mọi field `_parse_list_params`
+    trả về) NGOẠI TRỪ chính `co_qc` (self-facet exclusion: đang chọn 1 cờ ở
+    CHÍNH dropdown này để lọc bảng chính không được đổi tử số hiển thị cho
+    CÁC CỜ KHÁC/chính nó trong dropdown).
 
-    CÓ `danh_sach_id` -> đếm THU HẸP trong phạm vi 1 "Danh sách tùy chỉnh"
-    (dropdown "Xem theo danh sách", list.js) — `tong` = tổng số hồ sơ của
-    danh sách đó (có thể 0). Nhánh này KHÔNG dùng/ghi cache global ở trên
-    (số theo từng danh sách đổi thường xuyên hơn, không nên trộn với cache
-    5' của số liệu toàn cục). KHÔNG validate `danh_sach_id` có tồn tại trong
-    bảng `danh_sach` hay không — theo đúng tiền lệ build_where()/
-    export_xlsm.py: subquery tự trả rỗng nếu không khớp -> mọi cờ = 0,
-    `tong` = 0, không lỗi 404/500."""
+    MẪU SỐ (`tong`) tính RIÊNG, CHỈ phụ thuộc "Xem theo danh sách"
+    (`danh_sach_id`) — mọi field lọc khác bị bỏ qua khi tính `tong`, dùng lại
+    ĐÚNG nhánh `danh_sach_id` có sẵn trong build_where(). KHÔNG có
+    `danh_sach_id` ("Tất cả") -> `tong` = COUNT(*) TOÀN BẢNG `ho_so` (đổi so
+    với đợt trước: trước đây trả None/null khi "Tất cả", giờ luôn là số).
+    KHÔNG validate `danh_sach_id` có tồn tại trong bảng `danh_sach` hay
+    không — theo đúng tiền lệ build_where()/export_xlsm.py: subquery tự trả
+    rỗng nếu không khớp -> mọi cờ = 0, `tong` = 0, không lỗi 404/500.
+
+    Cache serverless (Turso, có TURSO_URL) 5' CHỈ áp dụng cho `counts` khi
+    TOÀN BỘ params (trừ `co_qc`) đều rỗng — có bất kỳ field lọc nào khác (kể
+    cả chỉ `danh_sach_id`) -> bỏ qua cache, tính tươi. `tong` LUÔN tính tươi,
+    độc lập với cache của `counts` (kể cả khi cache HIT). Query dùng 13 LIKE
+    '%;X;%' KHÔNG index được -> quét toàn bảng, nên chỉ 2 câu SQL/lần gọi
+    (1 SUM-CASE cho `counts` khi cache miss + 1 COUNT(*) cho `tong`), không
+    N+1 theo từng cờ."""
     flags = list(qc.FLAG_META.keys())
     sel = ', '.join(
         f"SUM(CASE WHEN (';'||co_qc||';') LIKE ? THEN 1 ELSE 0 END) AS f{i}"
         for i in range(len(flags)))
     flag_args = [f'%;{f};%' for f in flags]
 
-    if danh_sach_id is None:
-        # Nhánh GLOBAL — GIỮ NGUYÊN hành vi + cache serverless 5' hiện có
-        # (check cache nằm TRONG nhánh này — nhánh scoped bên dưới KHÔNG đọc/
-        # ghi cache này).
-        is_serverless = bool(os.getenv('TURSO_URL'))
-        if is_serverless:
+    params = _parse_list_params(request)
+
+    # Tử số — TOÀN BỘ params, trừ chính `co_qc` (self-facet exclusion, tiêu
+    # chí 8) — copy dict rồi set rỗng, KHÔNG sửa `params` gốc (còn dùng cho
+    # `tong` bên dưới).
+    params_tu_so = dict(params)
+    params_tu_so['co_qc'] = []
+
+    # Mẫu số — CHỈ giữ `danh_sach_id`, mọi field khác về rỗng/None (khớp KIỂU
+    # gốc: list -> [], scalar -> None) để tái dùng ĐÚNG nhánh `danh_sach_id`
+    # có sẵn trong build_where() mà không kéo theo bộ lọc nào khác.
+    params_mau_so = {
+        k: ([] if isinstance(v, list) else None) for k, v in params.items()
+    }
+    params_mau_so['danh_sach_id'] = params.get('danh_sach_id')
+
+    # Cache serverless CHỈ khi TOÀN BỘ params (trừ co_qc) đều rỗng — có bất kỳ
+    # field lọc nào khác (kể cả chỉ danh_sach_id) -> bỏ qua cache, tính tươi.
+    is_all_empty = all(not v for k, v in params.items() if k != 'co_qc')
+    is_serverless = bool(os.getenv('TURSO_URL'))
+    use_cache = is_serverless and is_all_empty
+
+    conn = db.get_connection()
+    try:
+        counts = None
+        if use_cache:
             import time
             now = time.time()
             if _CO_QC_CACHE['data'] is not None and now - _CO_QC_CACHE['t'] < _CO_QC_TTL:
-                return {'counts': _CO_QC_CACHE['data'], 'tong': None}
-        conn = db.get_connection()
-        try:
-            row = conn.execute(f'SELECT {sel} FROM ho_so', flag_args).fetchone()
-            out = {f: (row[f'f{i}'] or 0) for i, f in enumerate(flags)}
-        finally:
-            conn.close()
-        if is_serverless:
-            _CO_QC_CACHE['data'] = out
-            _CO_QC_CACHE['t'] = time.time()
-        return {'counts': out, 'tong': None}
+                counts = _CO_QC_CACHE['data']
+        if counts is None:
+            where_sql, args = _filtered_where_q(params_tu_so, conn)
+            row = conn.execute(
+                f'SELECT {sel} FROM ho_so WHERE {where_sql}',
+                flag_args + args).fetchone()
+            counts = {f: (row[f'f{i}'] or 0) for i, f in enumerate(flags)}
+            if use_cache:
+                _CO_QC_CACHE['data'] = counts
+                _CO_QC_CACHE['t'] = time.time()
 
-    # Nhánh SCOPED theo danh_sach_id — thêm điều kiện WHERE vào ĐÚNG câu SQL
-    # 1-lần-tính-hết-mọi-cờ ở trên (không N+1 theo từng cờ); `tong` (COUNT(*))
-    # tính GỘP trong CÙNG câu SQL đó (không cần câu phụ, không N+1).
-    conn = db.get_connection()
-    try:
-        row = conn.execute(
-            f'SELECT COUNT(*) AS tong, {sel} FROM ho_so WHERE ma_ho_so IN '
-            f'(SELECT ma_ho_so FROM danh_sach_ho_so WHERE danh_sach_id = ?)',
-            flag_args + [danh_sach_id]).fetchone()
-        out = {f: (row[f'f{i}'] or 0) for i, f in enumerate(flags)}
-        tong = row['tong'] or 0
+        # Mẫu số — tính RIÊNG (độc lập với cache của counts ở trên).
+        where_sql_mau, args_mau = _filtered_where_q(params_mau_so, conn)
+        tong = conn.execute(
+            f'SELECT COUNT(*) FROM ho_so WHERE {where_sql_mau}', args_mau).fetchone()[0]
     finally:
         conn.close()
-    return {'counts': out, 'tong': tong}
+    return {'counts': counts, 'tong': tong}
 
 
 @router.get('/ho-so')

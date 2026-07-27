@@ -49,25 +49,21 @@ const ListView = (() => {
   // Tùy chọn cho dropdown "Cờ cảnh báo": khi đã có coQcCounts thì gắn số lượng
   // vào nhãn + BỎ cờ 0 hồ sơ (giữ lại cờ đang được chọn dù = 0 để không mất
   // lựa chọn hiện tại). Chưa có count -> hiện toàn bộ như cũ.
-  // coQcCounts nay có format {counts: {mã_cờ: N}, tong: X|null} — `tong` là
-  // số (kể cả 0) khi "Xem theo danh sách" đang scoped 1 danh sách cụ thể,
-  // null/undefined khi đang xem GLOBAL (tất cả danh sách).
+  // coQcCounts nay có format {counts: {mã_cờ: N}, tong: X} — `tong` LUÔN LÀ
+  // SỐ (kể cả 0, kể cả khi đang xem "Tất cả" = tổng toàn bảng) — mọi cờ hiện
+  // ĐÚNG định dạng "tử_số/tổng" (vd "172/13.326"), không còn nhánh "(N)" rời.
   function coQcOptions() {
     let flags = danhMuc.co_qc;
     const counts = coQcCounts ? coQcCounts.counts : null;
-    const scoped = coQcCounts && (coQcCounts.tong !== null && coQcCounts.tong !== undefined);
     if (counts) {
       flags = flags.filter((f) => (counts[f.ma] || 0) > 0
         || (filters.co_qc || []).includes(f.ma));
     }
     return flags.map((f) => {
       const n = counts ? (counts[f.ma] || 0) : null;
-      let suffix = '';
-      if (n !== null) {
-        suffix = scoped
-          ? ` ${n.toLocaleString('vi-VN')}/${coQcCounts.tong.toLocaleString('vi-VN')}`
-          : ` (${n.toLocaleString('vi-VN')})`;
-      }
+      const suffix = n !== null
+        ? ` ${n.toLocaleString('vi-VN')}/${(coQcCounts.tong || 0).toLocaleString('vi-VN')}`
+        : '';
       return {
         ma: f.ma,
         ten: f.ten + suffix,
@@ -90,16 +86,22 @@ const ListView = (() => {
     msRefs.coQc = ms;
   }
 
-  // Nạp lại coQcCounts theo phạm vi `danhSachId` (undefined/'' = GLOBAL) rồi
-  // dựng lại dropdown Cờ cảnh báo — dùng CHUNG cho mọi nơi cần đồng bộ số
-  // liệu khi "Xem theo danh sách" đổi (đổi danh sách, xóa hết bộ lọc, xóa
-  // danh sách đang chọn). Có seq-guard chống race: nếu người dùng đổi danh
-  // sách liên tiếp nhanh, chỉ kết quả của lần gọi MỚI NHẤT được áp dụng
-  // (tiêu chí 22 — không giữ số liệu cũ đè lên số liệu mới).
+  // Nạp lại coQcCounts theo TOÀN BỘ bộ lọc hiện tại (currentFilterParams())
+  // rồi dựng lại dropdown Cờ cảnh báo — dùng CHUNG cho mọi nơi cần đồng bộ số
+  // liệu khi BẤT KỲ bộ lọc nào đổi (kích hoạt thống nhất qua snapshot-compare
+  // trong reload(), xem coQcParamsSnapshot bên dưới — KHÔNG còn lời gọi rời
+  // rạc ở từng handler). Có seq-guard chống race: nếu bộ lọc đổi liên tiếp
+  // nhanh, chỉ kết quả của lần gọi MỚI NHẤT được áp dụng (tiêu chí 22 — không
+  // giữ số liệu cũ đè lên số liệu mới).
   let coQcSeq = 0;
-  function refreshCoQcCounts(danhSachId) {
+  // Snapshot RIÊNG cho cơ chế trigger refreshCoQcCounts() (KHÔNG tái dùng
+  // allFilterSelectedSnapshot — biến đó phục vụ mục đích khác, "chọn tất cả
+  // khớp bộ lọc") — reload() so sánh JSON currentFilterParams() mỗi lần chạy,
+  // null ban đầu để lần reload() đầu tiên (init()) LUÔN kích hoạt 1 lần.
+  let coQcParamsSnapshot = null;
+  function refreshCoQcCounts() {
     const seq = ++coQcSeq;
-    Api.coQcThongKe(danhSachId || undefined).then((counts) => {
+    Api.coQcThongKe(currentFilterParams()).then((counts) => {
       if (seq !== coQcSeq) return; // có lần gọi mới hơn đã tới trước — bỏ qua
       coQcCounts = counts;
       rebuildCoQc();
@@ -539,17 +541,13 @@ const ListView = (() => {
     advConditions = [newAdvConditionRow()];
     buildLayout();
     refreshDanhSachDropdown(); // nạp dropdown "Xem theo danh sách" (tiêu chí 40)
+    // Số lượng hồ sơ theo từng cờ (dropdown "Cờ cảnh báo") nạp qua ĐÚNG 1 cơ
+    // chế thống nhất bên trong reload() (snapshot-compare coQcParamsSnapshot,
+    // xem reload()) — KHÔNG còn lời gọi Api.coQcThongKe() riêng ở đây (tiêu
+    // chí 19: tránh bắn 2 request /api/co-qc-thong-ke cho 1 lần mở trang).
+    // coQcParamsSnapshot khởi tạo null -> reload() dưới đây tự kích hoạt
+    // refreshCoQcCounts() đúng 1 lần cho lần mở trang này.
     reload();
-    // Nạp số lượng hồ sơ theo từng cờ (không chặn giao diện) -> gắn count vào
-    // dropdown + ẩn cờ 0 hồ sơ. Chỉ nạp 1 lần cho mỗi phiên mở danh sách.
-    if (coQcCounts) {
-      rebuildCoQc();
-    } else {
-      Api.coQcThongKe().then((counts) => {
-        coQcCounts = counts;
-        rebuildCoQc();
-      }).catch(() => { /* lỗi mạng tạm — giữ danh sách đầy đủ như cũ */ });
-    }
   }
 
   function fieldBox(label, buildInput, extraClass) {
@@ -923,10 +921,10 @@ const ListView = (() => {
     advConditions = [newAdvConditionRow()];
     renderAdvConditionsFull();
     page = 1;
+    // reload() tự phát hiện currentFilterParams() vừa đổi (về rỗng hoàn
+    // toàn) qua coQcParamsSnapshot và tự gọi refreshCoQcCounts() ĐÚNG 1 lần
+    // — KHÔNG cần gọi rời ở đây nữa (tiêu chí 18/21, tránh bắn 2 request).
     reload();
-    // "Xem theo danh sách" về "Tất cả" -> dropdown Cờ cảnh báo cũng phải về
-    // lại số liệu GLOBAL (không truyền danh_sach_id).
-    refreshCoQcCounts();
   }
 
   function currentFilterParams() {
@@ -965,16 +963,36 @@ const ListView = (() => {
 
   let _reloadSeq = 0;
   async function reload() {
+    // Tính 1 LẦN, dùng chung cho cả 2 cơ chế snapshot-compare bên dưới +
+    // dựng `params` gọi API danh sách (tránh gọi currentFilterParams() lặp
+    // lại nhiều lần trong cùng 1 lượt reload()).
+    const cfp = currentFilterParams();
+    const cfpJson = JSON.stringify(cfp);
+
     // Criterion 13: bộ lọc hiện tại KHÁC snapshot lúc set allFilterSelected=
     // true gần nhất -> tự reset (KHÔNG đụng selectedSet — vẫn giữ số đã
     // chọn). Chỉ đổi TRANG (page/pageSize KHÔNG nằm trong currentFilterParams())
     // -> snapshot không đổi -> giữ nguyên allFilterSelected. Đặt Ở ĐẦU hàm
     // để bắt được MỌI điểm gọi reload() sau khi đổi filter, không cần sửa
     // từng nơi riêng lẻ.
-    if (allFilterSelected
-        && JSON.stringify(currentFilterParams()) !== allFilterSelectedSnapshot) {
+    if (allFilterSelected && cfpJson !== allFilterSelectedSnapshot) {
       allFilterSelected = false;
     }
+
+    // Dropdown "Cờ cảnh báo": bộ lọc hiện tại KHÁC snapshot lúc refresh gần
+    // nhất -> BẤT KỲ bộ lọc nào đổi (Xã/phường, ngày, Phân loại SK, Trạng
+    // thái, Cơ quan bệnh chính, Nhân viên, Tìm kiếm, Box điều kiện, "Xem
+    // theo danh sách") đều tự kích hoạt refreshCoQcCounts() ĐÚNG 1 lần —
+    // dùng snapshot RIÊNG (coQcParamsSnapshot, KHÔNG phải allFilterSelectedSnapshot).
+    // page/pageSize KHÔNG nằm trong currentFilterParams() -> đổi trang/số
+    // dòng-trang KHÔNG kích hoạt gọi lại (tiêu chí 16). Đặt Ở ĐẦU hàm (cùng
+    // vị trí với criterion 13) để bắt được MỌI điểm gọi reload() sau khi đổi
+    // filter mà KHÔNG cần sửa từng handler riêng lẻ (tiêu chí 18).
+    if (cfpJson !== coQcParamsSnapshot) {
+      coQcParamsSnapshot = cfpJson;
+      refreshCoQcCounts();
+    }
+
     const seq = ++_reloadSeq;
     // Chỉ báo "Đang tải…" để không tưởng nhầm là không có kết quả trong lúc
     // chờ mạng (Vercel↔Turso ~1s). + chống race: gõ nhanh -> chỉ hiện kết quả
@@ -985,7 +1003,7 @@ const ListView = (() => {
     if (sumL) sumL.textContent = 'Đang tải…';
     const statusEl = document.getElementById('search-status');
     if (statusEl) statusEl.hidden = false;   // hiện "Đang tìm kiếm…" (dấu động)
-    const params = Object.assign({ page, page_size: pageSize }, currentFilterParams());
+    const params = Object.assign({ page, page_size: pageSize }, cfp);
     let data;
     try {
       data = await Api.listHoSo(params);
@@ -1411,11 +1429,10 @@ const ListView = (() => {
       filters.danh_sach_id = sel.value;
       if (danhSachDeleteBtnEl) danhSachDeleteBtnEl.disabled = !filters.danh_sach_id;
       page = 1;
+      // reload() tự phát hiện danh_sach_id vừa đổi qua coQcParamsSnapshot và
+      // tự gọi refreshCoQcCounts() (tử số + mẫu số cùng đổi theo) — KHÔNG
+      // cần gọi rời ở đây nữa (tiêu chí 18, tránh bắn 2 request cho 1 lần đổi).
       reload();
-      // Đổi phạm vi "Xem theo danh sách" -> dropdown "Cờ cảnh báo" cũng đổi
-      // theo (GLOBAL "(N)" hoặc scoped "xx/YYY") — bất đồng bộ, KHÔNG chặn
-      // reload() bảng chính ở trên.
-      refreshCoQcCounts(filters.danh_sach_id);
     });
     wrap.appendChild(sel);
 
@@ -1480,11 +1497,11 @@ const ListView = (() => {
       filters.danh_sach_id = '';
       await refreshDanhSachDropdown();
       page = 1;
+      // Vừa xóa ĐÚNG danh sách đang scoped -> danh_sach_id vừa đổi về '' (các
+      // bộ lọc KHÁC giữ nguyên) -> reload() tự phát hiện qua coQcParamsSnapshot
+      // và tự gọi refreshCoQcCounts() phản ánh đúng phạm vi mới (KHÔNG cần
+      // gọi rời ở đây nữa — tiêu chí 18/22).
       reload();
-      // Vừa xóa ĐÚNG danh sách đang scoped (đã về "Tất cả" ở trên) -> dropdown
-      // Cờ cảnh báo phải quay lại số liệu GLOBAL, không giữ số liệu cũ của
-      // danh sách vừa xóa.
-      refreshCoQcCounts();
     } catch (err) {
       toast('Lỗi: ' + (err.message || 'không xóa được'));
     }
