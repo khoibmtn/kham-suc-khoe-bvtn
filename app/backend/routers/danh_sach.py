@@ -27,17 +27,35 @@ from pydantic import BaseModel
 router = APIRouter(prefix='/api', tags=['danh_sach'])
 
 
+def _require_quyen_ghi(conn, danh_sach_id, user):
+    """Chặn hành động GHI (xóa danh sách/thêm-bớt case) cho mọi người TRỪ
+    người đã TẠO ra danh sách đó hoặc admin — xem/lọc theo danh sách (GET)
+    KHÔNG bị giới hạn bởi hàm này, chỉ áp dụng cho DELETE/POST ghi dữ liệu.
+    Trả về row {id, nguoi_tao_id} để nơi gọi tái dùng, tránh query lại."""
+    row = conn.execute(
+        'SELECT id, nguoi_tao_id FROM danh_sach WHERE id=?', (danh_sach_id,)).fetchone()
+    if not row:
+        raise HTTPException(404, 'Không tìm thấy danh sách')
+    if user['vai_tro'] != 'admin' and row['nguoi_tao_id'] != user['id']:
+        raise HTTPException(403, 'Chỉ người tạo danh sách này hoặc admin mới có quyền thao tác')
+    return row
+
+
 @router.get('/danh-sach')
 def list_danh_sach(user=Depends(auth.get_current_user)):
-    """Trả mọi danh sách (kể cả rỗng), kèm so_luong = đếm hồ sơ trong đó."""
+    """Trả mọi danh sách (kể cả rỗng), kèm so_luong = đếm hồ sơ trong đó.
+    Mở cho MỌI nhân viên xem/lọc như cũ (KHÔNG lọc theo chủ sở hữu) — chỉ
+    thêm nguoi_tao_id vào response để frontend tự quyết định ẩn/disable nút
+    ghi cho danh sách không phải của mình."""
     conn = db.get_connection()
     try:
         rows = conn.execute(
-            'SELECT ds.id AS id, ds.ten AS ten, ds.thoi_diem_tao AS thoi_diem_tao, '
+            'SELECT ds.id AS id, ds.ten AS ten, ds.nguoi_tao_id AS nguoi_tao_id, '
+            'ds.thoi_diem_tao AS thoi_diem_tao, '
             'COUNT(dsh.id) AS so_luong '
             'FROM danh_sach ds LEFT JOIN danh_sach_ho_so dsh '
             'ON dsh.danh_sach_id = ds.id '
-            'GROUP BY ds.id, ds.ten, ds.thoi_diem_tao '
+            'GROUP BY ds.id, ds.ten, ds.nguoi_tao_id, ds.thoi_diem_tao '
             'ORDER BY ds.ten').fetchall()
     finally:
         conn.close()
@@ -82,9 +100,7 @@ def delete_danh_sach(id: int, user=Depends(auth.get_current_user)):
     nhận foreign_keys có bật)."""
     conn = db.get_connection()
     try:
-        row = conn.execute('SELECT id FROM danh_sach WHERE id=?', (id,)).fetchone()
-        if not row:
-            raise HTTPException(404, 'Không tìm thấy danh sách')
+        _require_quyen_ghi(conn, id, user)
         conn.execute('DELETE FROM danh_sach_ho_so WHERE danh_sach_id=?', (id,))
         conn.execute('DELETE FROM danh_sach WHERE id=?', (id,))
         conn.commit()
@@ -104,9 +120,7 @@ def them_ho_so_vao_danh_sach(id: int, body: HoSoListBody,
         raise HTTPException(400, 'Danh sách mã hồ sơ không được để trống')
     conn = db.get_connection()
     try:
-        row = conn.execute('SELECT id FROM danh_sach WHERE id=?', (id,)).fetchone()
-        if not row:
-            raise HTTPException(404, 'Không tìm thấy danh sách')
+        _require_quyen_ghi(conn, id, user)
         # Lọc chỉ mã THẬT SỰ tồn tại trong ho_so trước khi insert — tránh lỗi
         # FK (danh_sach_ho_so.ma_ho_so REFERENCES ho_so) cho mã sai/đã xóa.
         placeholders = ','.join('?' * len(body.ma_ho_so_list))
@@ -139,9 +153,7 @@ def go_ho_so_khoi_danh_sach(id: int, body: HoSoListBody,
         raise HTTPException(400, 'Danh sách mã hồ sơ không được để trống')
     conn = db.get_connection()
     try:
-        row = conn.execute('SELECT id FROM danh_sach WHERE id=?', (id,)).fetchone()
-        if not row:
-            raise HTTPException(404, 'Không tìm thấy danh sách')
+        _require_quyen_ghi(conn, id, user)
         placeholders = ','.join('?' * len(body.ma_ho_so_list))
         cur = conn.execute(
             f'DELETE FROM danh_sach_ho_so WHERE danh_sach_id=? '

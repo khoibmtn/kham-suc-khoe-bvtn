@@ -277,6 +277,7 @@ def init_schema(conn=None):
     _migrate_dong_bo_ten_icd(conn)
     _migrate_snapshot_danh_dau_xuat(conn)
     _migrate_ngay_thang_khong_hop_le(conn)
+    _migrate_gan_nguoi_tao_danh_sach(conn)
     if own:
         conn.close()
 
@@ -756,6 +757,46 @@ def _migrate_ngay_thang_khong_hop_le(conn):
             'FROM ho_so').fetchall()
         for row in rows:
             qc.sync_ngay_thang_flag(conn, row['ma_ho_so'], row)
+        conn.execute(
+            'INSERT INTO cai_dat(khoa, gia_tri) VALUES (?, ?) '
+            'ON CONFLICT(khoa) DO NOTHING', (_KHOA, 'true'))
+        conn.commit()
+    except Exception:
+        pass
+
+
+def _migrate_gan_nguoi_tao_danh_sach(conn):
+    """Phản hồi anh Khôi (2026-07-27): tính năng "Danh sách tùy chỉnh" đổi
+    sang phân quyền theo chủ sở hữu (chỉ người tạo/admin mới xóa/thêm/bớt
+    case) — nhưng các danh sách tạo TRƯỚC đợt này (vd 'DS xuất 27.07' tạo tự
+    động qua _migrate_snapshot_danh_dau_xuat ở trên, và bất kỳ danh sách nào
+    khác lỡ có nguoi_tao_id NULL) chưa có chủ. Gán MỘT LẦN DUY NHẤT cho MỌI
+    danh_sach đang NULL về tài khoản admin ĐẦU TIÊN trong hệ thống (id nhỏ
+    nhất, vai_tro='admin') để không ai bị khóa khỏi các danh sách đang dùng
+    hàng ngày.
+
+    1 LẦN DUY NHẤT (đánh dấu qua cai_dat) — CHỈ gán cho danh sách ĐANG NULL
+    tại thời điểm migration chạy lần đầu, không phải "luôn ép về admin": nếu
+    sau đó ai đó (không phải admin) đổi nguoi_tao_id sang giá trị khác, lần
+    khởi động sau KHÔNG được ghi đè lại.
+
+    Nếu hệ thống chưa có tài khoản admin nào (không nên xảy ra nhưng phòng
+    thủ) -> bỏ qua an toàn, KHÔNG set cờ cai_dat, để lần khởi động sau thử
+    lại (một khi đã có admin)."""
+    _KHOA = 'danh_sach_gan_nguoi_tao_da_chay'
+    try:
+        da_chay = conn.execute(
+            'SELECT 1 FROM cai_dat WHERE khoa=?', (_KHOA,)).fetchone()
+        if da_chay:
+            return
+        admin = conn.execute(
+            "SELECT id FROM nguoi_dung WHERE vai_tro='admin' "
+            'ORDER BY id LIMIT 1').fetchone()
+        if not admin:
+            return
+        conn.execute(
+            'UPDATE danh_sach SET nguoi_tao_id=? WHERE nguoi_tao_id IS NULL',
+            (admin['id'],))
         conn.execute(
             'INSERT INTO cai_dat(khoa, gia_tri) VALUES (?, ?) '
             'ON CONFLICT(khoa) DO NOTHING', (_KHOA, 'true'))

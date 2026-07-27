@@ -39,12 +39,23 @@ const ListView = (() => {
   let allFilterSelected = false;
   let allFilterSelectedSnapshot = null;
   let allFilterSelectedMaList = [];
-  let danhSachList = []; // [{id, ten, thoi_diem_tao, so_luong}] — cache cho
-                          // dropdown "Xem theo danh sách" (nạp lại sau tạo/xóa).
+  let danhSachList = []; // [{id, ten, nguoi_tao_id, thoi_diem_tao, so_luong}] —
+                          // cache cho dropdown "Xem theo danh sách" (nạp lại sau tạo/xóa).
   let danhSachSelectEl = null;
   let danhSachDeleteBtnEl = null;
   let addListPopoverEl = null;    // popover "Thêm vào danh sách" đang mở (null = đóng)
   let addListPopoverBtnEl = null;
+
+  // Chỉ người TẠO ra 1 danh sách hoặc admin mới có quyền GHI (xóa danh
+  // sách/thêm-bớt case) — xem/lọc (GET, dropdown, cột "Danh sách") KHÔNG bị
+  // giới hạn bởi hàm này. Phòng thủ: nguoi_tao_id null/undefined (không nên
+  // xảy ra sau migration backend, nhưng phòng lỗi timing) -> chỉ admin.
+  function coQuyenGhiDanhSach(ds) {
+    if (!ds) return false;
+    if (user && user.vai_tro === 'admin') return true;
+    if (ds.nguoi_tao_id === null || ds.nguoi_tao_id === undefined) return false;
+    return user && ds.nguoi_tao_id === user.id;
+  }
 
   // Tùy chọn cho dropdown "Cờ cảnh báo": khi đã có coQcCounts thì gắn số lượng
   // vào nhãn + BỎ cờ 0 hồ sơ (giữ lại cờ đang được chọn dù = 0 để không mất
@@ -1325,8 +1336,14 @@ const ListView = (() => {
     addBtn.addEventListener('click', () => toggleAddToListPopover(addBtn));
     bar.appendChild(addBtn);
 
-    // Chỉ hiện khi đang xem 1 danh sách cụ thể (tiêu chí 34).
-    if (filters.danh_sach_id) {
+    // Chỉ hiện khi đang xem 1 danh sách cụ thể (tiêu chí 34) VÀ user có
+    // quyền GHI với danh sách đó (chủ sở hữu/admin) — nếu không tìm thấy
+    // trong danhSachList (vd vừa bị người khác xóa) thì coi như không có
+    // quyền, không hiện nút (tiêu chí 15).
+    const dsHienTai = filters.danh_sach_id
+      ? danhSachList.find((d) => String(d.id) === String(filters.danh_sach_id))
+      : null;
+    if (filters.danh_sach_id && coQuyenGhiDanhSach(dsHienTai)) {
       const removeBtn = document.createElement('button');
       removeBtn.type = 'button';
       removeBtn.className = 'action-bar-remove';
@@ -1392,7 +1409,12 @@ const ListView = (() => {
     if (addListPopoverEl !== pop) return; // đã đóng trong lúc chờ mạng
     danhSachList = list;
     populateDanhSachSelect();
-    renderAddListPopoverContent(pop, list);
+    // CHỈ hiện danh sách mà user có quyền GHI (chủ sở hữu hoặc admin) —
+    // tiêu chí 14: ẩn hẳn (không hiện dạng disable) các danh sách không có
+    // quyền để tránh rối. Tạo mới (ô "Tên danh sách mới…") KHÔNG cần quyền,
+    // luôn hiển thị riêng bên dưới list này.
+    const listCoQuyen = list.filter((ds) => coQuyenGhiDanhSach(ds));
+    renderAddListPopoverContent(pop, listCoQuyen);
   }
 
   function renderAddListPopoverContent(pop, list) {
@@ -1477,7 +1499,7 @@ const ListView = (() => {
     danhSachSelectEl = sel;
     sel.addEventListener('change', () => {
       filters.danh_sach_id = sel.value;
-      if (danhSachDeleteBtnEl) danhSachDeleteBtnEl.disabled = !filters.danh_sach_id;
+      updateDanhSachDeleteBtnState();
       page = 1;
       // reload() tự phát hiện danh_sach_id vừa đổi qua coQcParamsSnapshot và
       // tự gọi refreshCoQcCounts() (tử số + mẫu số cùng đổi theo) — KHÔNG
@@ -1498,6 +1520,27 @@ const ListView = (() => {
 
     populateDanhSachSelect();
     return wrap;
+  }
+
+  // Cập nhật trạng thái disable + title của nút xóa "🗑" theo 2 điều kiện:
+  // (1) chưa chọn danh sách nào (như cũ), (2) đã chọn nhưng KHÔNG có quyền
+  // ghi (không phải người tạo/admin) — tiêu chí 13, phân biệt rõ 2 lý do
+  // disable bằng title khác nhau để user hiểu vì sao bị mờ.
+  function updateDanhSachDeleteBtnState() {
+    if (!danhSachDeleteBtnEl) return;
+    if (!filters.danh_sach_id) {
+      danhSachDeleteBtnEl.disabled = true;
+      danhSachDeleteBtnEl.title = 'Xóa danh sách đang chọn (không xóa hồ sơ)';
+      return;
+    }
+    const ds = danhSachList.find((d) => String(d.id) === String(filters.danh_sach_id));
+    if (coQuyenGhiDanhSach(ds)) {
+      danhSachDeleteBtnEl.disabled = false;
+      danhSachDeleteBtnEl.title = 'Xóa danh sách đang chọn (không xóa hồ sơ)';
+    } else {
+      danhSachDeleteBtnEl.disabled = true;
+      danhSachDeleteBtnEl.title = 'Chỉ người tạo danh sách này hoặc admin mới xóa được';
+    }
   }
 
   // Dựng lại <option> của dropdown "Xem theo danh sách" từ danhSachList —
@@ -1524,7 +1567,7 @@ const ListView = (() => {
       optAll.selected = true;
       filters.danh_sach_id = '';
     }
-    if (danhSachDeleteBtnEl) danhSachDeleteBtnEl.disabled = !filters.danh_sach_id;
+    updateDanhSachDeleteBtnState();
   }
 
   async function refreshDanhSachDropdown() {
