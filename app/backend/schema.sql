@@ -226,3 +226,22 @@ CREATE TABLE IF NOT EXISTS cai_dat (
   khoa    TEXT PRIMARY KEY,
   gia_tri TEXT
 );
+
+-- ========== DANH SÁCH TÙY CHỈNH (collection, đang bàn thiết kế đầy đủ —
+-- 2 bảng này CHỈ là phần dữ liệu tối thiểu để không mất trạng thái
+-- đánh_dấu_xuất hiện có, chưa có UI quản lý) ==========
+CREATE TABLE IF NOT EXISTS danh_sach (
+  id            INTEGER PRIMARY KEY,
+  ten           TEXT NOT NULL,
+  nguoi_tao_id  INTEGER REFERENCES nguoi_dung(id),
+  thoi_diem_tao TEXT DEFAULT (datetime('now','localtime'))
+);
+CREATE TABLE IF NOT EXISTS danh_sach_ho_so (
+  id             INTEGER PRIMARY KEY,
+  danh_sach_id   INTEGER NOT NULL REFERENCES danh_sach(id) ON DELETE CASCADE,
+  ma_ho_so       TEXT NOT NULL REFERENCES ho_so(ma_ho_so) ON DELETE CASCADE,
+  thoi_diem_them TEXT DEFAULT (datetime('now','localtime')),
+  UNIQUE(danh_sach_id, ma_ho_so)
+);
+CREATE INDEX IF NOT EXISTS idx_dsihs_hoso ON danh_sach_ho_so(ma_ho_so);
+CREATE INDEX IF NOT EXISTS idx_dsihs_ds ON danh_sach_ho_so(danh_sach_id);

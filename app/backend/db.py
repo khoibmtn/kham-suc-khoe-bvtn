@@ -275,6 +275,7 @@ def init_schema(conn=None):
     _migrate_xoa_san_phu_khoa_nam(conn)
     _migrate_chuan_hoa_bt(conn)
     _migrate_dong_bo_ten_icd(conn)
+    _migrate_snapshot_danh_dau_xuat(conn)
     if own:
         conn.close()
 
@@ -685,6 +686,40 @@ def _migrate_dong_bo_ten_icd(conn):
             "  SELECT ten FROM dm_icd "
             "  WHERE dm_icd.ma_tran = REPLACE(REPLACE(benh.ma_icd,'†',''),'*','') "
             "  ORDER BY ma LIMIT 1)")
+        conn.execute(
+            'INSERT INTO cai_dat(khoa, gia_tri) VALUES (?, ?) '
+            'ON CONFLICT(khoa) DO NOTHING', (_KHOA, 'true'))
+        conn.commit()
+    except Exception:
+        pass
+
+
+_TEN_DS_SNAPSHOT_XUAT = 'DS xuất 27.07'
+
+
+def _migrate_snapshot_danh_dau_xuat(conn):
+    """Phản hồi anh Khôi (2026-07-27): trước khi checkbox "đánh dấu xuất
+    file" có thể bị đổi sang cơ chế "chọn case" cho tính năng danh sách tùy
+    chỉnh (đang bàn thiết kế, CHƯA triển khai UI) — chụp lại NGAY 1 LẦN DUY
+    NHẤT trạng thái ho_so.danh_dau_xuat=1 hiện có vào 1 "danh sách" tên
+    'DS xuất 27.07' để không mất, TẠI THỜI ĐIỂM server khởi động lại lần
+    này (đánh dấu qua cai_dat, không snapshot lại nếu chạy tiếp các lần
+    sau — tránh ghi đè danh sách nếu nhân viên đã tự sửa/xoá bớt case khỏi
+    đó về sau)."""
+    _KHOA = 'snapshot_danh_dau_xuat_27_07_da_tao'
+    try:
+        da_chay = conn.execute(
+            'SELECT 1 FROM cai_dat WHERE khoa=?', (_KHOA,)).fetchone()
+        if da_chay:
+            return
+        cur = conn.execute('INSERT INTO danh_sach(ten) VALUES (?)',
+                           (_TEN_DS_SNAPSHOT_XUAT,))
+        danh_sach_id = cur.lastrowid
+        ma_list = [r['ma_ho_so'] for r in conn.execute(
+            'SELECT ma_ho_so FROM ho_so WHERE danh_dau_xuat=1').fetchall()]
+        conn.executemany(
+            'INSERT INTO danh_sach_ho_so(danh_sach_id, ma_ho_so) '
+            'VALUES (?, ?)', [(danh_sach_id, ma) for ma in ma_list])
         conn.execute(
             'INSERT INTO cai_dat(khoa, gia_tri) VALUES (?, ?) '
             'ON CONFLICT(khoa) DO NOTHING', (_KHOA, 'true'))
