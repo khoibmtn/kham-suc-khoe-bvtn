@@ -135,6 +135,88 @@ async def nhap_doi_soat_ep(file: UploadFile = File(...),
     return result
 
 
+@router.post('/xuat-file/doi-soat-xlsx')
+async def doi_soat_xlsx_ep(file: UploadFile = File(...),
+                           cot: str = Form(''),
+                           sheet: str = Form(''),
+                           ma_loai_tru: str = Form(''),
+                           admin=Depends(auth.require_admin)):
+    """Xuất TOÀN BỘ danh sách thay đổi phát hiện được ở bước đối soát (không
+    giới hạn 200 hồ sơ như bảng xem trước trên màn hình) ra file .xlsx để
+    kiểm tra kỹ hơn — CHỈ ĐỌC, không ghi gì vào DB (không có ap_dung/
+    cho_ghi_de như /nhap-doi-soat). Mỗi DÒNG Excel = 1 THAY ĐỔI (1 hồ sơ có
+    thể có nhiều thay đổi -> nhiều dòng). `ma_loai_tru` chỉ ảnh hưởng cột
+    "Sẽ áp dụng" (tham chiếu checkbox đã bỏ tick ở bước xem trước), KHÔNG
+    ảnh hưởng việc có liệt kê dòng đó hay không — file xuất luôn đầy đủ để
+    người dùng kiểm tra hết, kể cả dòng đã định loại trừ."""
+    content = await file.read()
+    cot_chon = {c.strip() for c in cot.split(',') if c.strip()} if cot else None
+    ma_loai_tru_set = ({m.strip() for m in ma_loai_tru.split(',') if m.strip()}
+                       if ma_loai_tru else set())
+    conn = db.get_connection()
+    try:
+        try:
+            result = nhap_doi_soat.doi_soat(
+                conn, content, apply=False, cho_ghi_de=False, user_id=None,
+                cot_chon=cot_chon, sheet=(sheet or None),
+                bo_gioi_han_chi_tiet=True)
+        except nhap_doi_soat.CanChonSheet as e:
+            raise HTTPException(409, detail={
+                'ly_do': 'can_chon_sheet',
+                'sheet_list': e.sheet_names,
+                'thong_bao': 'File có nhiều sheet — hãy chọn sheet cần đối soát.',
+            })
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+    finally:
+        conn.close()
+
+    import datetime
+    import io
+    import openpyxl
+    from openpyxl.styles import Font
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Đối soát'
+    headers = ['STT', 'Mã hồ sơ', 'Họ tên', 'Danh sách', 'Sẽ áp dụng',
+               'Loại thay đổi', 'Trường', 'Giá trị cũ', 'Giá trị mới']
+    bold = Font(bold=True)
+    for c, h in enumerate(headers, 1):
+        cell = ws.cell(1, c, h)
+        cell.font = bold
+
+    stt = 0
+    for row in result['chi_tiet']:
+        ma = row['ma_ho_so']
+        ds = '; '.join(row.get('_danh_sach') or [])
+        se_ap_dung = 'Không' if ma in ma_loai_tru_set else 'Có'
+        for c in row['changes']:
+            stt += 1
+            r = stt + 1
+            ws.cell(r, 1, stt)
+            ws.cell(r, 2, ma)
+            ws.cell(r, 3, row['ho_ten'])
+            ws.cell(r, 4, ds)
+            ws.cell(r, 5, se_ap_dung)
+            ws.cell(r, 6, 'Bổ sung' if c['loai'] == 'bo_sung' else 'Ghi đè')
+            ws.cell(r, 7, c['nhan'])
+            ws.cell(r, 8, c['cu'])
+            ws.cell(r, 9, c['moi'])
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    wb.close()
+    data = buf.getvalue()
+
+    fn = f'KSK_DoiSoat_{stt}thaydoi_{datetime.datetime.now():%Y%m%d_%H%M}.xlsx'
+    return Response(
+        content=data,
+        media_type=('application/vnd.openxmlformats-officedocument'
+                    '.spreadsheetml.sheet'),
+        headers={'Content-Disposition': f"attachment; filename*=UTF-8''{quote(fn)}"})
+
+
 @router.post('/xuat-file')
 def start_export(body: StartBody, admin=Depends(auth.require_admin)):
     # Job xuất .xlsm chạy NỀN bằng subprocess + ghi job.json ra đĩa

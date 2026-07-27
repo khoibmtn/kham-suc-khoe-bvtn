@@ -94,7 +94,8 @@ def _read_sheet(file_bytes, sheet=None):
 
 
 def doi_soat(conn, file_bytes, apply=False, cho_ghi_de=False, user_id=None,
-             cot_chon=None, sheet=None, ma_loai_tru=None):
+             cot_chon=None, sheet=None, ma_loai_tru=None,
+             bo_gioi_han_chi_tiet=False):
     """sheet: tên sheet cần đối soát — BẮT BUỘC chỉ định nếu file có ≥2
     sheet (ném CanChonSheet kèm danh sách tên nếu chưa chỉ định, để caller
     hỏi user rồi gọi lại). File chỉ 1 sheet thì tự dùng, không cần hỏi.
@@ -110,7 +111,13 @@ def doi_soat(conn, file_bytes, apply=False, cho_ghi_de=False, user_id=None,
     dòng) — CHỈ có tác dụng khi apply=True (dòng đó KHÔNG được ghi/không có
     nhat_ky mới); khi apply=False (xem trước) tham số này KHÔNG ảnh hưởng gì,
     chi_tiet vẫn liệt kê ĐẦY ĐỦ mọi dòng có thay đổi. None/rỗng -> tương
-    thích ngược (mọi dòng đều được ghi như trước)."""
+    thích ngược (mọi dòng đều được ghi như trước).
+
+    bo_gioi_han_chi_tiet: mặc định False (hành vi cũ — chi_tiet chỉ giữ tối
+    đa SAMPLE=200 hồ sơ đầu có thay đổi, dùng cho preview trên màn hình).
+    True -> chi_tiet giữ TẤT CẢ hồ sơ có thay đổi, không giới hạn — dùng
+    riêng cho mục đích xuất Excel đầy đủ (endpoint doi-soat-xlsx), KHÔNG
+    dùng cho preview/apply thường vì có thể rất lớn."""
     ma_loai_tru = ma_loai_tru or set()
     rows = _read_sheet(file_bytes, sheet=sheet)
     if len(rows) < 4:
@@ -201,7 +208,7 @@ def doi_soat(conn, file_bytes, apply=False, cho_ghi_de=False, user_id=None,
             continue
         so_bo_sung += sum(1 for c in changes if c['loai'] == 'bo_sung')
         so_ghi_de += sum(1 for c in changes if c['loai'] == 'ghi_de')
-        if len(chi_tiet) < SAMPLE:
+        if bo_gioi_han_chi_tiet or len(chi_tiet) < SAMPLE:
             chi_tiet.append({'ma_ho_so': ma, 'ho_ten': _norm(db_row['ho_ten']),
                              'changes': changes})
 

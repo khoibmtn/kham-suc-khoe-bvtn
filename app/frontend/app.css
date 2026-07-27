@@ -752,6 +752,26 @@ details summary {
 .xf-ds-apply { margin-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .xf-ds-apply #xf-ds-apply-btn { padding: 7px 16px; background: #2563eb; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-size: 13px; }
 .xf-ds-apply #xf-ds-apply-btn:disabled { background: #94a3b8; }
+.xf-ds-apply #xf-ds-xuat-excel-btn { padding: 7px 16px; background: #fff; color: #2563eb; border: 1px solid #93c5fd; border-radius: 5px; cursor: pointer; font-size: 13px; }
+.xf-ds-apply #xf-ds-xuat-excel-btn:hover:not(:disabled) { background: #eff6ff; }
+.xf-ds-apply #xf-ds-xuat-excel-btn:disabled { color: #94a3b8; border-color: #cbd5e1; }
+
+/* Đợt 20 (phản hồi anh Khôi): bảng thay thế cho danh sách thẻ ở trên —
+   1 THAY ĐỔI = 1 <tr>, 4 cột đầu (checkbox/mã/họ tên/danh sách) gộp bằng
+   rowspan theo hồ sơ. Ý nghĩa màu badge Loại (Bổ sung=xanh/Ghi đè=đỏ) và
+   giá trị cũ/mới GIỮ NGUYÊN như bản thẻ cũ (xem .xf-ds-bo_sung/.xf-ds-ghi_de/
+   .xf-ds-old/.xf-ds-new ở trên — nay áp trên <td> thay vì <div>). */
+.xf-ds-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.xf-ds-table th, .xf-ds-table td {
+  padding: 5px 8px; border-bottom: 1px solid #f1f5f9; text-align: left;
+  vertical-align: top;
+}
+.xf-ds-table thead th {
+  position: sticky; top: 0; background: #f8fafc; color: #334155;
+  font-weight: 600; z-index: 1; border-bottom: 1px solid #e2e8f0;
+}
+.xf-ds-table tbody tr:hover { background: #f8fafc; }
+.xf-ds-table td:nth-child(2) { color: #1e293b; font-weight: 600; }
 
 .xf-ds-cot { margin-bottom: 10px; padding: 8px 10px; background: #f8fafc; border-radius: 6px; }
 .xf-ds-cot-title { font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 6px; }

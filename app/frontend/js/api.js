@@ -182,6 +182,35 @@ const Api = (() => {
       }
       return data;
     },
+    // Xuất TOÀN BỘ danh sách thay đổi phát hiện được ở bước đối soát ra
+    // .xlsx (không giới hạn 200 hồ sơ như bảng xem trước) — CHỈ ĐỌC, không
+    // ghi gì. Tham số giống nhapDoiSoat (trừ apDung/choGhiDe, không cần vì
+    // endpoint này không ghi).
+    xuatDoiSoatXlsx: async (fileObj, cot, sheet, maLoaiTru) => {
+      const fd = new FormData();
+      fd.append('file', fileObj);
+      if (cot && cot.length) fd.append('cot', cot.join(','));
+      if (sheet) fd.append('sheet', sheet);
+      if (maLoaiTru && maLoaiTru.length) fd.append('ma_loai_tru', maLoaiTru.join(','));
+      const res = await fetch('/api/xuat-file/doi-soat-xlsx', {
+        method: 'POST', body: fd, credentials: 'same-origin',
+      });
+      if (!res.ok) {
+        let detail = `Lỗi ${res.status}`;
+        try {
+          const d = await res.json();
+          if (d && d.detail) detail = (typeof d.detail === 'string' ? d.detail : (d.detail.thong_bao || detail));
+        } catch (e) { /* */ }
+        if (res.status === 401 && onUnauthorized) onUnauthorized();
+        const err = new Error(detail);
+        err.status = res.status;
+        throw err;
+      }
+      const blob = await res.blob();
+      const cd = res.headers.get('Content-Disposition') || '';
+      const m = /filename\*=UTF-8''([^;]+)/i.exec(cd);
+      return { blob, name: m ? decodeURIComponent(m[1]) : 'KSK_DoiSoat.xlsx' };
+    },
     xuatFileJobs: () => req('GET', '/api/xuat-file/jobs'),
     xuatFileJob: (id) => req('GET', `/api/xuat-file/jobs/${encodeURIComponent(id)}`),
 

@@ -370,23 +370,36 @@ const ExportView = (() => {
     // đổi" (xem doDoiSoatApply). Badge "Danh sách" tái dùng .ds-tag/
     // .ds-tag-empty đã có ở list.js/app.css — KHÔNG nhầm với .xf-ds-tag
     // (nhãn "Bổ sung"/"Ghi đè" ở trên).
-    const rows = (r.chi_tiet || []).slice(0, 100).map((row) => {
-      const ch = row.changes.map((c) => `
-        <div class="xf-ds-ch xf-ds-${c.loai}">
-          <span class="xf-ds-tag">${c.loai === 'bo_sung' ? 'Bổ sung' : 'Ghi đè'}</span>
-          <b>${esc(c.nhan)}</b>:
-          ${c.loai === 'ghi_de' ? `<span class="xf-ds-old">${esc(c.cu) || '(trống)'}</span> → ` : ''}
-          <span class="xf-ds-new">${esc(c.moi)}</span>
-        </div>`).join('');
+    // Đợt 20 (phản hồi anh Khôi): dạng THẺ (mỗi hồ sơ 1 khối <div>) đổi sang
+    // dạng BẢNG — mỗi thay đổi 1 <tr>, 4 ô đầu (checkbox/mã/họ tên/danh
+    // sách) dùng rowspan gộp theo hồ sơ để không lặp lại N lần.
+    const rowsHtml = (r.chi_tiet || []).slice(0, 100).map((row) => {
       const dsBadges = (row._danh_sach && row._danh_sach.length)
         ? row._danh_sach.map((ten) => `<span class="ds-tag">${esc(ten)}</span>`).join('')
         : '<span class="ds-tag-empty">–</span>';
-      return `<div class="xf-ds-row">
-        <div class="xf-ds-ma">
-          <input type="checkbox" class="xf-ds-row-cb" value="${esc(row.ma_ho_so)}" checked>
-          ${esc(row.ma_ho_so)} — ${esc(row.ho_ten)} ${dsBadges}
-        </div>${ch}</div>`;
+      const n = row.changes.length;
+      const chTd = (c) => `
+          <td class="xf-ds-${c.loai}"><span class="xf-ds-tag">${c.loai === 'bo_sung' ? 'Bổ sung' : 'Ghi đè'}</span></td>
+          <td>${esc(c.nhan)}</td>
+          <td>${c.loai === 'ghi_de' ? `<span class="xf-ds-old">${esc(c.cu) || '(trống)'}</span>` : ''}</td>
+          <td><span class="xf-ds-new">${esc(c.moi)}</span></td>`;
+      const firstRow = `<tr>
+          <td rowspan="${n}"><input type="checkbox" class="xf-ds-row-cb" value="${esc(row.ma_ho_so)}" checked></td>
+          <td rowspan="${n}">${esc(row.ma_ho_so)}</td>
+          <td rowspan="${n}">${esc(row.ho_ten)}</td>
+          <td rowspan="${n}">${dsBadges}</td>${chTd(row.changes[0])}
+        </tr>`;
+      const restRows = row.changes.slice(1).map((c) => `<tr>${chTd(c)}</tr>`).join('');
+      return firstRow + restRows;
     }).join('');
+    const rows = rowsHtml ? `
+      <table class="xf-ds-table">
+        <thead><tr>
+          <th></th><th>Mã hồ sơ</th><th>Họ tên</th><th>Danh sách</th>
+          <th>Loại</th><th>Trường</th><th>Giá trị cũ</th><th>Giá trị mới</th>
+        </tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>` : '';
     const coThayDoi = (r.so_bo_sung + r.so_ghi_de) > 0;
     const khongKhopBox = r.so_khong_khop
       ? `<div class="xf-ds-warn">⚠ ${r.so_khong_khop} dòng KHÔNG khớp mã định danh — sẽ bỏ qua${r.khong_khop.length ? ' (vd: ' + esc(r.khong_khop.slice(0, 3).join(', ')) + ')' : ''}.</div>`
@@ -399,17 +412,21 @@ const ExportView = (() => {
       </div>
       ${khongKhopBox}
       ${coThayDoi ? `
-        <div class="xf-ds-detail">${rows}${r.chi_tiet.length > 100 ? '<div class="xf-hint">... (chỉ hiện 100 dòng đầu)</div>' : ''}</div>
+        <div class="xf-ds-detail">${rows}${r.chi_tiet.length > 100 ? '<div class="xf-hint">... (chỉ hiện 100 hồ sơ đầu — bấm "Xuất Excel" bên dưới để xem đầy đủ)</div>' : ''}</div>
         <div class="xf-ds-apply">
           ${r.so_ghi_de ? `<label class="xf-toggle"><input type="checkbox" id="xf-ds-ghide"> Cho phép <b>ghi đè ${r.so_ghi_de} ô đã có dữ liệu</b> (thao tác ghi đè được ghi nhật ký)</label>` : ''}
           <button id="xf-ds-apply-btn" type="button">Áp dụng thay đổi</button>
           <span id="xf-ds-apply-status" class="xf-plain-status"></span>
+          <button id="xf-ds-xuat-excel-btn" type="button">Xuất Excel</button>
+          <span id="xf-ds-xuat-excel-status" class="xf-plain-status"></span>
         </div>`
         : (cotList.length ? '<div class="xf-hint">Không có thay đổi nào để áp dụng (với các cột đang chọn).</div>' : '')}
     `;
     if (coThayDoi) {
       panel.querySelector('#xf-ds-apply-btn').addEventListener('click',
         () => doDoiSoatApply(file, layCotDangChon(), sheetChon));
+      panel.querySelector('#xf-ds-xuat-excel-btn').addEventListener('click',
+        () => doXuatDoiSoatExcel(file, layCotDangChon(), sheetChon));
     }
 
     function layCotDangChon() {
@@ -464,6 +481,33 @@ const ExportView = (() => {
     } catch (err) {
       status.textContent = ' ' + err.message;
       status.className = 'xf-plain-status error';
+      btn.disabled = false;
+    }
+  }
+
+  // Đợt 20 (phản hồi anh Khôi): xuất TOÀN BỘ danh sách thay đổi ra .xlsx để
+  // kiểm tra kỹ hơn (khác "Áp dụng thay đổi" — KHÔNG ghi gì vào DB, chỉ
+  // đọc, nên KHÔNG cần confirm()). Hoạt động độc lập với nút "Áp dụng".
+  async function doXuatDoiSoatExcel(file, cot, sheetChon) {
+    const btn = panel.querySelector('#xf-ds-xuat-excel-btn');
+    const status = panel.querySelector('#xf-ds-xuat-excel-status');
+    const maLoaiTru = Array.from(panel.querySelectorAll('.xf-ds-row-cb:not(:checked)')).map((cb) => cb.value);
+    btn.disabled = true;
+    status.textContent = ' Đang tạo file...';
+    status.className = 'xf-plain-status';
+    try {
+      const { blob, name } = await Api.xuatDoiSoatXlsx(file, cot, sheetChon, maLoaiTru);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      status.textContent = ` Đã tải: ${name}`;
+      status.className = 'xf-plain-status ok';
+    } catch (err) {
+      status.textContent = ' ' + err.message;
+      status.className = 'xf-plain-status error';
+    } finally {
       btn.disabled = false;
     }
   }
