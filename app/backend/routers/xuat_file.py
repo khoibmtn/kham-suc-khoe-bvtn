@@ -67,31 +67,6 @@ def _job_public(job):
     return {k: v for k, v in job.items() if k != 'job_dir'}
 
 
-@router.post('/xuat-file/xlsx-don-thuan')
-def xuat_xlsx_don_thuan(body: PreviewBody, admin=Depends(auth.require_admin)):
-    """Xuất .xlsx ĐƠN THUẦN (1 sheet 'Trên 18', không macro/dropdown) và trả
-    file tải về NGAY — không job nền/đĩa nên chạy được CẢ trên bản đám mây
-    lẫn local. KHÔNG nộp Bộ được (thiếu validation/VBA); dùng để rà soát,
-    đối chiếu nhanh."""
-    conn = db.get_connection()
-    try:
-        try:
-            data, count = export_xlsm.build_plain_xlsx(
-                conn, body.pham_vi, body.gia_tri, body.include_errors,
-                body.chi_rs_xong)
-        except ValueError as e:
-            raise HTTPException(400, str(e))
-    finally:
-        conn.close()
-    import datetime
-    fn = f'KSK_DonThuan_{count}ca_{datetime.datetime.now():%Y%m%d_%H%M}.xlsx'
-    return Response(
-        content=data,
-        media_type=('application/vnd.openxmlformats-officedocument'
-                    '.spreadsheetml.sheet'),
-        headers={'Content-Disposition': f"attachment; filename*=UTF-8''{quote(fn)}"})
-
-
 @router.post('/xuat-file/xlsx-chinh-sua')
 def xuat_xlsx_chinh_sua(body: PreviewBody, admin=Depends(auth.require_admin)):
     """Xuất .xlsx như đơn thuần NHƯNG kèm cột MÃ ĐỊNH DANH (ma_ho_so) ở đầu —
@@ -121,6 +96,7 @@ async def nhap_doi_soat_ep(file: UploadFile = File(...),
                            cho_ghi_de: bool = Form(False),
                            cot: str = Form(''),
                            sheet: str = Form(''),
+                           ma_loai_tru: str = Form(''),
                            admin=Depends(auth.require_admin)):
     """Nhập lại file .xlsx đã chỉnh sửa, đối soát với DB. ap_dung=False -> chỉ
     XEM TRƯỚC (không ghi). ap_dung=True -> ghi (bổ sung luôn; ghi đè chỉ khi
@@ -130,16 +106,22 @@ async def nhap_doi_soat_ep(file: UploadFile = File(...),
     (phản hồi anh Khôi: trước đây tự đoán sheet, có thể đọc NHẦM sheet dẫn
     tới đối soát sai — vd ghi đè Ngày sinh thật thành 01/01 ước lượng).
     Chưa chỉ định mà file nhiều sheet -> trả 409 kèm danh sách sheet, để
-    frontend hỏi user chọn rồi gọi lại. Trả tóm tắt + cot_phat_hien + mẫu
-    chi tiết thay đổi."""
+    frontend hỏi user chọn rồi gọi lại. `ma_loai_tru`: danh sách mã hồ sơ
+    (cách nhau dấu phẩy) bị bỏ tick ở checkbox từng DÒNG tại bước xem trước —
+    CHỈ có tác dụng khi ap_dung=True (dòng đó không được ghi); các lời gọi
+    xem trước không cần truyền tham số này. Trả tóm tắt + cot_phat_hien +
+    mẫu chi tiết thay đổi."""
     content = await file.read()
     cot_chon = {c.strip() for c in cot.split(',') if c.strip()} if cot else None
+    ma_loai_tru_set = ({m.strip() for m in ma_loai_tru.split(',') if m.strip()}
+                       if ma_loai_tru else None)
     conn = db.get_connection()
     try:
         try:
             result = nhap_doi_soat.doi_soat(
                 conn, content, apply=ap_dung, cho_ghi_de=cho_ghi_de,
-                user_id=admin['id'], cot_chon=cot_chon, sheet=(sheet or None))
+                user_id=admin['id'], cot_chon=cot_chon, sheet=(sheet or None),
+                ma_loai_tru=ma_loai_tru_set)
         except nhap_doi_soat.CanChonSheet as e:
             raise HTTPException(409, detail={
                 'ly_do': 'can_chon_sheet',

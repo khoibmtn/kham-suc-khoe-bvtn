@@ -66,6 +66,8 @@ EXTENDED_COLUMNS = [
     ('GLU_GIA_TRI', 'Giá trị glucose'),
     ('KQ_DIEN_TIM', 'Kết quả điện tim'),
     ('KQ_SIEU_AM_O_BUNG', 'Kết quả siêu âm ổ bụng'),
+    ('MA_HO_SO', 'Mã hồ sơ'),
+    ('DANH_SACH', 'Danh sách'),
 ]
 EXTENDED_LABELS = dict(EXTENDED_COLUMNS)
 EXTENDED_CODES = {c for c, _ in EXTENDED_COLUMNS}
@@ -299,8 +301,10 @@ def _row_to_rec(row, tt):
     return rec
 
 
-def _row_ext(row, ho_ten_ra_soat):
-    """Giá trị cho các cột mở rộng §7.2 — chỉ dùng khi user bật option."""
+def _row_ext(row, ho_ten_ra_soat, danh_sach_map):
+    """Giá trị cho các cột mở rộng §7.2 — chỉ dùng khi user bật option.
+    danh_sach_map: {ma_ho_so: [tên danh sách,...]} (đợt xuất — xem create_job),
+    dùng để điền cột DANH_SACH — rỗng nếu hồ sơ không thuộc danh sách nào."""
     return {
         'MA_BENH_CHINH': row['ma_benh_chinh'],
         'MA_BENH_KEM': row['ma_benh_kem'],
@@ -317,6 +321,8 @@ def _row_ext(row, ho_ten_ra_soat):
         'GLU_GIA_TRI': row['glu_gia_tri'],
         'KQ_DIEN_TIM': row['kq_dien_tim'],
         'KQ_SIEU_AM_O_BUNG': row['kq_sieu_am_o_bung'],
+        'MA_HO_SO': row['ma_ho_so'],
+        'DANH_SACH': ', '.join(danh_sach_map.get(row['ma_ho_so'], [])),
     }
 
 
@@ -352,6 +358,18 @@ def create_job(pham_vi, gia_tri, include_errors, extended, admin_id,
             args + red_args)}
         user_map = {r['id']: r['ho_ten'] for r in
                     conn.execute('SELECT id, ho_ten FROM nguoi_dung')}
+        # Cột mở rộng DANH_SACH (criterion 1.4): mỗi hồ sơ trong `rows` thuộc
+        # những danh sách tùy chỉnh nào — 1 TRUY VẤN PHỤ DUY NHẤT theo mã hồ
+        # sơ của TOÀN BỘ phạm vi (không N+1), khuôn mẫu ho_so.py dòng ~544-553.
+        ma_list = [r['ma_ho_so'] for r in rows]
+        danh_sach_map = {}
+        if ma_list:
+            ph_ds = ','.join('?' * len(ma_list))
+            for r_ds in conn.execute(
+                    f'SELECT dsh.ma_ho_so AS ma_ho_so, ds.ten AS ten '
+                    f'FROM danh_sach_ho_so dsh JOIN danh_sach ds ON ds.id = dsh.danh_sach_id '
+                    f'WHERE dsh.ma_ho_so IN ({ph_ds})', ma_list):
+                danh_sach_map.setdefault(r_ds['ma_ho_so'], []).append(r_ds['ten'])
     finally:
         conn.close()
 
@@ -389,13 +407,14 @@ def create_job(pham_vi, gia_tri, include_errors, extended, admin_id,
 
     t = threading.Thread(target=_run_job,
                           args=(job_id, rows, red_set, user_map, include_errors,
-                                ext_enabled, ext_columns),
+                                ext_enabled, ext_columns, danh_sach_map),
                           daemon=True)
     t.start()
     return job
 
 
-def _run_job(job_id, rows, red_set, user_map, include_errors, ext_enabled, ext_columns):
+def _run_job(job_id, rows, red_set, user_map, include_errors, ext_enabled, ext_columns,
+             danh_sach_map):
     """Đợt 18 (phản hồi anh Khôi): GỘP 1 file .xlsm duy nhất theo đúng phạm vi
     đã chọn — không tách theo xã/phường nữa như trước. §7.1 mục 7 SPEC từng
     ghi "gộp 13.326 ca vào 1 file làm openpyxl vượt bộ nhớ" — đã ĐO LẠI THẬT
@@ -435,7 +454,7 @@ def _run_job(job_id, rows, red_set, user_map, include_errors, ext_enabled, ext_c
     for i, r in enumerate(included_rows, 1):
         rec = _row_to_rec(r, i)
         if ext_enabled:
-            rec['_EXT'] = _row_ext(r, user_map.get(r['nguoi_ra_soat_id'], ''))
+            rec['_EXT'] = _row_ext(r, user_map.get(r['nguoi_ra_soat_id'], ''), danh_sach_map)
         recs.append(rec)
 
     filename = _merged_filename(len(included_rows))

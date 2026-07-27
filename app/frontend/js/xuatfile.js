@@ -76,28 +76,16 @@ const ExportView = (() => {
         <div id="xf-extended-cols" class="xf-ext-cols" hidden>${cotOptions}</div>
       </div>
 
-      <div class="xf-block">
+      <div class="xf-block xf-btn-row">
         <button id="xf-start-btn" type="button">Bắt đầu xuất .xlsm (nộp Bộ)</button>
-      </div>
-
-      <div class="xf-block xf-plain-block">
-        <div class="xf-label">Hoặc: Xuất Excel đơn thuần (.xlsx)</div>
-        <p class="xf-hint">1 sheet nhập liệu, cấu trúc 103 cột giống mẫu
-          &ldquo;Trên 18&rdquo; nhưng <b>không có macro/dropdown</b> —
-          KHÔNG nộp Bộ được, dùng để rà soát &amp; đối chiếu nhanh.
-          Tải về ngay, chạy được cả trên bản đám mây.</p>
-        <button id="xf-plain-btn" type="button">Tải .xlsx đơn thuần</button>
-        <span id="xf-plain-status" class="xf-plain-status"></span>
+        <button id="xf-edit-btn" type="button">Tải .xlsx (kèm mã định danh)</button>
+        <span id="xf-edit-status" class="xf-plain-status"></span>
       </div>
 
       <div class="xf-block xf-roundtrip-block">
-        <div class="xf-label">Xuất để chỉnh sửa &amp; nhập lại (.xlsx có mã định danh)</div>
-        <p class="xf-hint">Giống .xlsx đơn thuần nhưng có thêm <b>cột MÃ ĐỊNH DANH</b>
-          (tô vàng, ở đầu). Tải về, bổ sung/sửa dữ liệu còn thiếu ở các dòng/trường
-          (GIỮ NGUYÊN cột mã định danh), rồi <b>chọn file bên dưới để nhập lại</b> —
-          hệ thống đối soát, bổ sung dữ liệu mới và xin phép trước khi ghi đè.</p>
-        <button id="xf-edit-btn" type="button">Tải .xlsx để chỉnh sửa</button>
-        <span id="xf-edit-status" class="xf-plain-status"></span>
+        <div class="xf-label">Nhập lại file đã chỉnh sửa</div>
+        <p class="xf-hint">Dùng file vừa tải ở nút phía trên — sửa/bổ sung dữ liệu
+          (GIỮ NGUYÊN cột mã định danh), rồi chọn file bên dưới để nhập lại.</p>
 
         <div class="xf-ds-import">
           <label class="xf-ds-filelbl">Nhập lại file đã sửa:
@@ -185,7 +173,6 @@ const ExportView = (() => {
 
     panel.querySelector('#xf-preview-btn').addEventListener('click', doPreview);
     panel.querySelector('#xf-start-btn').addEventListener('click', doStart);
-    panel.querySelector('#xf-plain-btn').addEventListener('click', doExportPlain);
     panel.querySelector('#xf-edit-btn').addEventListener('click', doExportChinhSua);
     panel.querySelector('#xf-ds-file').addEventListener('change', doDoiSoatPreview);
     panel.querySelector('#xf-backup-create-btn').addEventListener('click', doBackupCreate);
@@ -271,33 +258,6 @@ const ExportView = (() => {
       // có gì xảy ra — khung tiến độ/lỗi nằm NGAY BÊN DƯỚI, tự cuộn tới đó
       // để không ai tưởng nhầm là "bấm không phản hồi" rồi bỏ qua.
       progressBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-  }
-
-  async function doExportPlain() {
-    const scope = currentScope();
-    const btn = panel.querySelector('#xf-plain-btn');
-    const status = panel.querySelector('#xf-plain-status');
-    btn.disabled = true;
-    status.textContent = ' Đang tạo file .xlsx ...';
-    status.className = 'xf-plain-status';
-    try {
-      const { blob, name } = await Api.xuatFileXlsxDonThuan({ ...scope, ...currentOptions() });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 4000);
-      status.textContent = ` Đã tải: ${name}`;
-      status.className = 'xf-plain-status ok';
-    } catch (err) {
-      status.textContent = ' ' + err.message;
-      status.className = 'xf-plain-status error';
-    } finally {
-      btn.disabled = false;
     }
   }
 
@@ -405,6 +365,11 @@ const ExportView = (() => {
         </div>
       </div>` : '';
 
+    // Đợt 19 (phản hồi anh Khôi): checkbox chọn/bỏ TỪNG DÒNG (mặc định
+    // checked) — dòng bị bỏ tick sẽ KHÔNG được ghi khi bấm "Áp dụng thay
+    // đổi" (xem doDoiSoatApply). Badge "Danh sách" tái dùng .ds-tag/
+    // .ds-tag-empty đã có ở list.js/app.css — KHÔNG nhầm với .xf-ds-tag
+    // (nhãn "Bổ sung"/"Ghi đè" ở trên).
     const rows = (r.chi_tiet || []).slice(0, 100).map((row) => {
       const ch = row.changes.map((c) => `
         <div class="xf-ds-ch xf-ds-${c.loai}">
@@ -413,7 +378,14 @@ const ExportView = (() => {
           ${c.loai === 'ghi_de' ? `<span class="xf-ds-old">${esc(c.cu) || '(trống)'}</span> → ` : ''}
           <span class="xf-ds-new">${esc(c.moi)}</span>
         </div>`).join('');
-      return `<div class="xf-ds-row"><div class="xf-ds-ma">${esc(row.ma_ho_so)} — ${esc(row.ho_ten)}</div>${ch}</div>`;
+      const dsBadges = (row._danh_sach && row._danh_sach.length)
+        ? row._danh_sach.map((ten) => `<span class="ds-tag">${esc(ten)}</span>`).join('')
+        : '<span class="ds-tag-empty">–</span>';
+      return `<div class="xf-ds-row">
+        <div class="xf-ds-ma">
+          <input type="checkbox" class="xf-ds-row-cb" value="${esc(row.ma_ho_so)}" checked>
+          ${esc(row.ma_ho_so)} — ${esc(row.ho_ten)} ${dsBadges}
+        </div>${ch}</div>`;
     }).join('');
     const coThayDoi = (r.so_bo_sung + r.so_ghi_de) > 0;
     const khongKhopBox = r.so_khong_khop
@@ -471,17 +443,20 @@ const ExportView = (() => {
     const status = panel.querySelector('#xf-ds-apply-status');
     const ghideEl = panel.querySelector('#xf-ds-ghide');
     const choGhiDe = !!(ghideEl && ghideEl.checked);
+    // Dòng bị bỏ tick ở checkbox đầu dòng (mặc định checked) -> loại khỏi
+    // lần áp dụng này (Đợt 19, phản hồi anh Khôi).
+    const maLoaiTru = Array.from(panel.querySelectorAll('.xf-ds-row-cb:not(:checked)')).map((cb) => cb.value);
     if (!cot || !cot.length) {
       status.textContent = ' Chưa chọn cột nào để cập nhật.';
       status.className = 'xf-plain-status error';
       return;
     }
-    if (!confirm(`Áp dụng thay đổi cho ${cot.length} cột đã chọn?\n\n- Bổ sung dữ liệu mới cho các ô đang trống.\n- ${choGhiDe ? 'CÓ ghi đè các ô đã có dữ liệu (khác giá trị).' : 'KHÔNG ghi đè ô đã có dữ liệu.'}\n\nThao tác được ghi nhật ký.`)) return;
+    if (!confirm(`Áp dụng thay đổi cho ${cot.length} cột đã chọn${maLoaiTru.length ? `, bỏ qua ${maLoaiTru.length} dòng đã bỏ tick` : ''}?\n\n- Bổ sung dữ liệu mới cho các ô đang trống.\n- ${choGhiDe ? 'CÓ ghi đè các ô đã có dữ liệu (khác giá trị).' : 'KHÔNG ghi đè ô đã có dữ liệu.'}\n\nThao tác được ghi nhật ký.`)) return;
     btn.disabled = true;
     status.textContent = ' Đang ghi ...';
     status.className = 'xf-plain-status';
     try {
-      const r = await Api.nhapDoiSoat(file, true, choGhiDe, cot, sheetChon);
+      const r = await Api.nhapDoiSoat(file, true, choGhiDe, cot, sheetChon, maLoaiTru);
       status.textContent = ` Đã ghi: ${r.da_ghi_bo_sung} bổ sung, ${r.da_ghi_ghi_de} ghi đè.`
         + (r.loi_validate && r.loi_validate.length ? ` (${r.loi_validate.length} ô bị bỏ do sai ngưỡng)` : '');
       status.className = 'xf-plain-status ok';

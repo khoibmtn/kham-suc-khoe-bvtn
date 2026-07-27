@@ -94,7 +94,7 @@ def _read_sheet(file_bytes, sheet=None):
 
 
 def doi_soat(conn, file_bytes, apply=False, cho_ghi_de=False, user_id=None,
-             cot_chon=None, sheet=None):
+             cot_chon=None, sheet=None, ma_loai_tru=None):
     """sheet: tên sheet cần đối soát — BẮT BUỘC chỉ định nếu file có ≥2
     sheet (ném CanChonSheet kèm danh sách tên nếu chưa chỉ định, để caller
     hỏi user rồi gọi lại). File chỉ 1 sheet thì tự dùng, không cần hỏi.
@@ -104,7 +104,14 @@ def doi_soat(conn, file_bytes, apply=False, cho_ghi_de=False, user_id=None,
     CHỈ đối soát/ghi những cột đó — các cột khác coi như KHÔNG có trong file
     (bỏ qua hoàn toàn, kể cả nếu có giá trị). Trả kèm 'cot_phat_hien' (TOÀN
     BỘ cột hợp lệ tìm thấy trong file, không phụ thuộc cot_chon) để frontend
-    liệt kê + hỏi user chọn trước khi đối soát/ghi (phản hồi anh Khôi)."""
+    liệt kê + hỏi user chọn trước khi đối soát/ghi (phản hồi anh Khôi).
+
+    ma_loai_tru: tập hợp mã hồ sơ bị bỏ tick ở bước xem trước (checkbox từng
+    dòng) — CHỈ có tác dụng khi apply=True (dòng đó KHÔNG được ghi/không có
+    nhat_ky mới); khi apply=False (xem trước) tham số này KHÔNG ảnh hưởng gì,
+    chi_tiet vẫn liệt kê ĐẦY ĐỦ mọi dòng có thay đổi. None/rỗng -> tương
+    thích ngược (mọi dòng đều được ghi như trước)."""
+    ma_loai_tru = ma_loai_tru or set()
     rows = _read_sheet(file_bytes, sheet=sheet)
     if len(rows) < 4:
         raise ValueError('File không đúng định dạng (cần 3 dòng tiêu đề + dữ liệu).')
@@ -198,11 +205,27 @@ def doi_soat(conn, file_bytes, apply=False, cho_ghi_de=False, user_id=None,
             chi_tiet.append({'ma_ho_so': ma, 'ho_ten': _norm(db_row['ho_ten']),
                              'changes': changes})
 
-        if apply:
+        if apply and ma not in ma_loai_tru:
             da_bs, da_gd = _apply_row(conn, ma, db_row, changes, cho_ghi_de,
                                       nguong, user_id, loi_validate)
             da_ghi_bo_sung += da_bs
             da_ghi_ghi_de += da_gd
+
+    # Cột "Danh sách" ở bước xem trước đối soát (criterion 4.3): mỗi dòng
+    # trong chi_tiet thuộc những danh sách tùy chỉnh nào — 1 TRUY VẤN PHỤ
+    # DUY NHẤT theo TOÀN BỘ mã hồ sơ đã có trong chi_tiet (không N+1), khuôn
+    # mẫu ho_so.py dòng ~544-553 / export_xlsm.create_job().
+    if chi_tiet:
+        ma_ct = [c['ma_ho_so'] for c in chi_tiet]
+        ph_ct = ','.join('?' * len(ma_ct))
+        ds_map = {}
+        for r_ds in conn.execute(
+                f'SELECT dsh.ma_ho_so AS ma_ho_so, ds.ten AS ten '
+                f'FROM danh_sach_ho_so dsh JOIN danh_sach ds ON ds.id = dsh.danh_sach_id '
+                f'WHERE dsh.ma_ho_so IN ({ph_ct})', ma_ct):
+            ds_map.setdefault(r_ds['ma_ho_so'], []).append(r_ds['ten'])
+        for c in chi_tiet:
+            c['_danh_sach'] = ds_map.get(c['ma_ho_so'], [])
 
     if apply:
         conn.commit()

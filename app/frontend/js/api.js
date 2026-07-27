@@ -129,27 +129,6 @@ const Api = (() => {
     xuatFileCotMoRong: () => req('GET', '/api/xuat-file/cot-mo-rong'),
     xuatFilePreview: (body) => req('POST', '/api/xuat-file/preview', body),
     xuatFileStart: (body) => req('POST', '/api/xuat-file', body),
-    // Xuất .xlsx đơn thuần — trả BLOB (không phải JSON) + tên file lấy từ
-    // Content-Disposition, để xuatfile.js kích hoạt tải về.
-    xuatFileXlsxDonThuan: async (body) => {
-      const res = await fetch('/api/xuat-file/xlsx-don-thuan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        let detail = `Lỗi ${res.status}`;
-        try { const d = await res.json(); if (d && d.detail) detail = d.detail; } catch (e) { /* no body */ }
-        if (res.status === 401 && onUnauthorized) onUnauthorized();
-        throw new Error(detail);
-      }
-      const blob = await res.blob();
-      const cd = res.headers.get('Content-Disposition') || '';
-      const m = /filename\*=UTF-8''([^;]+)/i.exec(cd);
-      const name = m ? decodeURIComponent(m[1]) : 'KSK_DonThuan.xlsx';
-      return { blob, name };
-    },
     // Xuất .xlsx KÈM cột mã định danh để sửa rồi nhập lại (BLOB).
     xuatFileXlsxChinhSua: async (body) => {
       const res = await fetch('/api/xuat-file/xlsx-chinh-sua', {
@@ -169,13 +148,16 @@ const Api = (() => {
     },
     // Nhập lại file đã sửa để đối soát. apDung=false -> xem trước. cot: mảng
     // tên field muốn cập nhật (rỗng/undefined -> tất cả cột phát hiện được).
-    nhapDoiSoat: async (fileObj, apDung, choGhiDe, cot, sheet) => {
+    // maLoaiTru: mảng mã hồ sơ bị bỏ tick ở checkbox từng dòng — chỉ có tác
+    // dụng khi apDung=true; các lời gọi xem trước không cần truyền.
+    nhapDoiSoat: async (fileObj, apDung, choGhiDe, cot, sheet, maLoaiTru) => {
       const fd = new FormData();
       fd.append('file', fileObj);
       fd.append('ap_dung', apDung ? 'true' : 'false');
       fd.append('cho_ghi_de', choGhiDe ? 'true' : 'false');
       if (cot && cot.length) fd.append('cot', cot.join(','));
       if (sheet) fd.append('sheet', sheet);
+      if (maLoaiTru && maLoaiTru.length) fd.append('ma_loai_tru', maLoaiTru.join(','));
       const res = await fetch('/api/xuat-file/nhap-doi-soat', {
         method: 'POST', body: fd, credentials: 'same-origin',
       });
