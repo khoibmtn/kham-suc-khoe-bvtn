@@ -1126,6 +1126,53 @@ const ListView = (() => {
     return esc(before) + '<mark>' + esc(mid) + '</mark>' + esc(after);
   }
 
+  // Dựng 1 <tr> hoàn chỉnh (nội dung + mọi event listener) cho item ở vị trí
+  // idx trong `items` — tách riêng khỏi renderTable() để renderRow() (đồng
+  // bộ 1 dòng sau khi sửa panel chi tiết) có thể dựng lại ĐÚNG 1 dòng mà
+  // không phải build lại toàn bảng. GIỮ NGUYÊN 100% logic/HTML so với trước.
+  function buildRowEl(it, idx) {
+    const stt = (page - 1) * pageSize + idx + 1;
+    const tr = document.createElement('tr');
+    tr.dataset.idx = idx;
+    if (it.muc_co === 'do') tr.classList.add('row-do');
+    else if (it.muc_co === 'vang') tr.classList.add('row-vang');
+    if (idx === selectedIdx) tr.classList.add('selected');
+    const extraTd = extraFieldCodes.map((code) => `<td>${highlightCell(it[code])}</td>`).join('');
+    const dsText = (it._danh_sach && it._danh_sach.length)
+      ? it._danh_sach.map((d) => `<span class="ds-tag">${esc(d.ten)}</span>`).join('')
+      : '<span class="ds-tag-empty">–</span>';
+    tr.innerHTML = `<td class="col-danhdauxuat"><input type="checkbox" class="danhdauxuat-cb" ${selectedSet.has(it.ma_ho_so) ? 'checked' : ''}></td>
+      <td>${stt}</td>
+      <td>${highlightCell(it.ho_ten)}</td>
+      <td>${highlightCell(it.ngay_sinh)}</td><td>${highlightCell(it.gioi_tinh)}</td>
+      <td>${highlightCell(it.so_cccd)}</td>
+      <td>${highlightCell(it.maxa_cu_tru)}</td><td>${highlightCell(it.ngay_vao)}</td>
+      <td>${highlightCell(it.phan_loai_sk)}</td><td>${highlightCell(it.ket_luan_benh)}</td>
+      <td>${esc(it.so_loi)}</td><td>${highlightCell(it.trang_thai_nhan)}</td>
+      ${extraTd}<td>${highlightCell(it.ma_ho_so)}</td><td class="col-danhsach">${dsText}</td>`;
+    // Checkbox "chọn tạm" — CHỈ toggle ma_ho_so trong selectedSet (frontend
+    // only, KHÔNG gọi Api.patchHoSo/mạng, KHÔNG confirm() — tiêu chí 28).
+    // stopPropagation() để không kích hoạt tr.click (mở chi tiết).
+    const cb = tr.querySelector('.danhdauxuat-cb');
+    cb.addEventListener('click', (e) => e.stopPropagation());
+    cb.addEventListener('change', (e) => {
+      e.stopPropagation();
+      if (cb.checked) {
+        selectedSet.add(it.ma_ho_so);
+      } else {
+        selectedSet.delete(it.ma_ho_so);
+        // Bỏ tích thủ công 1 dòng -> không còn "chọn hết theo bộ lọc"
+        // (tiêu chí 19). Tích thủ công KHÔNG đổi allFilterSelected.
+        allFilterSelected = false;
+      }
+      updateHeaderCheckbox();
+      renderActionBar();
+      renderSummary();
+    });
+    tr.addEventListener('click', () => { selectedIdx = idx; renderTable(); openSelected(); });
+    return tr;
+  }
+
   function renderTable() {
     const tbody = document.querySelector('#ho-so-table tbody');
     tbody.innerHTML = '';
@@ -1134,47 +1181,50 @@ const ListView = (() => {
       return;
     }
     items.forEach((it, idx) => {
-      const stt = (page - 1) * pageSize + idx + 1;
-      const tr = document.createElement('tr');
-      tr.dataset.idx = idx;
-      if (it.muc_co === 'do') tr.classList.add('row-do');
-      else if (it.muc_co === 'vang') tr.classList.add('row-vang');
-      if (idx === selectedIdx) tr.classList.add('selected');
-      const extraTd = extraFieldCodes.map((code) => `<td>${highlightCell(it[code])}</td>`).join('');
-      const dsText = (it._danh_sach && it._danh_sach.length)
-        ? it._danh_sach.map((d) => `<span class="ds-tag">${esc(d.ten)}</span>`).join('')
-        : '<span class="ds-tag-empty">–</span>';
-      tr.innerHTML = `<td class="col-danhdauxuat"><input type="checkbox" class="danhdauxuat-cb" ${selectedSet.has(it.ma_ho_so) ? 'checked' : ''}></td>
-        <td>${stt}</td>
-        <td>${highlightCell(it.ho_ten)}</td>
-        <td>${highlightCell(it.ngay_sinh)}</td><td>${highlightCell(it.gioi_tinh)}</td>
-        <td>${highlightCell(it.so_cccd)}</td>
-        <td>${highlightCell(it.maxa_cu_tru)}</td><td>${highlightCell(it.ngay_vao)}</td>
-        <td>${highlightCell(it.phan_loai_sk)}</td><td>${highlightCell(it.ket_luan_benh)}</td>
-        <td>${esc(it.so_loi)}</td><td>${highlightCell(it.trang_thai_nhan)}</td>
-        ${extraTd}<td>${highlightCell(it.ma_ho_so)}</td><td class="col-danhsach">${dsText}</td>`;
-      // Checkbox "chọn tạm" — CHỈ toggle ma_ho_so trong selectedSet (frontend
-      // only, KHÔNG gọi Api.patchHoSo/mạng, KHÔNG confirm() — tiêu chí 28).
-      // stopPropagation() để không kích hoạt tr.click (mở chi tiết).
-      const cb = tr.querySelector('.danhdauxuat-cb');
-      cb.addEventListener('click', (e) => e.stopPropagation());
-      cb.addEventListener('change', (e) => {
-        e.stopPropagation();
-        if (cb.checked) {
-          selectedSet.add(it.ma_ho_so);
-        } else {
-          selectedSet.delete(it.ma_ho_so);
-          // Bỏ tích thủ công 1 dòng -> không còn "chọn hết theo bộ lọc"
-          // (tiêu chí 19). Tích thủ công KHÔNG đổi allFilterSelected.
-          allFilterSelected = false;
-        }
-        updateHeaderCheckbox();
-        renderActionBar();
-        renderSummary();
-      });
-      tr.addEventListener('click', () => { selectedIdx = idx; renderTable(); openSelected(); });
-      tbody.appendChild(tr);
+      tbody.appendChild(buildRowEl(it, idx));
     });
+  }
+
+  // Dựng lại ĐÚNG 1 <tr data-idx="idx"> từ items[idx] hiện tại, thay thế
+  // dòng cũ tại chỗ bằng replaceWith() — KHÔNG động tới các dòng khác,
+  // KHÔNG innerHTML lại cả tbody, KHÔNG cuộn/đổi scrollTop (dùng cho
+  // patchItem() đồng bộ 1 dòng sau khi sửa panel chi tiết).
+  function renderRow(idx) {
+    const it = items[idx];
+    if (!it) return;
+    const tbody = document.querySelector('#ho-so-table tbody');
+    if (!tbody) return;
+    const oldTr = tbody.querySelector(`tr[data-idx="${idx}"]`);
+    const newTr = buildRowEl(it, idx);
+    if (oldTr) oldTr.replaceWith(newTr);
+  }
+
+  // 'do' | 'vang' | null — TÁI TẠO ĐÚNG logic backend services/qc.py
+  // row_severity(): có cờ 'do' -> 'do'; còn cờ (kể cả chỉ 'cam'/'vang') ->
+  // 'vang'; không còn cờ nào -> null. Dùng danhMuc.co_qc (catalog cờ QC đã
+  // nạp sẵn ở client) để tra `muc` từng mã cờ — KHÔNG gọi API.
+  function computeMucCo(coQcList) {
+    const list = coQcList || [];
+    if (!list.length) return null;
+    const metaBy = {};
+    (danhMuc.co_qc || []).forEach((f) => { metaBy[f.ma] = f; });
+    const hasDo = list.some((ma) => metaBy[ma] && metaBy[ma].muc === 'do');
+    return hasDo ? 'do' : 'vang';
+  }
+
+  // Đồng bộ 1 hồ sơ vừa lưu (từ panel chi tiết) vào ĐÚNG dòng tương ứng
+  // trong `items` (nếu hồ sơ đó đang hiển thị ở trang/bộ lọc hiện tại) —
+  // KHÔNG gọi lại API danh sách, KHÔNG đổi trang/bộ lọc/scroll/selectedSet.
+  // `patch` merge GENERIC (không whitelist field) — có thể chứa cả cột mở
+  // rộng động (extraFieldCodes). Gọi từ detail.js sau mỗi lần autosave.
+  function patchItem(ma_ho_so, patch) {
+    const idx = items.findIndex((it) => it.ma_ho_so === ma_ho_so);
+    if (idx === -1) return; // hồ sơ không nằm trong trang/bộ lọc hiện tại
+    Object.assign(items[idx], patch);
+    if (patch.co_qc_list !== undefined) {
+      items[idx].muc_co = computeMucCo(patch.co_qc_list);
+    }
+    renderRow(idx);
   }
 
   function renderSummary() {
@@ -1509,7 +1559,7 @@ const ListView = (() => {
 
   return {
     init, reload, moveSelection, openSelected, focusSearch,
-    currentSelectedMa, currentFilterParams,
+    currentSelectedMa, currentFilterParams, patchItem,
     isEmptyFilterFocus: () => document.activeElement && document.activeElement.closest('.filter-bar'),
   };
 })();

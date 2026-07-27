@@ -147,6 +147,30 @@ const DetailView = (() => {
     t._timer = setTimeout(() => t.classList.remove('show'), 1200);
   }
 
+  // Đồng bộ 1 dòng bảng danh sách bên trái ngay sau khi lưu thành công 1
+  // trường trong panel chi tiết — đọc TOÀN BỘ `current` (trừ 3 field lồng
+  // nhau không có cột tương ứng trong bảng: benh/qd1613/co_qc_chi_tiet) rồi
+  // đẩy sang ListView.patchItem(). KHÔNG gọi lại API danh sách, KHÔNG đổi
+  // trang/bộ lọc/scroll/selectedSet — patchItem() tự bỏ qua nếu hồ sơ không
+  // nằm trong trang/bộ lọc hiện tại. An toàn khi gọi nhiều lần liên tiếp.
+  const LIST_SYNC_EXCLUDE = new Set(['benh', 'qd1613', 'co_qc_chi_tiet']);
+  function syncListRow() {
+    // Đợt (đồng bộ dòng danh sách): CHÚ Ý — `const ListView = (()=>{...})()`
+    // khai báo top-level trong <script> classic (list.js) KHÔNG tạo thuộc
+    // tính trên window (khác `var`) — `window.ListView` LUÔN undefined dù
+    // list.js đã chạy xong (đã verify thực tế). Vẫn dùng được ListView
+    // (không qua window.) vì mọi <script> classic trong CÙNG document chia
+    // sẻ 1 lexical global scope — identifier `ListView` khai báo ở list.js
+    // (nạp TRƯỚC detail.js trong index.html) truy cập được thẳng ở đây.
+    if (!current || typeof ListView === 'undefined'
+        || typeof ListView.patchItem !== 'function') return;
+    const patch = {};
+    Object.keys(current).forEach((k) => {
+      if (!LIST_SYNC_EXCLUDE.has(k)) patch[k] = current[k];
+    });
+    ListView.patchItem(current.ma_ho_so, patch);
+  }
+
   function ctxFor() {
     return {
       catalogs: danhMuc,
@@ -174,6 +198,7 @@ const DetailView = (() => {
         current.so_loi = res.so_loi;
         toast('Đã xác nhận');
         renderFlagsSummary();
+        syncListRow();
       },
       onSave: async (code, value) => {
         // PLAN_PERF.md §4: gửi kèm `_base` = giá trị field này lúc mở/lưu
@@ -227,6 +252,7 @@ const DetailView = (() => {
           capNhatCSST(true);
           autoChanDoanSinhTon();
         }
+        syncListRow();
       },
     };
   }
@@ -294,6 +320,7 @@ const DetailView = (() => {
           Object.assign(current, res.updated);
           if (typeof res.so_loi !== 'undefined') current.so_loi = res.so_loi;
           if (res.co_qc) { current.co_qc = res.co_qc.join(';'); current.co_qc_list = res.co_qc; }
+          syncListRow();
           toast('Đã lưu');
         } catch (e) {
           cb.checked = !cb.checked;
@@ -474,6 +501,7 @@ const DetailView = (() => {
         if (window.Widgets && Widgets.flashSaved) Widgets.flashSaved(wrap);
       }
     }
+    syncListRow();
     toast('Tự thêm chẩn đoán theo sinh hiệu: ' + res.added.map((a) => a.ma_icd).join(', '));
   }
 
@@ -578,7 +606,15 @@ const DetailView = (() => {
           if (window.Widgets && Widgets.flashSaved) Widgets.flashSaved(wrap);
         }
         if (res && res.qd1613) { current.qd1613 = res.qd1613; renderQd1613Banner(); }
+        // Bug có sẵn (Đợt 13): patchHoSo TRẢ VỀ so_loi/co_qc mới nhưng chỗ
+        // này trước đây không đọc — bổ sung để syncListRow() bên dưới đẩy
+        // đúng Số lỗi/màu dòng sang bảng danh sách.
+        if (res) {
+          current.so_loi = res.so_loi;
+          if (res.co_qc) { current.co_qc = res.co_qc.join(';'); current.co_qc_list = res.co_qc; }
+        }
         capNhatPhanLoaiSkTuUpdated(res, 'noi_khoa_tuan_hoan_pl');
+        syncListRow();
         toast(`Tuần hoàn tự nâng Loại ${LM} theo sinh hiệu`);
       }).catch(() => {});
     }
@@ -599,6 +635,10 @@ const DetailView = (() => {
         const res = await Api.patchHoSo(current.ma_ho_so, { phan_loai_sk: qd.gia_tri_max });
         Object.assign(current, res.updated);
         current.qd1613 = res.qd1613;
+        // Bug có sẵn (Đợt 13): thiếu đọc so_loi/co_qc trả về — bổ sung để
+        // syncListRow() đẩy đúng Số lỗi/màu dòng sang bảng danh sách.
+        current.so_loi = res.so_loi;
+        if (res.co_qc) { current.co_qc = res.co_qc.join(';'); current.co_qc_list = res.co_qc; }
         const el = document.getElementById('f_phan_loai_sk');
         if (el) {
           el.querySelectorAll('input[type=radio]').forEach((r) => {
@@ -607,6 +647,7 @@ const DetailView = (() => {
         }
         toast('Đã lưu');
         renderQd1613Banner();
+        syncListRow();
       });
     } else {
       banner.className = 'qd1613-banner';
@@ -653,6 +694,7 @@ const DetailView = (() => {
           current.co_qc = res.co_qc.join(';');
           current.so_loi = res.so_loi;
           renderFlagsSummary();
+          syncListRow();
           toast('Đã gỡ cảnh báo');
         } catch (err) {
           toast('Lỗi gỡ cảnh báo: ' + err.message);
@@ -714,6 +756,11 @@ const DetailView = (() => {
           current.ket_luan_benh = res.ket_luan_benh;
           current.co_quan_benh_chinh = res.co_quan_benh_chinh;
           current.qd1613 = res.qd1613;
+          // set_benh_chinh() (benh.py) đã trả sẵn co_qc/so_loi mới nhất —
+          // trước đây không đọc, bổ sung để syncListRow() đẩy đúng sang bảng.
+          current.co_qc_list = res.co_qc;
+          current.co_qc = res.co_qc.join(';');
+          current.so_loi = res.so_loi;
           current.benh.forEach((x) => { x.la_benh_chinh = x.id === b.id ? 1 : 0; });
           const kl = document.getElementById('f_ket_luan_benh');
           if (kl) kl.querySelector('input').value = res.ket_luan_benh || '';
@@ -723,6 +770,7 @@ const DetailView = (() => {
           if (cqbc) cqbc.value = res.co_quan_benh_chinh || '';
           toast('Đã lưu');
           renderQd1613Banner();
+          syncListRow();
         });
         tdChinh.appendChild(radio);
         tr.appendChild(tdChinh);
@@ -737,6 +785,7 @@ const DetailView = (() => {
         delBtn.addEventListener('click', async () => {
           await Api.delBenh(current.ma_ho_so, b.id);
           current.benh = current.benh.filter((x) => x.id !== b.id);
+          syncListRow();
           drawRows();
           toast('Đã lưu');
         });
@@ -776,6 +825,11 @@ const DetailView = (() => {
             const cqbc = document.getElementById('f_co_quan_benh_chinh');
             if (cqbc) cqbc.value = res._co_quan_benh_chinh || '';
           }
+          // patch_benh() (Phần A) nay trả kèm so_loi/co_qc mới nhất — đổi Cơ
+          // quan có thể làm đổi/gỡ VI_PHAM_BAT_BIEN_QD1613 -> đồng bộ luôn.
+          current.so_loi = res.so_loi;
+          if (res.co_qc) { current.co_qc = res.co_qc.join(';'); current.co_qc_list = res.co_qc; }
+          syncListRow();
           toast('Đã lưu');
         } catch (err) {
           sel.value = giaTriCu || '';
@@ -802,6 +856,11 @@ const DetailView = (() => {
           const val = sel.value === '' ? null : Number(sel.value);
           const res = await Api.patchBenh(current.ma_ho_so, b.id, { muc_do_nang: val });
           b.muc_do_nang = res.muc_do_nang;
+          // patch_benh() (Phần A) nay trả kèm so_loi/co_qc mới nhất — đổi Mức
+          // độ nặng có thể làm đổi/gỡ VI_PHAM_BAT_BIEN_QD1613 -> đồng bộ luôn.
+          current.so_loi = res.so_loi;
+          if (res.co_qc) { current.co_qc = res.co_qc.join(';'); current.co_qc_list = res.co_qc; }
+          syncListRow();
           toast('Đã lưu');
         } catch (err) {
           sel.value = giaTriCu == null ? '' : String(giaTriCu);
@@ -917,6 +976,7 @@ const DetailView = (() => {
         syncBenhChinhFields();
         renderQd1613Banner();
       }
+      syncListRow();
       drawRows();
       icdInput.value = '';
       toast(vuaThanhBenhChinh ? 'Đã thêm — đặt làm bệnh chính' : 'Đã lưu');

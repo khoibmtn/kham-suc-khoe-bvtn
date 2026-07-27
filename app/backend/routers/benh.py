@@ -226,6 +226,15 @@ def patch_benh(ma_ho_so: str, benh_id: int, body: BenhBody,
                               (ma_ho_so,)).fetchone()
         if hs_now and qc.sync_vi_pham_flag(conn, ma_ho_so, qc.check_invariant(hs_now)):
             conn.commit()
+            # Cờ vừa đổi (vd VI_PHAM_BAT_BIEN_QD1613 mới thêm/gỡ) -> nạp lại
+            # để so_loi/co_qc trả về dưới đây PHẢN ÁNH ĐÚNG trạng thái cuối
+            # cùng, khớp pattern add_benh/set_benh_chinh/tu_chan_doan_sinh_ton
+            # trong cùng file (KHÔNG dùng bản hs_now đã cũ TRƯỚC lúc sync —
+            # nếu không, sync-list-row phía frontend sẽ nhận so_loi sai đúng
+            # lúc thao tác này thực sự đổi so_loi, vd sửa Cơ quan bệnh chính
+            # làm vi phạm/hết vi phạm bất biến QĐ1613).
+            hs_now = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?',
+                                  (ma_ho_so,)).fetchone()
 
         row = conn.execute('SELECT * FROM benh WHERE id=?', (benh_id,)).fetchone()
     finally:
@@ -233,6 +242,12 @@ def patch_benh(ma_ho_so: str, benh_id: int, body: BenhBody,
     out = dict(row)
     if co_quan_benh_chinh_moi is not None:
         out['_co_quan_benh_chinh'] = co_quan_benh_chinh_moi
+    # Phản hồi anh Khôi (đồng bộ dòng bảng danh sách sau khi lưu trong panel
+    # chi tiết): trả thêm so_loi/co_qc/qd1613 hiện tại của hồ sơ — trước đây
+    # CHỈ trả dòng benh vừa sửa dù server ĐÃ tính lại cờ/so_loi ở trên.
+    out['so_loi'] = hs_now['so_loi'] if hs_now else None
+    out['co_qc'] = qc.flags_of(hs_now['co_qc']) if hs_now else []
+    out['qd1613'] = qc.check_invariant(hs_now) if hs_now else None
     return out
 
 
