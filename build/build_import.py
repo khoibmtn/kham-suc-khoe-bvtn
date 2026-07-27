@@ -30,7 +30,7 @@ OUT = os.path.join(BASE, 'output')
 # Anh Khôi chỉnh trực tiếp tại đây nếu cần.
 CFG = {
     'MA_CSKCB':      '31006',                    # TTYT Thủy Nguyên
-    'MA_GTIN_CSKCB': '',                         # mã GLN 13 ký tự — chưa có
+    'MA_GTIN_CSKCB': '8934285050981',             # mã GLN 13 ký tự
     'TINH':          'Thành phố Hải Phòng',
     'DAN_TOC':       'Kinh',
     'NGHE_NGHIEP':   'Không xác định',

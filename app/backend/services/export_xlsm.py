@@ -147,6 +147,21 @@ _NCOL = 103                     # đúng 103 cột như mẫu 'Trên 18'
 _PLAIN_TEXT_CODES = {'SO_CCCD', 'NGAY_VAO', 'NGAY_SINH', 'NGAYCAP_CCCD'}
 _TPL_HEADER_CACHE = None
 
+# Phản hồi anh Khôi: file mẫu BYT dùng ',' làm dấu phân cách thập phân cho
+# 4 cột thính lực (m) — nhân viên nhập qua ô number trên trình duyệt (luôn
+# dùng '.') nên phải đổi lại lúc XUẤT, không đổi ở nơi lưu trữ (ho_so vẫn
+# giữ '.' để không phá vỡ validate/parse số ở nơi khác của app).
+_TRUONG_THAP_PHAN_PHAY = ('TAI_TRAI_NOI_THUONG', 'TAI_TRAI_NOI_THAM',
+                          'TAI_PHAI_NOI_THUONG', 'TAI_PHAI_NOI_THAM')
+
+
+def _doi_dau_thap_phan(rec):
+    for code in _TRUONG_THAP_PHAN_PHAY:
+        v = rec.get(code)
+        if v not in (None, '') and '.' in str(v):
+            rec[code] = str(v).replace('.', ',')
+    return rec
+
 
 def _template_header():
     """Đọc 3 dòng header (nhãn/mã/hướng dẫn) của sheet 'Trên 18' từ template
@@ -216,7 +231,7 @@ def _plain_xlsx_bytes(rows, with_id=False):
         ws.append(cells)
 
     for i, row in enumerate(rows):
-        rec = {k.upper(): row[k] for k in row.keys()}
+        rec = _doi_dau_thap_phan({k.upper(): row[k] for k in row.keys()})
         line = [None] * _NCOL
         line[0] = i + 1                                # cột TT
         for code, col in code2col.items():
@@ -280,7 +295,7 @@ def _row_to_rec(row, tt):
     """Đảo ngược import_data.py: tên cột `ho_so` viết hoa == mã trường BYT
     (đã kiểm chứng field-by-field với dòng 2 của template — xem docstring
     module). write_xlsm() tự bỏ qua các khoá không khớp mã trường mẫu."""
-    rec = {k.upper(): row[k] for k in row.keys()}
+    rec = _doi_dau_thap_phan({k.upper(): row[k] for k in row.keys()})
     rec['TT'] = tt
     return rec
 

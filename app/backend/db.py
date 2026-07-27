@@ -271,6 +271,7 @@ def init_schema(conn=None):
     _migrate_danh_dau_xuat(conn)
     _migrate_don_thi_luc_tu_do(conn)
     _migrate_ma_cskcb(conn)
+    _migrate_dinh_chinh_cskcb_gln(conn)
     _migrate_xoa_san_phu_khoa_nam(conn)
     _migrate_chuan_hoa_bt(conn)
     _migrate_dong_bo_ten_icd(conn)
@@ -484,6 +485,53 @@ def _migrate_ma_cskcb(conn):
         conn.execute(
             'UPDATE ho_so SET ma_cskcb=? WHERE ma_cskcb=?',
             (_MA_CSKCB_MOI, _MA_CSKCB_CU))
+        conn.execute(
+            'INSERT INTO cai_dat(khoa, gia_tri) VALUES (?, ?) '
+            'ON CONFLICT(khoa) DO NOTHING', (_KHOA, 'true'))
+        conn.commit()
+    except Exception:
+        pass
+
+
+_MA_CSKCB_DUNG = '31006'
+_MA_GLN_DUNG = '8934285050981'
+
+
+def _migrate_dinh_chinh_cskcb_gln(conn):
+    """Đính chính lỗi ở _migrate_ma_cskcb phía trên: anh Khôi xác nhận lại
+    2 mã đã bị NHẦM LẪN — '31006' MỚI ĐÚNG là mã CSKCB (không phải mã cần
+    đổi đi), còn '8934285050981' MỚI ĐÚNG là mã GLN 13 ký tự (không phải mã
+    CSKCB thay thế). Ghi đè KHÔNG ĐIỀU KIỆN ma_cskcb='31006' và
+    ma_gtin_cskcb='8934285050981' cho TOÀN BỘ hồ sơ — khác nguyên tắc "chỉ
+    điền chỗ trống" của các migration khác trong file này, vì đây là ĐÍNH
+    CHÍNH dữ liệu sai (anh Khôi yêu cầu tường minh "điền lại vào toàn bộ cơ
+    sở dữ liệu"). Dọn mục danh mục 'ma_cskcb'='8934285050981' cũ (sai) để
+    nhân viên không chọn nhầm lại; seed đúng 2 danh mục."""
+    _KHOA = 'cskcb_gln_da_dinh_chinh'
+    try:
+        da_chay = conn.execute(
+            'SELECT 1 FROM cai_dat WHERE khoa=?', (_KHOA,)).fetchone()
+        if da_chay:
+            return
+        conn.execute('UPDATE ho_so SET ma_cskcb=?', (_MA_CSKCB_DUNG,))
+        conn.execute('UPDATE ho_so SET ma_gtin_cskcb=?', (_MA_GLN_DUNG,))
+        conn.execute(
+            "DELETE FROM danh_muc WHERE loai='ma_cskcb' AND ten=?",
+            (_MA_GLN_DUNG,))
+        da_co_cskcb = conn.execute(
+            "SELECT COUNT(*) FROM danh_muc WHERE loai='ma_cskcb' AND ten=?",
+            (_MA_CSKCB_DUNG,)).fetchone()[0]
+        if da_co_cskcb == 0:
+            conn.execute(
+                "INSERT INTO danh_muc(loai, ma, ten) VALUES "
+                "('ma_cskcb', NULL, ?)", (_MA_CSKCB_DUNG,))
+        da_co_gln = conn.execute(
+            "SELECT COUNT(*) FROM danh_muc WHERE loai='ma_gtin_cskcb' AND ten=?",
+            (_MA_GLN_DUNG,)).fetchone()[0]
+        if da_co_gln == 0:
+            conn.execute(
+                "INSERT INTO danh_muc(loai, ma, ten) VALUES "
+                "('ma_gtin_cskcb', NULL, ?)", (_MA_GLN_DUNG,))
         conn.execute(
             'INSERT INTO cai_dat(khoa, gia_tri) VALUES (?, ?) '
             'ON CONFLICT(khoa) DO NOTHING', (_KHOA, 'true'))
