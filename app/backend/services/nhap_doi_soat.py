@@ -14,12 +14,14 @@ sửa & nhập lại"), đối soát với DB:
 - Khi ghi: chuẩn hoá số + kiểm ngưỡng sinh hiệu, ghi nhat_ky, tính lại BMI /
   phân loại thể lực / cờ CCCD — hệt PATCH thủ công.
 """
+import datetime
 import io
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from services import export_xlsm, sinh_hieu_valid, qc, the_luc  # noqa: E402
+from services import export_xlsm, ngay_thang_valid, sinh_hieu_valid, qc, the_luc  # noqa: E402
 
 # Trường KHÔNG cho nhập lại (khóa/định danh/quản lý rà soát/tự tính).
 MANAGED = {
@@ -41,6 +43,46 @@ def _norm(v):
     if isinstance(v, float) and v.is_integer():
         v = int(v)
     return str(v).strip()
+
+
+# Nhận diện chuỗi ngày kiểu ISO (có thể kèm giờ) — khi user chỉnh sửa file
+# .xlsx (xuất dạng TEXT '@') trong Excel rồi lưu lại, Excel có thể tự động
+# chuyển ô ngày thành kiểu datetime; openpyxl(data_only=True) khi đó trả về
+# object datetime.datetime, hoặc (tuỳ cách lưu) một chuỗi ISO như
+# "1960-01-01 00:00:00" — cả 2 trường hợp đều PHẢI được ép về đúng
+# dd/mm/yyyy mà toàn bộ ứng dụng dùng, KHÔNG được ghi thẳng vào DB/hiển thị
+# nguyên dạng ISO (phản hồi anh Khôi — lỗi ảnh hưởng dữ liệu thật).
+_ISO_DATE_RE = re.compile(r'^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T]\d{1,2}:\d{2}(?::\d{2})?)?$')
+
+
+def _chuan_hoa_ngay(v):
+    """Ép 1 giá trị thô của ô ngày (object datetime/date, chuỗi ISO, hoặc
+    chuỗi dd/mm/yyyy sẵn có) về chuỗi dd/mm/yyyy. Nếu không nhận diện được
+    (không phải datetime/date, không khớp ISO, hoặc ISO nhưng ngày không có
+    thật trong lịch) -> trả nguyên chuỗi đã _norm() để
+    ngay_thang_valid.validate_date_changes() ở bước sau tự phát hiện & báo
+    lỗi rõ ràng (không tự chế thêm thông báo lỗi ở đây)."""
+    # datetime.datetime LÀ subclass của datetime.date -> check date là đủ.
+    if isinstance(v, datetime.date):
+        return v.strftime('%d/%m/%Y')
+    s = _norm(v)
+    m = _ISO_DATE_RE.match(s)
+    if m:
+        nam, thang, ngay = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        try:
+            return datetime.date(nam, thang, ngay).strftime('%d/%m/%Y')
+        except ValueError:
+            return s
+    return s
+
+
+def _chuan_hoa_gia_tri(field, v):
+    """Chuẩn hoá field-aware: 3 trường ngày (ngay_sinh/ngay_vao/ngaycap_cccd)
+    ép về dd/mm/yyyy qua _chuan_hoa_ngay(); mọi trường khác dùng _norm() y
+    hệt hành vi cũ (không đổi)."""
+    if field in ngay_thang_valid.DATE_FIELDS:
+        return _chuan_hoa_ngay(v)
+    return _norm(v)
 
 
 def _recompute_bmi(cao, can):
@@ -195,10 +237,10 @@ def doi_soat(conn, file_bytes, apply=False, cho_ghi_de=False, user_id=None,
             if ci >= len(r):
                 continue
             up = r[ci]
-            up_s = _norm(up)
+            up_s = _chuan_hoa_gia_tri(field, up)
             if up_s == '':
                 continue                       # ô trống -> bỏ qua (không xóa)
-            db_s = _norm(db_row[field] if field in db_row.keys() else None)
+            db_s = _chuan_hoa_gia_tri(field, db_row[field] if field in db_row.keys() else None)
             if up_s == db_s:
                 continue
             loai = 'bo_sung' if db_s == '' else 'ghi_de'
@@ -266,6 +308,19 @@ def _apply_row(conn, ma, db_row, changes, cho_ghi_de, nguong, user_id, loi_out):
     field_moi, loi2 = sinh_hieu_valid.validate_changes(field_moi, nguong)
     for e in (loi1 or []) + (loi2 or []):
         loi_out.append({'ma_ho_so': ma, 'ly_do': e.get('ly_do', str(e))})
+
+    # Trường ngày (ngay_sinh/ngay_vao/ngaycap_cccd): field_moi ở đây đã được
+    # ép chuẩn dd/mm/yyyy từ bước preview (_chuan_hoa_gia_tri) NHƯNG có thể
+    # vẫn là giá trị "rác" không parse được thành ngày thật (vd chuỗi ISO
+    # không tồn tại trong lịch, hoặc chuỗi bất kỳ không khớp dd/mm/yyyy) —
+    # CHỦ Ý loại HẲN field đó khỏi field_moi trước khi ghi (khác cách xử lý
+    # lỗi ngưỡng sinh hiệu ở trên — ở đây KHÔNG được ghi giá trị ngày sai/rác
+    # vào DB, theo đúng yêu cầu; KHÔNG áp dụng .pop() tương tự cho vitals).
+    field_moi, loi3 = ngay_thang_valid.validate_date_changes(field_moi)
+    for e in (loi3 or []):
+        loi_out.append({'ma_ho_so': ma, 'ly_do': e.get('ly_do', str(e))})
+        field_moi.pop(e['field'], None)
+
     if not field_moi:
         return 0, 0
 

@@ -475,7 +475,7 @@ const ExportView = (() => {
     try {
       const r = await Api.nhapDoiSoat(file, true, choGhiDe, cot, sheetChon, maLoaiTru);
       status.textContent = ` Đã ghi: ${r.da_ghi_bo_sung} bổ sung, ${r.da_ghi_ghi_de} ghi đè.`
-        + (r.loi_validate && r.loi_validate.length ? ` (${r.loi_validate.length} ô bị bỏ do sai ngưỡng)` : '');
+        + (r.loi_validate && r.loi_validate.length ? ` (${r.loi_validate.length} ô bị bỏ do sai ngưỡng/định dạng)` : '');
       status.className = 'xf-plain-status ok';
       btn.textContent = 'Đã áp dụng ✓';
     } catch (err) {
