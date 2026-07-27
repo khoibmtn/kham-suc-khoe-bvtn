@@ -72,6 +72,14 @@ _DK_SUB_OPS = {'>', '<', '=', '>=', '<='}
 # widget:'date' trong fields.js (dd/mm/yyyy trong DB) — dùng _ymd() thay vì
 # so sánh chuỗi thường khi so_operator là Toán tử.
 _DK_DATE_FIELDS = {'ngay_vao', 'ngay_sinh', 'ngaycap_cccd'}
+# Trường LUÔN dùng khớp CHUỖI CON LIÊN TỤC (LIKE đơn thuần) cho Chứa/Không
+# chứa/Bắt đầu bằng/Kết thúc bằng — KHÁC "fuzzy nguyên từ" (ksk_token_match)
+# dùng cho các trường text khác (họ tên, chẩn đoán...). Phản hồi anh Khôi:
+# so_cccd/ma_ho_so là chuỗi liền không khoảng trắng nên "nguyên từ" luôn
+# trả 1 từ = cả chuỗi, khiến tìm theo đoạn con (vd "031") không ra kết quả
+# gì dù CCCD đó CÓ chứa "031". 3 trường ngày cũng cần tìm theo đoạn dd/mm/yyyy
+# thô (vd "02/1"), không phải so khớp "từ" theo nghĩa ngôn ngữ.
+_DK_PLAIN_SUBSTRING_FIELDS = {'so_cccd', 'ma_ho_so'} | _DK_DATE_FIELDS
 # Toán tử chỉ hợp lệ cho trường ẢO 'danh_sach' — 'thuoc'/'khong_thuoc' đều
 # nằm ở đây, còn 'trong'/'khong_trong' dùng chung với cột thật.
 _DK_DANH_SACH_OPS = {'trong', 'khong_trong', 'thuoc', 'khong_thuoc'}
@@ -166,9 +174,29 @@ def _dk_condition_sql(cond, numeric_fields):
             return f'{_ymd(col)} {sub} ?', [str(value).strip()]
         return f'{col} {sub} ?', [value]
 
-    # chua/khong_chua/bat_dau/ket_thuc — UDF ksk_token_match đăng ký ở
-    # db.py:_get_connection_local (chỉ hoạt động chế độ LOCAL sqlite3 — xem
-    # ghi chú TODO ở db.py:_get_connection_serverless).
+    # chua/khong_chua/bat_dau/ket_thuc
+    # Trường trong _DK_PLAIN_SUBSTRING_FIELDS (CCCD/mã hồ sơ/ngày tháng) —
+    # chuỗi liền không khoảng trắng hoặc cần tìm theo đoạn dd/mm/yyyy thô —
+    # dùng LIKE đơn thuần (giống quy ước so_cccd/ma_ho_so ở build_where phía
+    # trên), KHÔNG qua UDF "fuzzy nguyên từ" (sai với các trường này — xem
+    # ghi chú _DK_PLAIN_SUBSTRING_FIELDS).
+    if col in _DK_PLAIN_SUBSTRING_FIELDS:
+        value = str(cond['value'])
+        if op in ('chua', 'khong_chua'):
+            pattern = f'%{value}%'
+        elif op == 'bat_dau':
+            pattern = f'{value}%'
+        else:  # ket_thuc
+            pattern = f'%{value}'
+        if op == 'khong_chua':
+            # IS NULL cũng coi là "không chứa" — tránh logic 3 giá trị SQL
+            # bỏ sót dòng NULL.
+            return f'({col} IS NULL OR {col} NOT LIKE ?)', [pattern]
+        return f'({col} LIKE ?)', [pattern]
+
+    # Mọi trường KHÁC (họ tên, chẩn đoán, ghi chú...) — UDF ksk_token_match
+    # đăng ký ở db.py:_get_connection_local (chỉ hoạt động chế độ LOCAL
+    # sqlite3 — xem ghi chú TODO ở db.py:_get_connection_serverless).
     mode = {'chua': 'contains', 'khong_chua': 'contains',
             'bat_dau': 'starts', 'ket_thuc': 'ends'}[op]
     expr = f'ksk_token_match({col}, ?, ?)'
