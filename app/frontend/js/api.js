@@ -76,6 +76,9 @@ const Api = (() => {
     capNhatNgay: () => req('POST', '/api/admin/cap-nhat-ngay'),
 
     listHoSo: (params) => req('GET', '/api/ho-so?' + qs(params)),
+    // Checkbox đầu bảng "chọn tất cả khớp bộ lọc" (list.js) — trả TOÀN BỘ
+    // ma_ho_so khớp bộ lọc hiện tại (mọi trang, không phân trang).
+    listMaHoSo: (params) => req('GET', '/api/ho-so/ma-list?' + qs(params)),
     getHoSo: (ma) => req('GET', `/api/ho-so/${encodeURIComponent(ma)}`),
     patchHoSo: (ma, fields) => req('PATCH', `/api/ho-so/${encodeURIComponent(ma)}`, fields),
     hoanThanh: (ma, filterParams) => req('POST', `/api/ho-so/${encodeURIComponent(ma)}/hoan-thanh?` + qs(filterParams)),

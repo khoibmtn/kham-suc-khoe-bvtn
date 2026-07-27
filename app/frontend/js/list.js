@@ -30,6 +30,15 @@ const ListView = (() => {
   // phiên làm việc: KHÔNG reset khi reload()/renderTable()/đổi bộ lọc (kể cả
   // đổi danh_sach_id) — CHỈ reset khi bấm "Bỏ chọn tất cả" hoặc F5. =====
   let selectedSet = new Set();
+  // "Chọn tất cả khớp bộ lọc" (mọi trang) — true khi checkbox đầu bảng đã
+  // tích và đã nạp ĐỦ ma_ho_so khớp bộ lọc hiện tại vào selectedSet.
+  // allFilterSelectedSnapshot: JSON currentFilterParams() lúc set true gần
+  // nhất — reload() so sánh để tự phát hiện bộ lọc đã đổi (criterion 13).
+  // allFilterSelectedMaList: đúng danh sách mã đã nạp lúc đó — dùng để XOÁ
+  // lại khỏi selectedSet khi bỏ tích đầu bảng (KHÔNG gọi lại API).
+  let allFilterSelected = false;
+  let allFilterSelectedSnapshot = null;
+  let allFilterSelectedMaList = [];
   let danhSachList = []; // [{id, ten, thoi_diem_tao, so_luong}] — cache cho
                           // dropdown "Xem theo danh sách" (nạp lại sau tạo/xóa).
   let danhSachSelectEl = null;
@@ -926,6 +935,16 @@ const ListView = (() => {
 
   let _reloadSeq = 0;
   async function reload() {
+    // Criterion 13: bộ lọc hiện tại KHÁC snapshot lúc set allFilterSelected=
+    // true gần nhất -> tự reset (KHÔNG đụng selectedSet — vẫn giữ số đã
+    // chọn). Chỉ đổi TRANG (page/pageSize KHÔNG nằm trong currentFilterParams())
+    // -> snapshot không đổi -> giữ nguyên allFilterSelected. Đặt Ở ĐẦU hàm
+    // để bắt được MỌI điểm gọi reload() sau khi đổi filter, không cần sửa
+    // từng nơi riêng lẻ.
+    if (allFilterSelected
+        && JSON.stringify(currentFilterParams()) !== allFilterSelectedSnapshot) {
+      allFilterSelected = false;
+    }
     const seq = ++_reloadSeq;
     // Chỉ báo "Đang tải…" để không tưởng nhầm là không có kết quả trong lúc
     // chờ mạng (Vercel↔Turso ~1s). + chống race: gõ nhanh -> chỉ hiện kết quả
@@ -980,37 +999,61 @@ const ListView = (() => {
       return `<th>${esc(def ? def.label : code)}</th>`;
     }).join('');
     thead.innerHTML = `<tr>
-        <th class="col-danhdauxuat" title="Chọn/bỏ chọn tất cả hồ sơ ở TRANG NÀY (chọn tạm — dùng thanh hành động bên dưới để đánh dấu xuất file/thêm vào danh sách)">
+        <th class="col-danhdauxuat" title="Chọn/bỏ chọn NGAY toàn bộ hồ sơ khớp BỘ LỌC HIỆN TẠI (mọi trang, chọn tạm — dùng thanh hành động bên dưới để đánh dấu xuất file/thêm vào danh sách)">
           <input type="checkbox" id="danhdauxuat-all-cb"></th>
         <th>STT</th><th>Họ tên</th><th>Ngày sinh</th><th>Giới</th><th>CCCD</th>
         <th>Xã</th><th>Ngày khám</th><th>Phân loại SK</th><th>Bệnh chính</th>
         <th>Số cờ</th><th>Trạng thái</th>${extraTh}<th>Mã hồ sơ</th><th class="col-danhsach">Danh sách</th></tr>`;
     const allCb = thead.querySelector('#danhdauxuat-all-cb');
     allCb.addEventListener('click', (e) => e.stopPropagation());
-    allCb.checked = items.length > 0 && items.every((it) => selectedSet.has(it.ma_ho_so));
+    allCb.checked = allFilterSelected;
     allCb.addEventListener('change', onToggleSelectAllPage);
   }
 
-  // Ô check ở đầu cột — chọn/bỏ chọn TẠM (frontend only, KHÔNG gọi mạng)
-  // toàn bộ hồ sơ đang hiển thị ở TRANG NÀY vào/khỏi selectedSet. Tích khi
-  // MỌI hồ sơ trang hiện tại đã có trong Set thì XOÁ hết; ngược lại THÊM hết
-  // (tiêu chí 30/31) — không confirm().
-  function onToggleSelectAllPage() {
-    const allSelected = items.length > 0 && items.every((it) => selectedSet.has(it.ma_ho_so));
-    if (allSelected) items.forEach((it) => selectedSet.delete(it.ma_ho_so));
-    else items.forEach((it) => selectedSet.add(it.ma_ho_so));
+  // Ô check ở đầu cột — chọn NGAY toàn bộ hồ sơ khớp BỘ LỌC HIỆN TẠI (mọi
+  // trang, không chỉ trang này). allFilterSelected===false -> gọi API mới
+  // Api.listMaHoSo() lấy hết ma_ho_so khớp lọc rồi thêm vào selectedSet;
+  // allFilterSelected===true -> bỏ tích, XOÁ lại đúng số mã đã thêm lúc đó
+  // khỏi selectedSet (KHÔNG gọi lại API, KHÔNG đụng các mã do user tự chọn
+  // thêm/bớt thủ công trước/sau đó — về mặt logic những mã đó cũng nằm
+  // trong ma_list gốc vì đã khớp lọc, chỉ mã KHÔNG khớp lọc hiện tại mới có
+  // thể bị người dùng chọn thêm riêng, trường hợp đó ngoài phạm vi nút này).
+  async function onToggleSelectAllPage() {
+    const cb = document.getElementById('danhdauxuat-all-cb');
+    if (!allFilterSelected) {
+      if (cb) cb.disabled = true; // chống double-click gọi API 2 lần
+      try {
+        const params = currentFilterParams();
+        const res = await Api.listMaHoSo(params);
+        const maList = res.ma_list || [];
+        maList.forEach((ma) => selectedSet.add(ma));
+        allFilterSelected = true;
+        allFilterSelectedSnapshot = JSON.stringify(params);
+        allFilterSelectedMaList = maList;
+      } catch (err) {
+        toast('Lỗi: ' + (err.message || 'không tải được danh sách hồ sơ khớp bộ lọc'));
+      } finally {
+        if (cb) cb.disabled = false;
+      }
+    } else {
+      allFilterSelectedMaList.forEach((ma) => selectedSet.delete(ma));
+      allFilterSelected = false;
+      allFilterSelectedMaList = [];
+    }
     renderTable();
     updateHeaderCheckbox();
     renderActionBar();
     renderSummary();
   }
 
-  // Đồng bộ trạng thái checked của checkbox đầu bảng theo selectedSet hiện
-  // tại — gọi ngay sau MỌI thay đổi selectedSet không kèm reload() (tiêu chí
-  // 48: cập nhật NGAY, không chờ reload()).
+  // Đồng bộ trạng thái checked của checkbox đầu bảng theo allFilterSelected
+  // (KHÔNG còn dựa vào items.every(...) — checkbox này giờ phản ánh "đã chọn
+  // hết theo bộ lọc", không phải "đã chọn hết trang này") — gọi ngay sau MỌI
+  // thay đổi selectedSet không kèm reload() (tiêu chí 48: cập nhật NGAY,
+  // không chờ reload()).
   function updateHeaderCheckbox() {
     const cb = document.getElementById('danhdauxuat-all-cb');
-    if (cb) cb.checked = items.length > 0 && items.every((it) => selectedSet.has(it.ma_ho_so));
+    if (cb) cb.checked = allFilterSelected;
   }
 
   function esc(s) {
@@ -1069,8 +1112,14 @@ const ListView = (() => {
       cb.addEventListener('click', (e) => e.stopPropagation());
       cb.addEventListener('change', (e) => {
         e.stopPropagation();
-        if (cb.checked) selectedSet.add(it.ma_ho_so);
-        else selectedSet.delete(it.ma_ho_so);
+        if (cb.checked) {
+          selectedSet.add(it.ma_ho_so);
+        } else {
+          selectedSet.delete(it.ma_ho_so);
+          // Bỏ tích thủ công 1 dòng -> không còn "chọn hết theo bộ lọc"
+          // (tiêu chí 19). Tích thủ công KHÔNG đổi allFilterSelected.
+          allFilterSelected = false;
+        }
         updateHeaderCheckbox();
         renderActionBar();
         renderSummary();
@@ -1163,6 +1212,7 @@ const ListView = (() => {
     clearBtn.textContent = 'Bỏ chọn tất cả';
     clearBtn.addEventListener('click', () => {
       selectedSet.clear();
+      allFilterSelected = false;
       renderTable();
       updateHeaderCheckbox();
       renderActionBar();

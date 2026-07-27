@@ -642,6 +642,27 @@ def xuat_excel_danh_sach(request: Request, user=Depends(auth.get_current_user)):
         headers={'Content-Disposition': f'attachment; filename="{fn}"'})
 
 
+@router.get('/ho-so/ma-list')
+def list_ma_ho_so(request: Request, user=Depends(auth.get_current_user)):
+    """Trả TOÀN BỘ `ma_ho_so` khớp bộ lọc hiện tại (MỌI trang, không phân
+    trang) — dùng cho checkbox đầu bảng "chọn tất cả khớp bộ lọc" (list.js).
+    ĐĂNG KÝ TRƯỚC route động GET /ho-so/{ma_ho_so} bên dưới — nếu đặt sau,
+    FastAPI sẽ khớp nhầm 'ma-list' vào tham số {ma_ho_so}.
+    Tái dùng _filtered_where_q (như xuat_excel_danh_sach) — BẮT BUỘC truyền
+    `conn`, nếu không build_where() sẽ ÂM THẦM bỏ qua Box điều kiện
+    (`dieu_kien`, cần `conn` để validate whitelist cột qua PRAGMA table_info)."""
+    params = _parse_list_params(request)
+    conn = db.get_connection()
+    try:
+        where_sql, args = _filtered_where_q(params, conn)
+        rows = conn.execute(
+            f'SELECT ma_ho_so FROM ho_so WHERE {where_sql}', args).fetchall()
+    finally:
+        conn.close()
+    ma_list = [r['ma_ho_so'] for r in rows]
+    return {'ma_list': ma_list, 'total': len(ma_list)}
+
+
 def _load_ho_so_or_404(conn, ma_ho_so, user):
     # Đợt 12 (phản hồi anh Khôi): MỌI người mở/sửa được mọi hồ sơ — mô hình
     # cộng tác mở, truy vết ai sửa gì qua nhat_ky. (Bỏ chặn 403 theo phân công.)
