@@ -922,7 +922,7 @@ const ListView = (() => {
           <input type="checkbox" id="danhdauxuat-all-cb"></th>
         <th>STT</th><th>Họ tên</th><th>Ngày sinh</th><th>Giới</th><th>CCCD</th>
         <th>Xã</th><th>Ngày khám</th><th>Phân loại SK</th><th>Bệnh chính</th>
-        <th>Số cờ</th><th>Trạng thái</th>${extraTh}<th>Mã hồ sơ</th><th>Danh sách</th></tr>`;
+        <th>Số cờ</th><th>Trạng thái</th>${extraTh}<th>Mã hồ sơ</th><th class="col-danhsach">Danh sách</th></tr>`;
     const allCb = thead.querySelector('#danhdauxuat-all-cb');
     allCb.addEventListener('click', (e) => e.stopPropagation());
     allCb.checked = items.length > 0 && items.every((it) => selectedSet.has(it.ma_ho_so));
@@ -989,8 +989,8 @@ const ListView = (() => {
       if (idx === selectedIdx) tr.classList.add('selected');
       const extraTd = extraFieldCodes.map((code) => `<td>${highlightCell(it[code])}</td>`).join('');
       const dsText = (it._danh_sach && it._danh_sach.length)
-        ? it._danh_sach.map((d) => esc(d.ten)).join(', ')
-        : '–';
+        ? it._danh_sach.map((d) => `<span class="ds-tag">${esc(d.ten)}</span>`).join('')
+        : '<span class="ds-tag-empty">–</span>';
       tr.innerHTML = `<td class="col-danhdauxuat"><input type="checkbox" class="danhdauxuat-cb" ${selectedSet.has(it.ma_ho_so) ? 'checked' : ''}></td>
         <td>${stt}</td>
         <td>${highlightCell(it.ho_ten)}</td>
@@ -999,7 +999,7 @@ const ListView = (() => {
         <td>${highlightCell(it.maxa_cu_tru)}</td><td>${highlightCell(it.ngay_vao)}</td>
         <td>${highlightCell(it.phan_loai_sk)}</td><td>${highlightCell(it.ket_luan_benh)}</td>
         <td>${esc(it.so_loi)}</td><td>${highlightCell(it.trang_thai_nhan)}</td>
-        ${extraTd}<td>${highlightCell(it.ma_ho_so)}</td><td>${dsText}</td>`;
+        ${extraTd}<td>${highlightCell(it.ma_ho_so)}</td><td class="col-danhsach">${dsText}</td>`;
       // Checkbox "chọn tạm" — CHỈ toggle ma_ho_so trong selectedSet (frontend
       // only, KHÔNG gọi Api.patchHoSo/mạng, KHÔNG confirm() — tiêu chí 28).
       // stopPropagation() để không kích hoạt tr.click (mở chi tiết).
@@ -1097,6 +1097,7 @@ const ListView = (() => {
 
     const clearBtn = document.createElement('button');
     clearBtn.type = 'button';
+    clearBtn.className = 'action-bar-clear';
     clearBtn.textContent = 'Bỏ chọn tất cả';
     clearBtn.addEventListener('click', () => {
       selectedSet.clear();
@@ -1116,12 +1117,14 @@ const ListView = (() => {
 
     const markBtn = document.createElement('button');
     markBtn.type = 'button';
+    markBtn.className = 'action-bar-mark';
     markBtn.textContent = 'Đánh dấu xuất file';
     markBtn.addEventListener('click', () => onDanhDauTheoChon(1));
     bar.appendChild(markBtn);
 
     const unmarkBtn = document.createElement('button');
     unmarkBtn.type = 'button';
+    unmarkBtn.className = 'action-bar-unmark';
     unmarkBtn.textContent = 'Bỏ đánh dấu xuất file';
     unmarkBtn.addEventListener('click', () => onDanhDauTheoChon(0));
     bar.appendChild(unmarkBtn);
@@ -1130,6 +1133,7 @@ const ListView = (() => {
     if (filters.danh_sach_id) {
       const removeBtn = document.createElement('button');
       removeBtn.type = 'button';
+      removeBtn.className = 'action-bar-remove';
       removeBtn.textContent = 'Gỡ khỏi danh sách này';
       removeBtn.addEventListener('click', onGoKhoiDanhSachHienTai);
       bar.appendChild(removeBtn);
@@ -1160,6 +1164,7 @@ const ListView = (() => {
       const res = await Api.goHoSoKhoiDanhSach(dsId, maList);
       maList.forEach((ma) => selectedSet.delete(ma));
       toast(`Đã gỡ ${res.so_luong_go} hồ sơ khỏi danh sách.`);
+      refreshDanhSachDropdown(); // cập nhật ngay so_luong hiển thị ở dropdown
       reload();
     } catch (err) {
       toast('Lỗi: ' + (err.message || 'không thực hiện được'));
@@ -1272,6 +1277,7 @@ const ListView = (() => {
       closeAddListPopover();
       toast(`Đã thêm ${res.so_luong_them} hồ sơ vào danh sách.`);
       // KHÔNG xóa selectedSet sau hành động (tiêu chí 36).
+      refreshDanhSachDropdown(); // cập nhật ngay so_luong hiển thị ở dropdown
       reload();
     } catch (err) {
       toast('Lỗi: ' + (err.message || 'không thêm được'));

@@ -774,3 +774,55 @@ details summary {
 .csst-1 { background: #15803d; } .csst-2 { background: #65a30d; }
 .csst-3 { background: #ca8a04; } .csst-4 { background: #ea580c; } .csst-5 { background: #c0392b; }
 .csst-detail { color: #475569; }
+
+/* ---------- Danh sách tùy chỉnh (collection) — action bar, popover, tags ---------- */
+.action-bar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px;
+  padding: 8px 12px; margin: 0 0 8px; font-size: 13px;
+}
+.action-bar-count { font-weight: 700; color: #1d4ed8; margin-right: 4px; }
+.action-bar button {
+  padding: 5px 12px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px;
+  background: #fff; color: #334155; cursor: pointer;
+}
+.action-bar button:hover { background: #f1f5f9; }
+.action-bar button.action-bar-clear { color: #64748b; }
+.action-bar button#action-bar-add-btn { background: #2563eb; color: #fff; border-color: #2563eb; }
+.action-bar button#action-bar-add-btn:hover { background: #1d4ed8; }
+.action-bar button.action-bar-mark { background: #dcfce7; color: #15803d; border-color: #86efac; }
+.action-bar button.action-bar-mark:hover { background: #bbf7d0; }
+.action-bar button.action-bar-unmark { background: #fff; color: #64748b; }
+.action-bar button.action-bar-remove { background: #fee2e2; color: #c0392b; border-color: #fca5a5; }
+.action-bar button.action-bar-remove:hover { background: #fecaca; }
+
+.action-add-list-pop { width: 260px; }
+.action-add-list-empty { font-size: 12px; color: #94a3b8; font-style: italic; padding: 6px 4px; }
+.action-add-list-create {
+  display: flex; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid #e2e8f0;
+}
+.action-add-list-create input {
+  flex: 1; min-width: 0; padding: 5px 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px;
+}
+.action-add-list-create button {
+  padding: 5px 10px; background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd;
+  border-radius: 4px; cursor: pointer; font-size: 12px; white-space: nowrap;
+}
+.action-add-list-create button:hover { background: #bfdbfe; }
+.action-add-list-err { color: #c0392b; font-size: 11px; margin-top: 4px; }
+
+.danh-sach-filter-wrap { display: flex; gap: 6px; align-items: center; }
+.danh-sach-filter-wrap select { flex: 1; }
+#danh-sach-delete-btn {
+  padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px; background: #fff;
+  cursor: pointer; font-size: 13px; line-height: 1;
+}
+#danh-sach-delete-btn:hover:not(:disabled) { background: #fee2e2; border-color: #fca5a5; }
+#danh-sach-delete-btn:disabled { opacity: .4; cursor: default; }
+
+.col-danhsach { white-space: normal; max-width: 220px; }
+.ds-tag {
+  display: inline-block; background: #eef2ff; color: #3730a3; border-radius: 10px;
+  padding: 1px 8px; font-size: 11px; margin: 1px 3px 1px 0;
+}
+.ds-tag-empty { color: #cbd5e1; }
