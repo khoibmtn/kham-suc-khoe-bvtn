@@ -60,12 +60,23 @@ def _spawn_restart(app_dir):
     hộp thoại "Windows cannot find '\"KSK Server\"'" (bug thật, đã gặp trên
     máy chủ). Truyền `cmd` dưới dạng CHUỖI (không phải list) kèm
     `shell=True` để Python tự bọc ĐÚNG 1 LỚP `comspec /c "<cmd>"`, không
-    escape lại các dấu " đã có sẵn."""
+    escape lại các dấu " đã có sẵn.
+
+    Phản hồi anh Khôi: `taskkill /PID` chỉ tắt tiến trình python.exe BÊN
+    TRONG cửa sổ — cửa sổ cmd cha (mở bằng `cmd /k`, cờ `/k` = "giữ cửa sổ
+    mở sau khi lệnh kết thúc") vẫn còn đó, trông như "cửa sổ ma" (đứng hình,
+    không còn tiến trình gì chạy). Trước khi mở cửa sổ MỚI, đóng HẲN mọi
+    cửa sổ cũ có TIÊU ĐỀ "KSK Server" (tiêu đề này CHỈ được đặt bởi chính
+    `start "KSK Server" cmd /k ...` — cửa sổ `run.bat` chạy tay lần đầu
+    KHÔNG mang tiêu đề này nên không bao giờ bị đóng nhầm). `/T` đóng cả
+    cây tiến trình (cmd.exe + con) — dọn sạch dù có nhiều cửa sổ ma đã tồn
+    đọng từ trước khi có sửa lỗi này."""
     py = os.path.join(app_dir, '.venv', 'Scripts', 'python.exe')
     pid = os.getpid()
     cmd = (
         'timeout /t 2 /nobreak >nul & '
         f'taskkill /F /PID {pid} & '
+        'taskkill /F /T /FI "WINDOWTITLE eq KSK Server" & '
         f'start "KSK Server" cmd /k "cd /d {app_dir} && '
         f'{py} -m uvicorn main:app --app-dir backend --host 0.0.0.0 --port 8000"'
     )

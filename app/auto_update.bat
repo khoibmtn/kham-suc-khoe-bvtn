@@ -98,6 +98,11 @@ if "%NEED_RESTART%"=="1" (
   )
   timeout /t 2 /nobreak >nul
   call ".venv\Scripts\pip.exe" install -q -r requirements.txt
+  REM Dong HAN moi cua so cu con tieu de "KSK Server" (taskkill /PID o tren
+  REM chi tat tien trinh python BEN TRONG, cua so cmd cha /k van con dung
+  REM hinh - "cua so ma"). Tieu de nay CHI duoc dat boi chinh dong start ben
+  REM duoi nen khong bao gio dong nham cua so run.bat chay tay lan dau.
+  taskkill /F /T /FI "WINDOWTITLE eq KSK Server" >nul 2>&1
   start "KSK Server" cmd /k "cd /d %APP_DIR% && .venv\Scripts\python.exe -m uvicorn main:app --app-dir backend --host 0.0.0.0 --port 8000"
   echo [%date% %time%] Da khoi dong lai server o cua so moi "KSK Server".
 ) else (
