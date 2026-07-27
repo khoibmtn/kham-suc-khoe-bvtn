@@ -31,7 +31,7 @@ from services import qc  # noqa: E402
 WORKER_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'export_worker.py')
 EXPORTS_DIR = os.path.join(config.DATA_DIR, 'exports')
 
-SCOPE_TYPES = ('toan_bo', 'xa', 'can_bo', 'trang_thai', 'chon_tay')
+SCOPE_TYPES = ('toan_bo', 'xa', 'can_bo', 'trang_thai', 'chon_tay', 'danh_sach')
 
 # Cờ "đã rà soát xong" (checkbox panel chi tiết). "chi_rs_xong" ở tuỳ chọn
 # xuất => chỉ lấy hồ sơ đã tick ĐỦ 4 mục.
@@ -42,13 +42,6 @@ _RS_XONG_SQL = ' AND '.join(f'{c}=1' for c in _RS_XONG_COLS)
 def _apply_rs_xong(where_sql, chi_rs_xong):
     """Bọc điều kiện phạm vi + (tuỳ chọn) AND đã-rà-soát-xong-đủ-4-mục."""
     return f'({where_sql}) AND {_RS_XONG_SQL}' if chi_rs_xong else where_sql
-
-
-def _apply_danh_dau_xuat(where_sql, chi_danh_dau_xuat):
-    """Bọc điều kiện phạm vi + (tuỳ chọn) AND đã-đánh-dấu-xuất-file — độc lập
-    với _apply_rs_xong ở trên (cả 2 có thể áp cùng lúc, mỗi hàm 1 lời gọi
-    riêng, không gộp chung điều kiện)."""
-    return f'({where_sql}) AND danh_dau_xuat=1' if chi_danh_dau_xuat else where_sql
 
 TRANG_THAI_NHAN = {
     'chua_ra_soat': 'Chưa rà soát', 'dang_ra_soat': 'Đang rà soát',
@@ -109,6 +102,15 @@ def resolve_scope_where(pham_vi, gia_tri):
         if not vals:
             raise ValueError('Danh sách mã hồ sơ rỗng')
         return f"ma_ho_so IN ({','.join('?' * len(vals))})", vals
+    if pham_vi == 'danh_sach':
+        try:
+            vals = [int(v) for v in gia_tri]
+        except (TypeError, ValueError):
+            raise ValueError('Mã danh sách không hợp lệ')
+        if not vals:
+            raise ValueError('Thiếu danh sách cần xuất')
+        return (f"ma_ho_so IN (SELECT ma_ho_so FROM danh_sach_ho_so "
+                f"WHERE danh_sach_id IN ({','.join('?' * len(vals))}))", vals)
     raise ValueError(f"pham_vi không hợp lệ: {pham_vi!r} (phải là {SCOPE_TYPES})")
 
 
@@ -120,13 +122,11 @@ def _red_flag_where():
     return '(' + ' OR '.join(parts) + ')', args
 
 
-def preview(conn, pham_vi, gia_tri, include_errors, chi_rs_xong=False,
-            chi_danh_dau_xuat=False):
+def preview(conn, pham_vi, gia_tri, include_errors, chi_rs_xong=False):
     """Đếm trước khi xuất (§7.2): tổng trong phạm vi, số còn cờ 🔴, sẽ xuất,
     sẽ loại trừ (nếu include_errors=False, các ca cờ đỏ bị loại)."""
     where_sql, args = resolve_scope_where(pham_vi, gia_tri)
     where_sql = _apply_rs_xong(where_sql, chi_rs_xong)
-    where_sql = _apply_danh_dau_xuat(where_sql, chi_danh_dau_xuat)
     tong = conn.execute(f'SELECT COUNT(*) FROM ho_so WHERE {where_sql}', args).fetchone()[0]
     red_sql, red_args = _red_flag_where()
     do_flag_count = conn.execute(
@@ -257,14 +257,13 @@ def _plain_xlsx_bytes(rows, with_id=False):
 
 
 def build_plain_xlsx(conn, pham_vi, gia_tri, include_errors, chi_rs_xong=False,
-                     with_id=False, chi_danh_dau_xuat=False):
+                     with_id=False):
     """Xuất .xlsx đơn thuần cho phạm vi đã chọn (gộp mọi hồ sơ vào 1 sheet).
     Loại hồ sơ còn cờ đỏ khi include_errors=False, hệt logic .xlsm. with_id=True
     thêm cột MÃ ĐỊNH DANH để chỉnh sửa rồi nhập lại. Ném ValueError nếu phạm vi
     rỗng — router chuyển thành 400."""
     where_sql, args = resolve_scope_where(pham_vi, gia_tri)
     where_sql = _apply_rs_xong(where_sql, chi_rs_xong)
-    where_sql = _apply_danh_dau_xuat(where_sql, chi_danh_dau_xuat)
     rows = conn.execute(
         f'SELECT * FROM ho_so WHERE {where_sql} ORDER BY maxa_cu_tru, tt',
         args).fetchall()
@@ -337,14 +336,13 @@ def _log(job, msg):
 
 
 def create_job(pham_vi, gia_tri, include_errors, extended, admin_id,
-               chi_rs_xong=False, chi_danh_dau_xuat=False):
+               chi_rs_xong=False):
     """Chuẩn bị job (đọc DB, gom theo xã, đếm cờ đỏ) rồi khởi động thread nền.
     Ném ValueError nếu phạm vi rỗng/không hợp lệ — router chuyển thành 400."""
     conn = db.get_connection()
     try:
         where_sql, args = resolve_scope_where(pham_vi, gia_tri)
         where_sql = _apply_rs_xong(where_sql, chi_rs_xong)
-        where_sql = _apply_danh_dau_xuat(where_sql, chi_danh_dau_xuat)
         rows = conn.execute(
             f'SELECT * FROM ho_so WHERE {where_sql} ORDER BY maxa_cu_tru, tt',
             args).fetchall()
@@ -379,7 +377,6 @@ def create_job(pham_vi, gia_tri, include_errors, extended, admin_id,
         'admin_id': admin_id,
         'params': {'pham_vi': pham_vi, 'gia_tri': gia_tri,
                     'include_errors': include_errors, 'chi_rs_xong': chi_rs_xong,
-                    'chi_danh_dau_xuat': chi_danh_dau_xuat,
                     'extended': {'enabled': ext_enabled, 'columns': ext_columns}},
         'tong_pham_vi': len(rows), 'do_flag_count': do_flag_count,
         'se_xuat': len(rows) - se_loai_tru, 'se_loai_tru': se_loai_tru,

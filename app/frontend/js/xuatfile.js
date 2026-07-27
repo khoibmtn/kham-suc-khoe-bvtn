@@ -41,12 +41,14 @@ const ExportView = (() => {
           <label><input type="radio" name="xf-pham-vi" value="can_bo"> Theo nhân viên</label>
           <label><input type="radio" name="xf-pham-vi" value="trang_thai"> Theo trạng thái</label>
           <label><input type="radio" name="xf-pham-vi" value="chon_tay"> Chọn tay (danh sách mã hồ sơ)</label>
+          <label><input type="radio" name="xf-pham-vi" value="danh_sach"> Theo danh sách</label>
         </div>
         <div id="xf-scope-value">
           <select id="xf-val-xa" multiple hidden size="6">${xaOptions}</select>
           <select id="xf-val-can-bo" multiple hidden size="6"></select>
           <select id="xf-val-trang-thai" multiple hidden size="4">${ttOptions}</select>
           <textarea id="xf-val-chon-tay" hidden placeholder="Mỗi mã hồ sơ 1 dòng, hoặc cách nhau bởi dấu phẩy&#10;vd: 31006-2026-00001"></textarea>
+          <select id="xf-val-danh-sach" multiple hidden size="6"></select>
         </div>
       </div>
 
@@ -58,12 +60,6 @@ const ExportView = (() => {
       <div class="xf-block">
         <label class="xf-toggle"><input type="checkbox" id="xf-chi-rs-xong">
           Chỉ xuất hồ sơ đã rà soát xong (đủ 4 mục ở panel chi tiết) — mặc định TẮT</label>
-      </div>
-
-      <div class="xf-block">
-        <label class="xf-toggle"><input type="checkbox" id="xf-chi-danh-dau-xuat" checked>
-          Chỉ xuất hồ sơ đã đánh dấu xuất file — mặc định BẬT (mọi hồ sơ mặc định
-          đã đánh dấu sẵn, bỏ chọn từng hồ sơ ở Danh sách/Chi tiết để loại trừ)</label>
       </div>
 
       <div class="xf-block">
@@ -156,6 +152,8 @@ const ExportView = (() => {
     } else if (pham_vi === 'chon_tay') {
       gia_tri = panel.querySelector('#xf-val-chon-tay').value
         .split(/[\n,]/).map((s) => s.trim()).filter(Boolean);
+    } else if (pham_vi === 'danh_sach') {
+      gia_tri = Array.from(panel.querySelector('#xf-val-danh-sach').selectedOptions).map((o) => o.value);
     }
     return { pham_vi, gia_tri };
   }
@@ -170,6 +168,17 @@ const ExportView = (() => {
       const sel = panel.querySelector('#xf-val-can-bo');
       users.filter((u) => u.vai_tro === 'ra_soat').forEach((u) => {
         const o = document.createElement('option'); o.value = u.id; o.textContent = u.ho_ten;
+        sel.appendChild(o);
+      });
+    }).catch(() => {});
+
+    // Scope "Theo danh sách" — nạp "Danh sách tùy chỉnh", đúng khuôn
+    // Api.listNguoiDung() nạp #xf-val-can-bo ở trên.
+    Api.listDanhSach().then((list) => {
+      const sel = panel.querySelector('#xf-val-danh-sach');
+      list.forEach((ds) => {
+        const o = document.createElement('option');
+        o.value = String(ds.id); o.textContent = `${ds.ten} (${ds.so_luong})`;
         sel.appendChild(o);
       });
     }).catch(() => {});
@@ -194,6 +203,7 @@ const ExportView = (() => {
     panel.querySelector('#xf-val-can-bo').hidden = pham_vi !== 'can_bo';
     panel.querySelector('#xf-val-trang-thai').hidden = pham_vi !== 'trang_thai';
     panel.querySelector('#xf-val-chon-tay').hidden = pham_vi !== 'chon_tay';
+    panel.querySelector('#xf-val-danh-sach').hidden = pham_vi !== 'danh_sach';
   }
 
   function xfLoadingHtml(text) {
@@ -226,10 +236,6 @@ const ExportView = (() => {
     return {
       include_errors: panel.querySelector('#xf-include-errors').checked,
       chi_rs_xong: panel.querySelector('#xf-chi-rs-xong').checked,
-      // Dùng chung cho cả 4 luồng (preview/start/plain/chỉnh-sửa) — luồng
-      // "Xuất để chỉnh sửa" vẫn nhận field này nhưng backend CỐ Ý bỏ qua
-      // (xem xuat_file.py:xuat_xlsx_chinh_sua), nên gửi chung không sao.
-      chi_danh_dau_xuat: panel.querySelector('#xf-chi-danh-dau-xuat').checked,
     };
   }
 

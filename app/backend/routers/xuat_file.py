@@ -37,8 +37,6 @@ class PreviewBody(BaseModel):
     include_errors: bool = False
     # chỉ xuất hồ sơ đã tick ĐỦ 4 mục "đã rà soát xong" ở panel chi tiết
     chi_rs_xong: bool = False
-    # chỉ xuất hồ sơ đã tick checkbox "Đánh dấu xuất file" (list.js/detail.js)
-    chi_danh_dau_xuat: bool = False
 
 
 class StartBody(PreviewBody):
@@ -57,8 +55,7 @@ def preview(body: PreviewBody, admin=Depends(auth.require_admin)):
     try:
         try:
             result = export_xlsm.preview(conn, body.pham_vi, body.gia_tri,
-                                          body.include_errors, body.chi_rs_xong,
-                                          body.chi_danh_dau_xuat)
+                                          body.include_errors, body.chi_rs_xong)
         except ValueError as e:
             raise HTTPException(400, str(e))
     finally:
@@ -81,7 +78,7 @@ def xuat_xlsx_don_thuan(body: PreviewBody, admin=Depends(auth.require_admin)):
         try:
             data, count = export_xlsm.build_plain_xlsx(
                 conn, body.pham_vi, body.gia_tri, body.include_errors,
-                body.chi_rs_xong, chi_danh_dau_xuat=body.chi_danh_dau_xuat)
+                body.chi_rs_xong)
         except ValueError as e:
             raise HTTPException(400, str(e))
     finally:
@@ -102,10 +99,6 @@ def xuat_xlsx_chinh_sua(body: PreviewBody, admin=Depends(auth.require_admin)):
     conn = db.get_connection()
     try:
         try:
-            # CỐ Ý KHÔNG forward body.chi_danh_dau_xuat — luồng "Xuất để chỉnh
-            # sửa" phải luôn lấy ĐỦ phạm vi để nhập lại đối soát đúng, không
-            # nằm trong 2/3 luồng áp dụng "Chỉ xuất hồ sơ đã đánh dấu"
-            # (khác .xlsm nộp Bộ và Excel đơn thuần).
             data, count = export_xlsm.build_plain_xlsx(
                 conn, body.pham_vi, body.gia_tri, body.include_errors,
                 body.chi_rs_xong, with_id=True)
@@ -176,7 +169,7 @@ def start_export(body: StartBody, admin=Depends(auth.require_admin)):
     try:
         job = export_xlsm.create_job(body.pham_vi, body.gia_tri,
                                       body.include_errors, extended, admin['id'],
-                                      body.chi_rs_xong, body.chi_danh_dau_xuat)
+                                      body.chi_rs_xong)
     except ValueError as e:
         raise HTTPException(400, str(e))
     return _job_public(job)

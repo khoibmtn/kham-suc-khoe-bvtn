@@ -95,26 +95,46 @@ const ListView = (() => {
     khong_chua: 'Không chứa',
     bat_dau: 'Bắt đầu bằng',
     ket_thuc: 'Kết thúc bằng',
+    thuoc: 'Thuộc',
+    khong_thuoc: 'Không thuộc',
   };
   const ADV_SUB_OPS = ['>', '<', '=', '>=', '<='];
   const ADV_TEXT_VALUE_OPS = new Set(['chua', 'khong_chua', 'bat_dau', 'ket_thuc']);
+  // Toán tử CHỈ áp dụng cho trường ảo 'danh_sach' (khớp backend _DK_DANH_SACH_OPS).
+  const ADV_DANH_SACH_OPS = ['', 'trong', 'khong_trong', 'thuoc', 'khong_thuoc'];
+
+  // "Danh sách" — trường ẢO trong Box điều kiện (KHÔNG phải cột `ho_so` thật,
+  // KHÔNG có trong fields.js/FIELD_DEFS) — lọc theo id "Danh sách tùy chỉnh"
+  // (Api.listDanhSach()). Mọi nơi tra cứu label/định nghĩa trường phải fallback
+  // qua hằng số này khi không tìm thấy trong FIELD_BY_CODE (xem buildAdvConditionRow,
+  // buildFieldPickerPopover).
+  const ADV_VIRTUAL_FIELDS = {
+    danh_sach: { code: 'danh_sach', label: 'Danh sách' },
+  };
+  // 'danh_sach' thêm vào tập "trường cơ bản" (KHÔNG sửa fields.js/ADV_BASIC_FIELD_CODES
+  // gốc) — dùng hằng số cục bộ NÀY ở CẢ 3 nơi tham chiếu ADV_BASIC_FIELD_CODES bên
+  // dưới (defaultAdvFieldOrder, visibleAdvFieldCodes, reorderAdvField) để tránh
+  // hiện không nhất quán nếu chỉ sửa 1-2/3 chỗ.
+  const ADV_BASIC_FIELD_CODES_LOCAL = ADV_BASIC_FIELD_CODES.concat(['danh_sach']);
 
   function newAdvConditionRow() {
     return { field: '', op: '', sub_op: '>', value: '' };
   }
 
   function defaultAdvFieldOrder() {
-    const basic = ADV_BASIC_FIELD_CODES.slice();
+    const basic = ADV_BASIC_FIELD_CODES_LOCAL.slice();
     const rest = FIELD_DEFS.map((f) => f.code).filter((c) => !basic.includes(c));
     return basic.concat(rest);
   }
 
   // Nạp trạng thái đã lưu của tài khoản (user.bo_loc_nang_cao_tuy_chon, trả
   // về từ /api/me) — hợp lệ hoá + NỐI THÊM mã trường MỚI (vd fields.js vừa
-  // bổ sung) chưa có trong danh sách đã lưu, tránh mất trường mới khi nạp.
+  // bổ sung, HOẶC trường ẢO 'danh_sach' mới thêm ở đây) chưa có trong danh
+  // sách đã lưu, tránh mất trường mới khi nạp — user ĐÃ có field_order lưu
+  // sẵn TRƯỚC KHI có 'danh_sach' vẫn tự động được bổ sung.
   function loadAdvFieldSetting() {
     const saved = user && user.bo_loc_nang_cao_tuy_chon;
-    const allCodes = FIELD_DEFS.map((f) => f.code);
+    const allCodes = FIELD_DEFS.map((f) => f.code).concat(Object.keys(ADV_VIRTUAL_FIELDS));
     if (saved && Array.isArray(saved.field_order) && saved.field_order.length) {
       const known = new Set(allCodes);
       const savedValid = saved.field_order.filter((c) => known.has(c));
@@ -135,7 +155,7 @@ const ListView = (() => {
 
   function visibleAdvFieldCodes() {
     if (advShowExtra) return advFieldOrder.slice();
-    const basicSet = new Set(ADV_BASIC_FIELD_CODES);
+    const basicSet = new Set(ADV_BASIC_FIELD_CODES_LOCAL);
     return advFieldOrder.filter((c) => basicSet.has(c));
   }
 
@@ -149,7 +169,7 @@ const ListView = (() => {
     const toIdx = visible.indexOf(toCode);
     if (fromIdx < 0 || toIdx < 0) return;
     visible.splice(toIdx, 0, visible.splice(fromIdx, 1)[0]);
-    const basicSet = new Set(ADV_BASIC_FIELD_CODES);
+    const basicSet = new Set(ADV_BASIC_FIELD_CODES_LOCAL);
     let vi = 0;
     advFieldOrder = advFieldOrder.map((c) => {
       if (advShowExtra || basicSet.has(c)) return visible[vi++];
@@ -162,6 +182,9 @@ const ListView = (() => {
     if (!row.field || !row.op) return false;
     if (row.op === 'toan_tu') return !!row.sub_op && String(row.value || '').trim() !== '';
     if (ADV_TEXT_VALUE_OPS.has(row.op)) return String(row.value || '').trim() !== '';
+    // 'thuoc'/'khong_thuoc' (trường ảo 'danh_sach') CHỈ coi là đủ khi đã
+    // chọn 1 danh sách cụ thể — tránh nút "+ Thêm điều kiện" hiện sai lúc.
+    if (row.op === 'thuoc' || row.op === 'khong_thuoc') return String(row.value || '').trim() !== '';
     return true; // trong / khong_trong — không cần giá trị
   }
 
@@ -170,6 +193,7 @@ const ListView = (() => {
       const out = { field: r.field, op: r.op };
       if (r.op === 'toan_tu') { out.sub_op = r.sub_op; out.value = r.value; }
       else if (ADV_TEXT_VALUE_OPS.has(r.op)) out.value = r.value;
+      else if (r.op === 'thuoc' || r.op === 'khong_thuoc') out.value = r.value;
       return out;
     });
   }
@@ -223,7 +247,9 @@ const ListView = (() => {
     const codes = visibleAdvFieldCodes();
     if (row.field && !codes.includes(row.field)) codes.unshift(row.field); // giữ lựa chọn dù đang ẩn (đợt "thu gọn")
     codes.forEach((c) => {
-      const def = FIELD_BY_CODE[c];
+      // Fallback tra trường ẢO (vd 'danh_sach') khi không có trong FIELD_BY_CODE
+      // (fields.js) — nếu không, dropdown sẽ ÂM THẦM bỏ qua trường ảo.
+      const def = FIELD_BY_CODE[c] || ADV_VIRTUAL_FIELDS[c];
       if (!def) return;
       const o = document.createElement('option');
       o.value = c; o.textContent = def.label;
@@ -250,9 +276,13 @@ const ListView = (() => {
 
     // ----- Box 2: toán tử — chỉ hiện khi Box 1 đã chọn trường (tiêu chí 10) -----
     if (row.field) {
+      const isDanhSach = row.field === 'danh_sach';
       const opSel = document.createElement('select');
       opSel.className = 'filter-select adv-cond-op';
-      Object.keys(ADV_OP_LABELS).forEach((k) => {
+      // Trường ảo 'danh_sach' CHỈ hỗ trợ 4 toán tử tập hợp (khớp backend
+      // _parse_dieu_kien) — ẩn các toán tử không áp dụng (Toán tử/Chứa/...).
+      const opKeys = isDanhSach ? ADV_DANH_SACH_OPS : Object.keys(ADV_OP_LABELS);
+      opKeys.forEach((k) => {
         const o = document.createElement('option');
         o.value = k; o.textContent = ADV_OP_LABELS[k];
         if (k === row.op) o.selected = true;
@@ -266,7 +296,38 @@ const ListView = (() => {
       });
       line.appendChild(opSel);
 
-      if (row.op === 'toan_tu') {
+      if (isDanhSach && (row.op === 'thuoc' || row.op === 'khong_thuoc')) {
+        // Box giá trị cho trường ảo 'danh_sach' + toán tử tập hợp — <select>
+        // liệt kê danh sách qua Api.listDanhSach() (KHÔNG phải input text).
+        const valSel = document.createElement('select');
+        valSel.className = 'filter-select adv-cond-value';
+        valSel.disabled = true;
+        valSel.innerHTML = '<option>Đang tải…</option>';
+        line.appendChild(valSel);
+        Api.listDanhSach().then((list) => {
+          valSel.disabled = false;
+          valSel.innerHTML = '';
+          const optBlank = document.createElement('option');
+          optBlank.value = ''; optBlank.textContent = '(chọn danh sách)';
+          valSel.appendChild(optBlank);
+          list.forEach((ds) => {
+            const o = document.createElement('option');
+            o.value = String(ds.id);
+            o.textContent = `${ds.ten} (${ds.so_luong})`;
+            if (String(ds.id) === String(row.value)) o.selected = true;
+            valSel.appendChild(o);
+          });
+        }).catch(() => {
+          valSel.innerHTML = '<option value="">(lỗi tải danh sách)</option>';
+        });
+        // Cập nhật bộ lọc NGAY khi đổi lựa chọn (không debounce — khác ô
+        // text wireAdvValueInput() vốn debounce để gộp phím gõ liên tiếp).
+        valSel.addEventListener('change', () => {
+          row.value = valSel.value;
+          renderAdvAddButton();
+          onAdvConditionChanged();
+        });
+      } else if (row.op === 'toan_tu') {
         const subSel = document.createElement('select');
         subSel.className = 'filter-select adv-cond-subop';
         ADV_SUB_OPS.forEach((s) => {
@@ -383,7 +444,8 @@ const ListView = (() => {
     list.className = 'adv-field-picker-list';
     let dragCode = null;
     visibleAdvFieldCodes().forEach((code) => {
-      const def = FIELD_BY_CODE[code];
+      // Fallback tra trường ẢO (vd 'danh_sach') — cùng lý do như Box 1.
+      const def = FIELD_BY_CODE[code] || ADV_VIRTUAL_FIELDS[code];
       if (!def) return;
       const item = document.createElement('div');
       item.className = 'adv-field-picker-item';
@@ -1115,20 +1177,6 @@ const ListView = (() => {
     addBtn.addEventListener('click', () => toggleAddToListPopover(addBtn));
     bar.appendChild(addBtn);
 
-    const markBtn = document.createElement('button');
-    markBtn.type = 'button';
-    markBtn.className = 'action-bar-mark';
-    markBtn.textContent = 'Đánh dấu xuất file';
-    markBtn.addEventListener('click', () => onDanhDauTheoChon(1));
-    bar.appendChild(markBtn);
-
-    const unmarkBtn = document.createElement('button');
-    unmarkBtn.type = 'button';
-    unmarkBtn.className = 'action-bar-unmark';
-    unmarkBtn.textContent = 'Bỏ đánh dấu xuất file';
-    unmarkBtn.addEventListener('click', () => onDanhDauTheoChon(0));
-    bar.appendChild(unmarkBtn);
-
     // Chỉ hiện khi đang xem 1 danh sách cụ thể (tiêu chí 34).
     if (filters.danh_sach_id) {
       const removeBtn = document.createElement('button');
@@ -1137,20 +1185,6 @@ const ListView = (() => {
       removeBtn.textContent = 'Gỡ khỏi danh sách này';
       removeBtn.addEventListener('click', onGoKhoiDanhSachHienTai);
       bar.appendChild(removeBtn);
-    }
-  }
-
-  // ---- "Đánh dấu xuất file" / "Bỏ đánh dấu xuất file" theo ĐÚNG các hồ sơ
-  // đang chọn tạm (tiêu chí 38) — KHÔNG dùng Api.danhDauHangLoat cũ (vốn áp
-  // theo bộ lọc). selectedSet giữ nguyên sau thao tác. ----
-  async function onDanhDauTheoChon(giaTri) {
-    const maList = Array.from(selectedSet);
-    try {
-      const res = await Api.danhDauTheoDanhSachMa(maList, giaTri);
-      toast(`Đã ${giaTri ? 'đánh dấu' : 'bỏ đánh dấu'} xuất file ${res.so_luong_doi} hồ sơ.`);
-      reload();
-    } catch (err) {
-      toast('Lỗi: ' + (err.message || 'không thực hiện được'));
     }
   }
 

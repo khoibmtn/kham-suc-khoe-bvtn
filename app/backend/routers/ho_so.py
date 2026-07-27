@@ -6,7 +6,6 @@ hoàn thành + xác nhận suy (§3.4.5).
 import json
 import os
 import sys
-from typing import List
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config  # noqa: E402
@@ -64,12 +63,18 @@ def _ymd(ddmmyyyy_col):
 # ===== "Box điều kiện" (Bộ lọc nâng cao, list.js) — mỗi điều kiện:
 # {field, op, sub_op?, value?}, nhiều điều kiện nối AND. field PHẢI nằm
 # trong danh sách cột THẬT của bảng ho_so (whitelist chống inject, xem
-# _parse_dieu_kien — tên cột phải nối thẳng vào SQL, không tham số hoá được).
-_DK_OPS = {'trong', 'khong_trong', 'toan_tu', 'chua', 'khong_chua', 'bat_dau', 'ket_thuc'}
+# _parse_dieu_kien — tên cột phải nối thẳng vào SQL, không tham số hoá được)
+# — NGOẠI LỆ DUY NHẤT: field='danh_sach', trường ẢO (KHÔNG phải cột `ho_so`
+# thật) lọc theo "Danh sách tùy chỉnh" (bảng danh_sach_ho_so).
+_DK_OPS = {'trong', 'khong_trong', 'toan_tu', 'chua', 'khong_chua', 'bat_dau', 'ket_thuc',
+           'thuoc', 'khong_thuoc'}
 _DK_SUB_OPS = {'>', '<', '=', '>=', '<='}
 # widget:'date' trong fields.js (dd/mm/yyyy trong DB) — dùng _ymd() thay vì
 # so sánh chuỗi thường khi so_operator là Toán tử.
 _DK_DATE_FIELDS = {'ngay_vao', 'ngay_sinh', 'ngaycap_cccd'}
+# Toán tử chỉ hợp lệ cho trường ẢO 'danh_sach' — 'thuoc'/'khong_thuoc' đều
+# nằm ở đây, còn 'trong'/'khong_trong' dùng chung với cột thật.
+_DK_DANH_SACH_OPS = {'trong', 'khong_trong', 'thuoc', 'khong_thuoc'}
 
 
 def _parse_dieu_kien(raw_json, allowed_cols):
@@ -89,7 +94,20 @@ def _parse_dieu_kien(raw_json, allowed_cols):
             continue
         field = it.get('field')
         op = it.get('op')
-        if field not in allowed_cols or op not in _DK_OPS:
+        is_danh_sach = field == 'danh_sach'
+        # field='danh_sach' được đặc cách chấp nhận dù KHÔNG nằm trong
+        # allowed_cols (không phải cột thật của bảng ho_so).
+        if (field not in allowed_cols and not is_danh_sach) or op not in _DK_OPS:
+            continue
+        # [Chống crash bắt buộc] 'thuoc'/'khong_thuoc' CHỈ hợp lệ khi
+        # field=='danh_sach' — cột thật (vd 'ho_ten') dùng op này bị bỏ qua ở
+        # đây, KHÔNG được lọt xuống _dk_condition_sql (tránh KeyError/lỗi SQL
+        # -> 500, vì cột thật không có nhánh xử lý 2 op này).
+        if op in ('thuoc', 'khong_thuoc') and not is_danh_sach:
+            continue
+        # Trường ảo 'danh_sach' chỉ hỗ trợ đúng 4 toán tử tập hợp (khớp Box 2
+        # frontend) — các toán tử khác (toan_tu/chua/...) không áp dụng.
+        if is_danh_sach and op not in _DK_DANH_SACH_OPS:
             continue
         sub_op = it.get('sub_op')
         value = it.get('value')
@@ -99,12 +117,34 @@ def _parse_dieu_kien(raw_json, allowed_cols):
         elif op in ('chua', 'khong_chua', 'bat_dau', 'ket_thuc'):
             if not value or not str(value).strip():
                 continue
+        elif op in ('thuoc', 'khong_thuoc'):
+            # Bắt buộc ép kiểu int hợp lệ (danh_sach_id) — lỗi -> bỏ qua điều
+            # kiện (an toàn, không chặn cả danh sách).
+            try:
+                value = int(value)
+            except (TypeError, ValueError):
+                continue
         out.append({'field': field, 'op': op, 'sub_op': sub_op, 'value': value})
     return out
 
 
 def _dk_condition_sql(cond, numeric_fields):
     """Trả (sql, args) SQL cho 1 điều kiện ĐÃ validate (_parse_dieu_kien)."""
+    # Trường ảo 'danh_sach' — xử lý TRƯỚC dòng `col = cond['field']` bên dưới
+    # (sai với trường ảo vì 'danh_sach' không phải cột thật của bảng ho_so).
+    if cond['field'] == 'danh_sach':
+        op = cond['op']
+        if op == 'trong':      # hồ sơ KHÔNG thuộc danh sách nào
+            return ('ma_ho_so NOT IN (SELECT ma_ho_so FROM danh_sach_ho_so)', [])
+        if op == 'khong_trong':  # hồ sơ thuộc ÍT NHẤT 1 danh sách
+            return ('ma_ho_so IN (SELECT ma_ho_so FROM danh_sach_ho_so)', [])
+        if op == 'thuoc':       # thuộc đúng 1 danh_sach_id cụ thể
+            return ('ma_ho_so IN (SELECT ma_ho_so FROM danh_sach_ho_so '
+                     'WHERE danh_sach_id = ?)', [cond['value']])
+        # khong_thuoc — KHÔNG thuộc danh_sach_id đó
+        return ('ma_ho_so NOT IN (SELECT ma_ho_so FROM danh_sach_ho_so '
+                'WHERE danh_sach_id = ?)', [cond['value']])
+
     col = cond['field']  # đã whitelist ở _parse_dieu_kien — an toàn nối SQL
     op = cond['op']
 
@@ -556,87 +596,6 @@ def _filtered_where_q(params, conn=None):
         where_sql = f'{where_sql} AND {like_sql}'
         args = args + like_args
     return where_sql, args
-
-
-@router.post('/ho-so/danh-dau-hang-loat')
-def danh_dau_hang_loat(request: Request, gia_tri: int = Query(...),
-                       user=Depends(auth.get_current_user)):
-    """Ô check "Xuất" ở đầu bảng Danh sách (list.js) — tích/bỏ tích
-    `danh_dau_xuat` cho TOÀN BỘ hồ sơ khớp bộ lọc hiện tại, qua MỌI trang
-    (không chỉ 20 dòng đang hiển thị) — tái dùng ĐÚNG bộ lọc của
-    GET /api/ho-so (kể cả Box điều kiện) qua _filtered_where_q(). Chỉ ghi
-    những hồ sơ THẬT SỰ đổi giá trị (tránh rác nhat_ky cho hồ sơ đã khớp
-    sẵn)."""
-    if gia_tri not in (0, 1):
-        raise HTTPException(400, 'gia_tri phải là 0 hoặc 1')
-    params = _parse_list_params(request)
-    conn = db.get_connection()
-    try:
-        where_sql, args = _filtered_where_q(params, conn)
-        rows = conn.execute(
-            f'SELECT ma_ho_so FROM ho_so WHERE ({where_sql}) AND '
-            f'(danh_dau_xuat IS NULL OR danh_dau_xuat != ?)', args + [gia_tri]).fetchall()
-        ma_list = [r['ma_ho_so'] for r in rows]
-        if ma_list:
-            placeholders = ','.join('?' * len(ma_list))
-            conn.execute(
-                f'UPDATE ho_so SET danh_dau_xuat=? WHERE ma_ho_so IN ({placeholders})',
-                [gia_tri] + ma_list)
-            gia_tri_cu = '0' if gia_tri == 1 else '1'
-            conn.executemany(
-                'INSERT INTO nhat_ky(ma_ho_so, nguoi_dung_id, ten_truong, '
-                'gia_tri_cu, gia_tri_moi) VALUES (?,?,?,?,?)',
-                [(ma, user['id'], 'danh_dau_xuat', gia_tri_cu, str(gia_tri))
-                 for ma in ma_list])
-            conn.commit()
-        tong = conn.execute(
-            f'SELECT COUNT(*) FROM ho_so WHERE {where_sql}', args).fetchone()[0]
-    finally:
-        conn.close()
-    return {'ok': True, 'so_luong_doi': len(ma_list), 'tong_pham_vi': tong}
-
-
-class DanhDauTheoDanhSachMaBody(BaseModel):
-    ma_ho_so_list: List[str]
-    gia_tri: int
-
-
-@router.post('/ho-so/danh-dau-theo-danh-sach-ma')
-def danh_dau_theo_danh_sach_ma(body: DanhDauTheoDanhSachMaBody,
-                                user=Depends(auth.get_current_user)):
-    """Thanh hành động "N đã chọn" (list.js, tính năng Danh sách tùy chỉnh) —
-    đánh dấu/bỏ đánh dấu xuất file theo DANH SÁCH MÃ HỒ SƠ TƯỜNG MINH (chọn
-    tạm ở frontend), KHÁC với danh_dau_hang_loat ở trên vốn áp theo BỘ LỌC
-    hiện tại qua mọi trang. Cùng khuôn ghi nhat_ky: chỉ UPDATE + ghi log cho
-    mã THỰC SỰ đổi giá trị (tránh rác nhat_ky cho mã đã khớp sẵn). Endpoint
-    danh_dau_hang_loat ở trên GIỮ NGUYÊN, không đụng tới."""
-    if body.gia_tri not in (0, 1):
-        raise HTTPException(400, 'gia_tri phải là 0 hoặc 1')
-    if not body.ma_ho_so_list:
-        raise HTTPException(400, 'Danh sách mã hồ sơ không được để trống')
-    conn = db.get_connection()
-    try:
-        placeholders = ','.join('?' * len(body.ma_ho_so_list))
-        rows = conn.execute(
-            f'SELECT ma_ho_so FROM ho_so WHERE ma_ho_so IN ({placeholders}) '
-            f'AND (danh_dau_xuat IS NULL OR danh_dau_xuat != ?)',
-            body.ma_ho_so_list + [body.gia_tri]).fetchall()
-        ma_list = [r['ma_ho_so'] for r in rows]
-        if ma_list:
-            ph2 = ','.join('?' * len(ma_list))
-            conn.execute(
-                f'UPDATE ho_so SET danh_dau_xuat=? WHERE ma_ho_so IN ({ph2})',
-                [body.gia_tri] + ma_list)
-            gia_tri_cu = '0' if body.gia_tri == 1 else '1'
-            conn.executemany(
-                'INSERT INTO nhat_ky(ma_ho_so, nguoi_dung_id, ten_truong, '
-                'gia_tri_cu, gia_tri_moi) VALUES (?,?,?,?,?)',
-                [(ma, user['id'], 'danh_dau_xuat', gia_tri_cu, str(body.gia_tri))
-                 for ma in ma_list])
-            conn.commit()
-    finally:
-        conn.close()
-    return {'ok': True, 'so_luong_doi': len(ma_list)}
 
 
 # Cột nội bộ (khóa tìm kiếm bỏ dấu) — không đưa vào file xuất cho người dùng.

@@ -76,10 +76,6 @@ const Api = (() => {
     capNhatNgay: () => req('POST', '/api/admin/cap-nhat-ngay'),
 
     listHoSo: (params) => req('GET', '/api/ho-so?' + qs(params)),
-    // Ô check "Xuất" ở đầu bảng Danh sách — tích/bỏ tích hàng loạt theo
-    // ĐÚNG bộ lọc hiện tại, qua mọi trang (list.js).
-    danhDauHangLoat: (params, giaTri) => req('POST',
-      `/api/ho-so/danh-dau-hang-loat?gia_tri=${giaTri}&` + qs(params)),
     getHoSo: (ma) => req('GET', `/api/ho-so/${encodeURIComponent(ma)}`),
     patchHoSo: (ma, fields) => req('PATCH', `/api/ho-so/${encodeURIComponent(ma)}`, fields),
     hoanThanh: (ma, filterParams) => req('POST', `/api/ho-so/${encodeURIComponent(ma)}/hoan-thanh?` + qs(filterParams)),
@@ -114,14 +110,12 @@ const Api = (() => {
     patchKhoaPhong: (id, body) => req('PATCH', `/api/khoa-phong/${id}`, body),
 
     // "Danh sách tùy chỉnh" (collection nhiều-nhiều với ho_so, list.js) —
-    // action bar chọn tạm: thêm/gỡ hồ sơ khỏi danh sách, tạo/xóa danh sách,
-    // đánh dấu xuất file theo ĐÚNG các mã đang chọn (không theo bộ lọc).
+    // action bar chọn tạm: thêm/gỡ hồ sơ khỏi danh sách, tạo/xóa danh sách.
     listDanhSach: () => req('GET', '/api/danh-sach'),
     createDanhSach: (body) => req('POST', '/api/danh-sach', body),
     deleteDanhSach: (id) => req('DELETE', `/api/danh-sach/${id}`),
     themHoSoVaoDanhSach: (id, maHoSoList) => req('POST', `/api/danh-sach/${id}/them-ho-so`, { ma_ho_so_list: maHoSoList }),
     goHoSoKhoiDanhSach: (id, maHoSoList) => req('POST', `/api/danh-sach/${id}/go-ho-so`, { ma_ho_so_list: maHoSoList }),
-    danhDauTheoDanhSachMa: (maHoSoList, giaTri) => req('POST', '/api/ho-so/danh-dau-theo-danh-sach-ma', { ma_ho_so_list: maHoSoList, gia_tri: giaTri }),
 
     listDanhMucQuanLy: () => req('GET', '/api/danh-muc-quan-ly'),
     createDanhMucQuanLy: (body) => req('POST', '/api/danh-muc-quan-ly', body),

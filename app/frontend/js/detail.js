@@ -309,37 +309,6 @@ const DetailView = (() => {
     return wrap;
   }
 
-  // Checkbox "Đánh dấu xuất file" — cờ chọn tay dùng cho tuỳ chọn "Chỉ xuất
-  // hồ sơ đã đánh dấu" ở màn Xuất file (2/3 luồng, xem xuatfile.js). Cùng
-  // khuôn render trực tiếp DOM + PATCH autosave như renderRaSoatXong() ở
-  // trên, KHÔNG qua fields.js/FIELD_DEFS.
-  function renderDanhDauXuat() {
-    const wrap = document.createElement('label');
-    wrap.className = 'detail-danhdauxuat';
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.checked = !!Number(current.danh_dau_xuat);
-    cb.addEventListener('change', async () => {
-      const target = cb.checked ? 1 : 0;
-      cb.disabled = true;
-      try {
-        const res = await Api.patchHoSo(current.ma_ho_so, {
-          danh_dau_xuat: target, _base: { danh_dau_xuat: current.danh_dau_xuat },
-        });
-        Object.assign(current, res.updated);
-        toast('Đã lưu');
-      } catch (e) {
-        cb.checked = !cb.checked;
-        toast('Lỗi: ' + (e.message || 'không lưu được'));
-      } finally {
-        cb.disabled = false;
-      }
-    });
-    wrap.appendChild(cb);
-    wrap.appendChild(document.createTextNode(' Đánh dấu xuất file'));
-    return wrap;
-  }
-
   function render() {
     root.innerHTML = '';
 
@@ -388,7 +357,6 @@ const DetailView = (() => {
     const actions = document.createElement('div');
     actions.className = 'detail-actions';
     actions.appendChild(renderRaSoatXong());
-    actions.appendChild(renderDanhDauXuat());
     const doneBtn = document.createElement('button');
     doneBtn.textContent = 'Hoàn thành (Ctrl+S)';
     doneBtn.addEventListener('click', () => AppShell.markHoanThanh());
