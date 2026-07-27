@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config  # noqa: E402
 import db  # noqa: E402
 import auth  # noqa: E402
-from services import fuzzy, qc, sinh_hieu_valid, the_luc  # noqa: E402
+from services import fuzzy, ngay_thang_valid, qc, sinh_hieu_valid, the_luc  # noqa: E402
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict
@@ -760,6 +760,14 @@ def patch_ho_so(ma_ho_so: str, body: PatchBody,
         if loi_nguong:
             raise HTTPException(422, '; '.join(x['ly_do'] for x in loi_nguong))
 
+        # Phản hồi anh Khôi: phòng thủ 2 lớp cho 3 trường ngày (ngay_sinh/
+        # ngay_vao/ngaycap_cccd) — widget renderDate() ở frontend chặn nhập
+        # sai trước, nhưng backend vẫn phải tự chặn (PATCH có thể gọi thẳng
+        # qua API, không qua widget). Rỗng vẫn hợp lệ (cho phép xoá).
+        changes, loi_ngay_thang = ngay_thang_valid.validate_date_changes(changes)
+        if loi_ngay_thang:
+            raise HTTPException(422, '; '.join(x['ly_do'] for x in loi_ngay_thang))
+
         # Đợt 5 criterion 1/3: xác định TRƯỚC KHI ghi có cần tính lại PL thể
         # lực không — dựa trên bộ TRƯỜNG GỬI LÊN (không phải giá trị cuối có
         # đổi hay không); PATCH thủ công kham_the_luc_pl (không đụng chiều
@@ -894,6 +902,16 @@ def patch_ho_so(ma_ho_so: str, body: PatchBody,
         # CUỐI CÙNG — trước đây banner "vi phạm bất biến" chỉ tính động lúc
         # hiển thị, không lưu thành cờ nên không xuất hiện trong dải chip.
         if qc.sync_vi_pham_flag(conn, ma_ho_so, qc.check_invariant(row_now)):
+            conn.commit()
+
+        # Phản hồi anh Khôi: đồng bộ cờ NGAY_THANG_KHONG_HOP_LE — gọi
+        # UNCONDITIONAL mỗi lần PATCH thành công (KHÔNG gate theo việc
+        # `changes` có chứa field ngày hay không), vì hồ sơ có thể ĐÃ có sẵn
+        # ngày sai từ trước (migration rà soát dữ liệu cũ) trong khi lần
+        # PATCH này chỉ sửa trường khác — cờ vẫn phải phản ánh đúng trạng
+        # thái hiện tại của cả 3 trường ngày. row_now đã refetch, có đủ 3
+        # trường ngày + co_qc mới nhất.
+        if qc.sync_ngay_thang_flag(conn, ma_ho_so, row_now):
             conn.commit()
 
         new_row = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?',

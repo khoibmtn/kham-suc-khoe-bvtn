@@ -276,6 +276,7 @@ def init_schema(conn=None):
     _migrate_chuan_hoa_bt(conn)
     _migrate_dong_bo_ten_icd(conn)
     _migrate_snapshot_danh_dau_xuat(conn)
+    _migrate_ngay_thang_khong_hop_le(conn)
     if own:
         conn.close()
 
@@ -720,6 +721,41 @@ def _migrate_snapshot_danh_dau_xuat(conn):
         conn.executemany(
             'INSERT INTO danh_sach_ho_so(danh_sach_id, ma_ho_so) '
             'VALUES (?, ?)', [(danh_sach_id, ma) for ma in ma_list])
+        conn.execute(
+            'INSERT INTO cai_dat(khoa, gia_tri) VALUES (?, ?) '
+            'ON CONFLICT(khoa) DO NOTHING', (_KHOA, 'true'))
+        conn.commit()
+    except Exception:
+        pass
+
+
+def _migrate_ngay_thang_khong_hop_le(conn):
+    """Rà soát TOÀN BỘ ho_so, gắn cờ NGAY_THANG_KHONG_HOP_LE (services/qc.py)
+    cho hồ sơ có ≥1 trong 3 trường ngày (ngay_sinh/ngay_vao/ngaycap_cccd) sai
+    định dạng hoặc không tồn tại trong lịch (vd '01/01/144', '30/02/2000') —
+    phản hồi anh Khôi: widget nhập ngày (renderDate(), frontend/js/
+    widgets.js) trước đây không validate gì, cần rà soát dữ liệu CŨ đã lưu
+    sai. CHỈ ĐÁNH DẤU, KHÔNG tự động sửa/xoá bất kỳ giá trị ngày tháng nào —
+    validate mới (services/ngay_thang_valid.py, gọi ở PATCH /api/ho-so) chỉ
+    chặn lưu sai THÊM từ nay, không đụng dữ liệu cũ. TÁI SỬ DỤNG
+    services/qc.sync_ngay_thang_flag() (không viết lại logic parse ngày lần
+    2, không tự commit trong vòng lặp — commit 1 lần ở cuối).
+
+    1 LẦN DUY NHẤT (đánh dấu qua cai_dat) — lặp lại vô hại về mặt dữ liệu
+    (add_flag() idempotent) nhưng dùng cờ cho nhất quán với các hàm
+    _migrate_* khác và tránh quét toàn bộ ho_so mỗi lần khởi động server."""
+    _KHOA = 'ngay_thang_khong_hop_le_da_rasoat'
+    try:
+        da_chay = conn.execute(
+            'SELECT 1 FROM cai_dat WHERE khoa=?', (_KHOA,)).fetchone()
+        if da_chay:
+            return
+        from services import qc  # noqa: E402 — import trễ, xem _ksk_token_match
+        rows = conn.execute(
+            'SELECT ma_ho_so, ngay_sinh, ngay_vao, ngaycap_cccd, co_qc '
+            'FROM ho_so').fetchall()
+        for row in rows:
+            qc.sync_ngay_thang_flag(conn, row['ma_ho_so'], row)
         conn.execute(
             'INSERT INTO cai_dat(khoa, gia_tri) VALUES (?, ?) '
             'ON CONFLICT(khoa) DO NOTHING', (_KHOA, 'true'))

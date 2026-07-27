@@ -15,6 +15,7 @@ import config  # noqa: E402
 config.ensure_build_on_path()
 from classify import ORGAN_COLS, ORGANS  # noqa: E402
 from build_xlsm import TEN_CQ  # noqa: E402
+from services import ngay_thang_valid  # noqa: E402
 
 # tên cột phân loại (lowercase, khớp schema.sql) theo đúng thứ tự ưu tiên §6.1
 ORGAN_PL_FIELDS = [(code, ORGAN_COLS[code][1].lower()) for code in ORGANS]
@@ -105,6 +106,18 @@ FLAG_META = {
         'y_nghia': 'Phân loại sức khỏe chung khác mức nặng nhất trong các '
                     'cơ quan/thể lực. Bấm "Lấy theo mức nặng nhất" hoặc sửa '
                     'lại phân loại cho khớp.',
+    },
+    # Phản hồi anh Khôi: widget nhập ngày trước đây không validate gì, dữ
+    # liệu CŨ có thể đã lưu ngày sai (vd '01/01/144', '30/02/2000'). Validate
+    # MỚI (services/ngay_thang_valid.py) chỉ chặn lưu SAI THÊM từ nay — cờ
+    # này đánh dấu hồ sơ ĐÃ có sẵn ngày sai để nhân viên tự đối chiếu/sửa,
+    # KHÔNG tự động sửa/xoá giá trị.
+    'NGAY_THANG_KHONG_HOP_LE': {
+        'muc': 'cam',
+        'ten': 'Ngày tháng không hợp lệ',
+        'y_nghia': 'Ngày sinh/ngày vào/ngày cấp CCCD sai định dạng hoặc '
+                    'không tồn tại trong lịch (vd 30/02, năm phi lý). Đối '
+                    'chiếu giấy tờ gốc rồi sửa lại cho đúng.',
     },
 }
 RED_FLAGS = {k for k, v in FLAG_META.items() if v['muc'] == 'do'}
@@ -266,5 +279,34 @@ def sync_vi_pham_flag(conn, ma_ho_so, inv):
         return True
     if not inv['vi_pham'] and dang_co:
         remove_flags(conn, ma_ho_so, ['VI_PHAM_BAT_BIEN_QD1613'])
+        return True
+    return False
+
+
+def _co_ngay_thang_sai(row):
+    """True nếu hồ sơ có ÍT NHẤT 1 trong 3 trường ngày (ngay_sinh/ngay_vao/
+    ngaycap_cccd) sai định dạng hoặc không tồn tại trong lịch. row: dict-like
+    (sqlite3.Row hoặc dict) có (một phần hoặc đủ) 3 cột đó. TÁI SỬ DỤNG
+    ngay_thang_valid.validate_date_changes() — KHÔNG viết lại logic parse
+    ngày lần 2."""
+    changes = {f: row[f] for f in ngay_thang_valid.DATE_FIELDS if f in row.keys()}
+    _, loi = ngay_thang_valid.validate_date_changes(changes)
+    return bool(loi)
+
+
+def sync_ngay_thang_flag(conn, ma_ho_so, row):
+    """Đồng bộ cờ NGAY_THANG_KHONG_HOP_LE theo trạng thái MỚI NHẤT của hồ sơ
+    — ĐÚNG khuôn sync_vi_pham_flag() ở trên: add nếu phát hiện ≥1 trường
+    ngày sai mà chưa có cờ, remove nếu hết sai mà đang có cờ. row: dict-like
+    ĐÃ có đủ 3 trường ngày + co_qc (thường là bản ghi vừa refetch sau khi
+    ghi). KHÔNG tự commit — caller tự commit theo transaction của mình. Trả
+    True nếu có đổi, False nếu không."""
+    sai = _co_ngay_thang_sai(row)
+    dang_co = 'NGAY_THANG_KHONG_HOP_LE' in flags_of(row['co_qc'])
+    if sai and not dang_co:
+        add_flag(conn, ma_ho_so, 'NGAY_THANG_KHONG_HOP_LE')
+        return True
+    if not sai and dang_co:
+        remove_flags(conn, ma_ho_so, ['NGAY_THANG_KHONG_HOP_LE'])
         return True
     return False

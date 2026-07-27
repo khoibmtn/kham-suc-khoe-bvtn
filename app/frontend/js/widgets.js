@@ -311,6 +311,32 @@ const Widgets = (() => {
     return fieldWrap(def, fs, ctx);
   }
 
+  // Phản hồi anh Khôi: chặn nhập ngày sai ở tầng frontend cho 3 trường
+  // ngay_vao/ngay_sinh/ngaycap_cccd (phòng thủ lớp 1 — backend
+  // services/ngay_thang_valid.py là lớp 2, cùng khuôn kiểm tra: định dạng
+  // dd/mm/yyyy đủ số, ngày THẬT tồn tại trong lịch — kể cả năm nhuận —, năm
+  // trong khoảng [1900, năm hiện tại]). `digits`: chuỗi CHỈ chữ số (đã tách
+  // khỏi dấu '/'), LUÔN đúng 8 ký tự khi gọi hàm này (caller đã lọc <8 ra
+  // trước — xem nhánh "gõ dở" trong blur handler bên dưới).
+  function _checkNgayThang(v, digits) {
+    const ngay = Number(digits.slice(0, 2));
+    const thang = Number(digits.slice(2, 4));
+    const nam = Number(digits.slice(4, 8));
+    const namHienTai = new Date().getFullYear();
+    if (nam < 1900 || nam > namHienTai) {
+      return { ok: false, ly_do: `Năm ${nam} ngoài khoảng hợp lệ (1900–${namHienTai})` };
+    }
+    // new Date TỰ ĐỘNG lăn ngày tràn (vd 30/02 -> 02/03) thay vì báo lỗi —
+    // đọc lại đúng 3 thành phần sau khi dựng Date, KHÔNG khớp -> ngày không
+    // tồn tại trong lịch (bắt được cả tháng >12, ngày 0, 29/02 năm không
+    // nhuận...). KHÔNG tự viết bảng số ngày/tháng tay.
+    const dt = new Date(nam, thang - 1, ngay);
+    if (dt.getFullYear() !== nam || dt.getMonth() !== thang - 1 || dt.getDate() !== ngay) {
+      return { ok: false, ly_do: `"${v}" không phải là ngày tồn tại trong lịch` };
+    }
+    return { ok: true };
+  }
+
   function renderDate(def, value, ctx) {
     const holder = document.createElement('div');
     holder.className = 'date-input';
@@ -329,7 +355,35 @@ const Widgets = (() => {
       else if (digits.length > 2) out = `${digits.slice(0, 2)}/${digits.slice(2)}`;
       el.value = out;
     });
-    el.addEventListener('blur', () => save(el.value));
+    el.addEventListener('blur', () => {
+      const v = el.value;
+      if (v === '') {
+        // Ô trống vẫn hợp lệ (cho phép xoá) — hành vi cũ giữ nguyên.
+        el.classList.remove('invalid');
+        el.removeAttribute('title');
+        save('');
+        return;
+      }
+      const digits = v.replace(/\D/g, '');
+      if (digits.length < 8) {
+        // Gõ dở (vd '01/01', hoặc thiếu số trong ngày/tháng/năm như
+        // '01/01/144') — hoàn tác về giá trị đã lưu gần nhất, KHÔNG lưu,
+        // KHÔNG báo lỗi (coi như CHƯA nhập xong, không phải giá trị sai).
+        el.value = save.getLast();
+        el.classList.remove('invalid');
+        el.removeAttribute('title');
+        return;
+      }
+      const chk = _checkNgayThang(v, digits);
+      if (!chk.ok) {
+        flashInvalid(el, chk.ly_do);
+        if (ctx.toast) ctx.toast('Lỗi: ' + chk.ly_do);
+        return; // KHÔNG lưu giá trị sai — giữ nguyên trong ô để nhân viên sửa
+      }
+      el.classList.remove('invalid');
+      el.removeAttribute('title');
+      save(v);
+    });
     el.addEventListener('keydown', stopIfPlainNav);
     // Đợt 4B criterion 3: Enter = blur (autosave) + sang ô kế (ngày sinh/
     // ngày vào/ngày cấp CCCD không thuộc 4 trường ngưỡng sinh hiệu nên không
