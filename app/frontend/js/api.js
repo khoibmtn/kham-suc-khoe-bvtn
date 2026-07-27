@@ -69,7 +69,10 @@ const Api = (() => {
     // theo tài khoản đang đăng nhập (tái dùng PATCH /api/me).
     capNhatBoLocNangCao: (tuyChon) => req('PATCH', '/api/me', { bo_loc_nang_cao_tuy_chon: tuyChon }),
     danhMuc: () => req('GET', '/api/danh-muc'),
-    coQcThongKe: () => req('GET', '/api/co-qc-thong-ke'),
+    // danhSachId (tuỳ chọn): "Xem theo danh sách" đang chọn 1 danh sách cụ
+    // thể -> co_qc_thong_ke đếm THU HẸP trong phạm vi đó (list.js). Không
+    // truyền -> đếm GLOBAL như cũ (qs() tự bỏ qua khi undefined/null/'').
+    coQcThongKe: (danhSachId) => req('GET', '/api/co-qc-thong-ke?' + qs({ danh_sach_id: danhSachId })),
     caiDatGet: () => req('GET', '/api/cai-dat'),
     caiDatPut: (body) => req('PUT', '/api/cai-dat', body),
     raSoatSinhHieu: (apply) => req('POST', `/api/admin/ra-soat-sinh-hieu?apply=${apply ? 'true' : 'false'}`),

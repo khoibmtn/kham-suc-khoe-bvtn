@@ -49,17 +49,28 @@ const ListView = (() => {
   // Tùy chọn cho dropdown "Cờ cảnh báo": khi đã có coQcCounts thì gắn số lượng
   // vào nhãn + BỎ cờ 0 hồ sơ (giữ lại cờ đang được chọn dù = 0 để không mất
   // lựa chọn hiện tại). Chưa có count -> hiện toàn bộ như cũ.
+  // coQcCounts nay có format {counts: {mã_cờ: N}, tong: X|null} — `tong` là
+  // số (kể cả 0) khi "Xem theo danh sách" đang scoped 1 danh sách cụ thể,
+  // null/undefined khi đang xem GLOBAL (tất cả danh sách).
   function coQcOptions() {
     let flags = danhMuc.co_qc;
-    if (coQcCounts) {
-      flags = flags.filter((f) => (coQcCounts[f.ma] || 0) > 0
+    const counts = coQcCounts ? coQcCounts.counts : null;
+    const scoped = coQcCounts && (coQcCounts.tong !== null && coQcCounts.tong !== undefined);
+    if (counts) {
+      flags = flags.filter((f) => (counts[f.ma] || 0) > 0
         || (filters.co_qc || []).includes(f.ma));
     }
     return flags.map((f) => {
-      const n = coQcCounts ? (coQcCounts[f.ma] || 0) : null;
+      const n = counts ? (counts[f.ma] || 0) : null;
+      let suffix = '';
+      if (n !== null) {
+        suffix = scoped
+          ? ` ${n.toLocaleString('vi-VN')}/${coQcCounts.tong.toLocaleString('vi-VN')}`
+          : ` (${n.toLocaleString('vi-VN')})`;
+      }
       return {
         ma: f.ma,
-        ten: f.ten + (n === null ? '' : ` (${n.toLocaleString('vi-VN')})`),
+        ten: f.ten + suffix,
         title: f.y_nghia,
         icon: f.muc === 'do' ? '🔴' : f.muc === 'cam' ? '🟠' : '🟡',
       };
@@ -77,6 +88,22 @@ const ListView = (() => {
     });
     msRefs.coQc.el.replaceWith(ms.el);
     msRefs.coQc = ms;
+  }
+
+  // Nạp lại coQcCounts theo phạm vi `danhSachId` (undefined/'' = GLOBAL) rồi
+  // dựng lại dropdown Cờ cảnh báo — dùng CHUNG cho mọi nơi cần đồng bộ số
+  // liệu khi "Xem theo danh sách" đổi (đổi danh sách, xóa hết bộ lọc, xóa
+  // danh sách đang chọn). Có seq-guard chống race: nếu người dùng đổi danh
+  // sách liên tiếp nhanh, chỉ kết quả của lần gọi MỚI NHẤT được áp dụng
+  // (tiêu chí 22 — không giữ số liệu cũ đè lên số liệu mới).
+  let coQcSeq = 0;
+  function refreshCoQcCounts(danhSachId) {
+    const seq = ++coQcSeq;
+    Api.coQcThongKe(danhSachId || undefined).then((counts) => {
+      if (seq !== coQcSeq) return; // có lần gọi mới hơn đã tới trước — bỏ qua
+      coQcCounts = counts;
+      rebuildCoQc();
+    }).catch(() => { /* lỗi mạng tạm — giữ số liệu cũ */ });
   }
 
   // ===== "Box điều kiện" — bộ lọc nâng cao dạng field + toán tử + giá trị,
@@ -897,6 +924,9 @@ const ListView = (() => {
     renderAdvConditionsFull();
     page = 1;
     reload();
+    // "Xem theo danh sách" về "Tất cả" -> dropdown Cờ cảnh báo cũng phải về
+    // lại số liệu GLOBAL (không truyền danh_sach_id).
+    refreshCoQcCounts();
   }
 
   function currentFilterParams() {
@@ -1382,6 +1412,10 @@ const ListView = (() => {
       if (danhSachDeleteBtnEl) danhSachDeleteBtnEl.disabled = !filters.danh_sach_id;
       page = 1;
       reload();
+      // Đổi phạm vi "Xem theo danh sách" -> dropdown "Cờ cảnh báo" cũng đổi
+      // theo (GLOBAL "(N)" hoặc scoped "xx/YYY") — bất đồng bộ, KHÔNG chặn
+      // reload() bảng chính ở trên.
+      refreshCoQcCounts(filters.danh_sach_id);
     });
     wrap.appendChild(sel);
 
@@ -1447,6 +1481,10 @@ const ListView = (() => {
       await refreshDanhSachDropdown();
       page = 1;
       reload();
+      // Vừa xóa ĐÚNG danh sách đang scoped (đã về "Tất cả" ở trên) -> dropdown
+      // Cờ cảnh báo phải quay lại số liệu GLOBAL, không giữ số liệu cũ của
+      // danh sách vừa xóa.
+      refreshCoQcCounts();
     } catch (err) {
       toast('Lỗi: ' + (err.message || 'không xóa được'));
     }
