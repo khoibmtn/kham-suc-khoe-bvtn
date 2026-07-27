@@ -146,7 +146,8 @@ def start_export(body: StartBody, admin=Depends(auth.require_admin)):
         raise HTTPException(
             409, 'Xuất file .xlsm chưa hỗ trợ trên bản chạy đám mây — hãy '
                  'chạy app trên máy cá nhân (xem hướng dẫn câu lệnh ở trang '
-                 'này), hoặc dùng nút "Tải .xlsx đơn thuần" ngay tại đây.')
+                 'này), hoặc dùng nút "Tải .xlsx (kèm mã định danh)" ngay '
+                 'tại đây.')
     extended = body.extended.model_dump() if body.extended else {'enabled': False, 'columns': []}
     try:
         job = export_xlsm.create_job(body.pham_vi, body.gia_tri,
