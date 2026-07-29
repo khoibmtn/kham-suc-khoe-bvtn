@@ -234,7 +234,8 @@ CREATE TABLE IF NOT EXISTS danh_sach (
   id            INTEGER PRIMARY KEY,
   ten           TEXT NOT NULL,
   nguoi_tao_id  INTEGER REFERENCES nguoi_dung(id),
-  thoi_diem_tao TEXT DEFAULT (datetime('now','localtime'))
+  thoi_diem_tao TEXT DEFAULT (datetime('now','localtime')),
+  an            INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS danh_sach_ho_so (
   id             INTEGER PRIMARY KEY,

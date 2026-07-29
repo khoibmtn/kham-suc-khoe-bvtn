@@ -552,6 +552,14 @@ const ListView = (() => {
     advConditions = [newAdvConditionRow()];
     buildLayout();
     refreshDanhSachDropdown(); // nạp dropdown "Xem theo danh sách" (tiêu chí 40)
+    // Khối "Quản lý danh sách" (Cài đặt, admin-only) sửa/ẩn/hiện/xóa danh
+    // sách ở 1 MODULE JS KHÁC (caidat.js) — dropdown ở đây (danhSachList,
+    // module-level) KHÔNG tự biết để refetch khi chuyển màn hình (showScreen
+    // trong app.js chỉ ẩn/hiện panel, KHÔNG gọi lại reload()/refreshDanhSachDropdown()).
+    // Refetch lại MỖI LẦN bấm vào tab "Danh sách" để phản ánh đúng thay đổi
+    // ẩn/hiện/xóa vừa làm ở Cài đặt mà không cần tải lại cả trang.
+    const navDanhSachBtn = document.getElementById('nav-danh-sach');
+    if (navDanhSachBtn) navDanhSachBtn.addEventListener('click', refreshDanhSachDropdown);
     // Số lượng hồ sơ theo từng cờ (dropdown "Cờ cảnh báo") nạp qua ĐÚNG 1 cơ
     // chế thống nhất bên trong reload() (snapshot-compare coQcParamsSnapshot,
     // xem reload()) — KHÔNG còn lời gọi Api.coQcThongKe() riêng ở đây (tiêu
@@ -1476,11 +1484,12 @@ const ListView = (() => {
   }
 
   async function onChonThemVaoDanhSach(id) {
+    const maList = Array.from(selectedSet);
     try {
-      const res = await Api.themHoSoVaoDanhSach(id, Array.from(selectedSet));
+      const res = await Api.themHoSoVaoDanhSach(id, maList);
+      maList.forEach((ma) => selectedSet.delete(ma));
       closeAddListPopover();
       toast(`Đã thêm ${res.so_luong_them} hồ sơ vào danh sách.`);
-      // KHÔNG xóa selectedSet sau hành động (tiêu chí 36).
       refreshDanhSachDropdown(); // cập nhật ngay so_luong hiển thị ở dropdown
       reload();
     } catch (err) {

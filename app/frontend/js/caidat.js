@@ -6,6 +6,7 @@ const CaiDatView = (() => {
   let panel;
   let khoaPhongList = [];
   let danhMucQuanLy = {};
+  let danhSachQuanLyList = [];
 
   // Danh mục mã CSKCB / mã GLN (criterion 5) — 2 khối UI giống hệt nhau về
   // hình dạng nên dùng chung 1 hàm render/xử lý, khác nhau qua cfg.
@@ -48,6 +49,7 @@ const CaiDatView = (() => {
       NguongCheck.setNguong(nguong);
       khoaPhongList = await Api.listKhoaPhong();
       danhMucQuanLy = await Api.listDanhMucQuanLy();
+      danhSachQuanLyList = await Api.listDanhSach(true);
     } catch (err) {
       panel.innerHTML = `<div class="xf-error">Lỗi tải cài đặt: ${esc(err.message)}</div>`;
       return;
@@ -160,6 +162,25 @@ const CaiDatView = (() => {
         <tbody id="cd-kp-table-body"></tbody>
       </table>
 
+      <h2>Quản lý danh sách</h2>
+      <p class="cd-hint">Tạo/sửa/xóa/ẩn "Danh sách tùy chỉnh" (gom case để xử lý/xuất
+        file, xem ở trang Danh sách). Ẩn 1 danh sách sẽ KHÔNG xóa hồ sơ đã có trong
+        đó — chỉ ẩn khỏi dropdown "Xem theo danh sách" và popup "Thêm vào danh
+        sách" của MỌI người dùng; vẫn quản lý được ở đây và hiện lại bất kỳ lúc nào.</p>
+      <form id="cd-ds-create-form" class="cd-form">
+        <div class="cd-row">
+          <label>Tên danh sách mới
+            <input type="text" id="cd-ds-ten-moi" placeholder="vd: DS rà soát tháng 8" required>
+          </label>
+          <button type="submit">Tạo danh sách</button>
+        </div>
+      </form>
+      <div id="cd-ds-result"></div>
+      <table class="nd-table" id="cd-ds-table">
+        <thead><tr><th>Tên</th><th>Người tạo</th><th>Số hồ sơ</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+        <tbody id="cd-ds-table-body"></tbody>
+      </table>
+
       ${DANH_MUC_QUAN_LY_CONFIG.map(renderDanhMucQuanLySection).join('')}
     `;
     panel.querySelector('#cd-form').addEventListener('submit', onSubmit);
@@ -169,6 +190,8 @@ const CaiDatView = (() => {
     panel.querySelector('#cd-rasoat-apply').addEventListener('click', () => onRaSoat(true));
     panel.querySelector('#cd-kp-create-form').addEventListener('submit', onKhoaPhongCreate);
     renderKhoaPhongRows();
+    panel.querySelector('#cd-ds-create-form').addEventListener('submit', onDanhSachQuanLyCreate);
+    renderDanhSachQuanLyRows();
     DANH_MUC_QUAN_LY_CONFIG.forEach((cfg) => {
       panel.querySelector(`#cd-${cfg.prefix}-create-form`)
         .addEventListener('submit', (e) => onDanhMucQuanLyCreate(e, cfg));
@@ -321,6 +344,107 @@ const CaiDatView = (() => {
       await Api.patchKhoaPhong(k.id, { dang_hoat_dong: target });
       khoaPhongList = await Api.listKhoaPhong();
       renderKhoaPhongRows();
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  // ---------------- Quản lý danh sách (khối mới) ----------------
+  function renderDanhSachQuanLyRows() {
+    const tbody = panel.querySelector('#cd-ds-table-body');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    danhSachQuanLyList.forEach((row) => {
+      const tr = document.createElement('tr');
+      const trangThaiNhan = row.an ? 'Đã ẩn' : 'Đang hiện';
+      tr.innerHTML = `
+        <td>${esc(row.ten)}</td>
+        <td>${esc(row.nguoi_tao_ten || '—')}</td>
+        <td>${esc(row.so_luong)}</td>
+        <td class="${row.an ? 'nd-inactive' : 'nd-active'}">${esc(trangThaiNhan)}</td>
+        <td class="nd-actions"></td>
+      `;
+      const actions = tr.querySelector('.nd-actions');
+
+      const btnSua = document.createElement('button');
+      btnSua.type = 'button';
+      btnSua.textContent = 'Sửa tên';
+      btnSua.addEventListener('click', () => onDanhSachQuanLySuaTen(row));
+      actions.appendChild(btnSua);
+
+      const btnToggle = document.createElement('button');
+      btnToggle.type = 'button';
+      btnToggle.textContent = row.an ? 'Hiện' : 'Ẩn';
+      btnToggle.addEventListener('click', () => onDanhSachQuanLyToggleAn(row));
+      actions.appendChild(btnToggle);
+
+      const btnXoa = document.createElement('button');
+      btnXoa.type = 'button';
+      btnXoa.textContent = 'Xóa';
+      btnXoa.addEventListener('click', () => onDanhSachQuanLyXoa(row));
+      actions.appendChild(btnXoa);
+
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function onDanhSachQuanLyCreate(e) {
+    e.preventDefault();
+    const resultBox = panel.querySelector('#cd-ds-result');
+    const input = panel.querySelector('#cd-ds-ten-moi');
+    const ten = input.value.trim();
+    if (!ten) return;
+    try {
+      await Api.createDanhSach({ ten });
+      input.value = '';
+      resultBox.textContent = 'Đã tạo danh sách.';
+      resultBox.className = 'ok';
+      danhSachQuanLyList = await Api.listDanhSach(true);
+      renderDanhSachQuanLyRows();
+    } catch (err) {
+      resultBox.textContent = err.message;
+      resultBox.className = 'error';
+    }
+  }
+
+  async function onDanhSachQuanLySuaTen(row) {
+    const tenMoi = prompt('Tên danh sách mới:', row.ten);
+    if (tenMoi === null) return;
+    const trimmed = tenMoi.trim();
+    if (!trimmed) { alert('Tên danh sách không được để trống'); return; }
+    try {
+      await Api.patchDanhSach(row.id, { ten: trimmed });
+      danhSachQuanLyList = await Api.listDanhSach(true);
+      renderDanhSachQuanLyRows();
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  async function onDanhSachQuanLyToggleAn(row) {
+    const target = row.an ? 0 : 1;
+    const msg = target
+      ? `Ẩn danh sách "${row.ten}"? Sẽ không còn hiển thị ở dropdown "Xem theo `
+        + 'danh sách" và popup "Thêm vào danh sách" của mọi người dùng — hồ sơ '
+        + 'đã có trong danh sách KHÔNG bị ảnh hưởng.'
+      : `Hiện lại danh sách "${row.ten}"?`;
+    if (!confirm(msg)) return;
+    try {
+      await Api.patchDanhSach(row.id, { an: target });
+      danhSachQuanLyList = await Api.listDanhSach(true);
+      renderDanhSachQuanLyRows();
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  async function onDanhSachQuanLyXoa(row) {
+    if (!confirm(`Xóa danh sách "${row.ten}"? Thao tác này KHÔNG xóa hồ sơ, `
+      + 'chỉ xóa danh sách.')) return;
+    try {
+      await Api.deleteDanhSach(row.id);
+      danhSachQuanLyList = await Api.listDanhSach(true);
+      renderDanhSachQuanLyRows();
     } catch (err) {
       alert(err.message);
     }

@@ -278,6 +278,7 @@ def init_schema(conn=None):
     _migrate_snapshot_danh_dau_xuat(conn)
     _migrate_ngay_thang_khong_hop_le(conn)
     _migrate_gan_nguoi_tao_danh_sach(conn)
+    _migrate_danh_sach_an(conn)
     if own:
         conn.close()
 
@@ -802,6 +803,29 @@ def _migrate_gan_nguoi_tao_danh_sach(conn):
             'ON CONFLICT(khoa) DO NOTHING', (_KHOA, 'true'))
         conn.commit()
     except Exception:
+        pass
+
+
+def _migrate_danh_sach_an(conn):
+    """ALTER TABLE danh_sach ADD COLUMN an nếu DB đã tồn tại TRƯỚC KHI
+    schema.sql có cột này — cùng khuôn với _migrate_search_cols/
+    _migrate_bo_loc_nang_cao ở trên. Cờ "ẩn danh sách" (khối "Quản lý danh
+    sách" ở Cài đặt, admin-only) — ẩn khỏi dropdown "Xem theo danh sách" và
+    popover "Thêm vào danh sách" của MỌI người dùng, KHÔNG xóa dữ liệu.
+    DEFAULT 0 -> mọi danh_sach hiện có tự động "đang hiện" sau migration,
+    giữ nguyên hành vi trước khi có tính năng này."""
+    try:
+        cols = {r['name'] for r in conn.execute('PRAGMA table_info(danh_sach)')}
+    except Exception:
+        return
+    if 'an' in cols:
+        return
+    try:
+        conn.execute('ALTER TABLE danh_sach ADD COLUMN an INTEGER NOT NULL DEFAULT 0')
+        conn.commit()
+    except Exception:
+        # cột đã được instance khác thêm đồng thời, hoặc lỗi tạm — không
+        # chặn khởi động server vì việc này.
         pass
 
 

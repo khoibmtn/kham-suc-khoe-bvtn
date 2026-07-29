@@ -15,13 +15,13 @@ POST   /api/danh-sach/{id}/go-ho-so       — gỡ nhiều hồ sơ khỏi danh 
 """
 import os
 import sys
-from typing import List
+from typing import List, Optional
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import db  # noqa: E402
 import auth  # noqa: E402
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 router = APIRouter(prefix='/api', tags=['danh_sach'])
@@ -42,21 +42,35 @@ def _require_quyen_ghi(conn, danh_sach_id, user):
 
 
 @router.get('/danh-sach')
-def list_danh_sach(user=Depends(auth.get_current_user)):
+def list_danh_sach(bao_gom_an: bool = Query(False),
+                    user=Depends(auth.get_current_user)):
     """Trả mọi danh sách (kể cả rỗng), kèm so_luong = đếm hồ sơ trong đó.
     Mở cho MỌI nhân viên xem/lọc như cũ (KHÔNG lọc theo chủ sở hữu) — chỉ
     thêm nguoi_tao_id vào response để frontend tự quyết định ẩn/disable nút
-    ghi cho danh sách không phải của mình."""
+    ghi cho danh sách không phải của mình.
+
+    bao_gom_an=True (chỉ admin — khối "Quản lý danh sách" ở Cài đặt) trả
+    TẤT CẢ, kể cả danh sách đã ẩn (an=1). Mặc định (bao_gom_an=False — hành
+    vi của MỌI lời gọi cũ: dropdown "Xem theo danh sách", popover "Thêm vào
+    danh sách") CHỈ trả danh sách đang hiện (an=0), ẩn khỏi 2 nơi đó."""
+    if bao_gom_an and user['vai_tro'] != 'admin':
+        raise HTTPException(403, 'Chỉ admin mới xem được danh sách đã ẩn')
     conn = db.get_connection()
     try:
-        rows = conn.execute(
+        sql = (
             'SELECT ds.id AS id, ds.ten AS ten, ds.nguoi_tao_id AS nguoi_tao_id, '
-            'ds.thoi_diem_tao AS thoi_diem_tao, '
+            'nd.ho_ten AS nguoi_tao_ten, '
+            'ds.thoi_diem_tao AS thoi_diem_tao, ds.an AS an, '
             'COUNT(dsh.id) AS so_luong '
-            'FROM danh_sach ds LEFT JOIN danh_sach_ho_so dsh '
-            'ON dsh.danh_sach_id = ds.id '
-            'GROUP BY ds.id, ds.ten, ds.nguoi_tao_id, ds.thoi_diem_tao '
-            'ORDER BY ds.ten').fetchall()
+            'FROM danh_sach ds '
+            'LEFT JOIN danh_sach_ho_so dsh ON dsh.danh_sach_id = ds.id '
+            'LEFT JOIN nguoi_dung nd ON nd.id = ds.nguoi_tao_id ')
+        if not bao_gom_an:
+            sql += 'WHERE ds.an = 0 '
+        sql += ('GROUP BY ds.id, ds.ten, ds.nguoi_tao_id, nd.ho_ten, '
+                'ds.thoi_diem_tao, ds.an '
+                'ORDER BY ds.ten')
+        rows = conn.execute(sql).fetchall()
     finally:
         conn.close()
     return [dict(r) for r in rows]
@@ -107,6 +121,55 @@ def delete_danh_sach(id: int, user=Depends(auth.get_current_user)):
     finally:
         conn.close()
     return {'ok': True}
+
+
+class DanhSachPatchBody(BaseModel):
+    ten: Optional[str] = None
+    an: Optional[int] = None
+
+
+@router.patch('/danh-sach/{id}')
+def patch_danh_sach(id: int, body: DanhSachPatchBody, admin=Depends(auth.require_admin)):
+    """Sửa tên và/hoặc ẩn/hiện — CLONE khuôn patch_khoa_phong() (routers/
+    khoa_phong.py). Admin-only (khối "Quản lý danh sách" ở Cài đặt CHỈ hiện
+    cho admin — khác _require_quyen_ghi ở trên vốn cho phép cả người tạo
+    danh sách, dùng ở trang Danh sách chính, 1 ngữ cảnh khác)."""
+    conn = db.get_connection()
+    try:
+        row = conn.execute('SELECT * FROM danh_sach WHERE id=?', (id,)).fetchone()
+        if not row:
+            raise HTTPException(404, 'Không tìm thấy danh sách')
+
+        if body.ten is not None:
+            ten = body.ten.strip()
+            if not ten:
+                raise HTTPException(400, 'Tên danh sách không được để trống')
+            trung = conn.execute('SELECT 1 FROM danh_sach WHERE ten=? AND id<>?',
+                                  (ten, id)).fetchone()
+            if trung:
+                raise HTTPException(409, 'Tên danh sách đã tồn tại')
+            conn.execute('UPDATE danh_sach SET ten=? WHERE id=?', (ten, id))
+
+        if body.an is not None:
+            if body.an not in (0, 1):
+                raise HTTPException(400, 'an phải là 0 hoặc 1')
+            conn.execute('UPDATE danh_sach SET an=? WHERE id=?', (body.an, id))
+
+        conn.commit()
+        row = conn.execute(
+            'SELECT ds.id AS id, ds.ten AS ten, ds.nguoi_tao_id AS nguoi_tao_id, '
+            'nd.ho_ten AS nguoi_tao_ten, '
+            'ds.thoi_diem_tao AS thoi_diem_tao, ds.an AS an, '
+            'COUNT(dsh.id) AS so_luong '
+            'FROM danh_sach ds '
+            'LEFT JOIN danh_sach_ho_so dsh ON dsh.danh_sach_id = ds.id '
+            'LEFT JOIN nguoi_dung nd ON nd.id = ds.nguoi_tao_id '
+            'WHERE ds.id=? '
+            'GROUP BY ds.id, ds.ten, ds.nguoi_tao_id, nd.ho_ten, '
+            'ds.thoi_diem_tao, ds.an', (id,)).fetchone()
+    finally:
+        conn.close()
+    return dict(row)
 
 
 class HoSoListBody(BaseModel):

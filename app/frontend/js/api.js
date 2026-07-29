@@ -118,8 +118,9 @@ const Api = (() => {
 
     // "Danh sách tùy chỉnh" (collection nhiều-nhiều với ho_so, list.js) —
     // action bar chọn tạm: thêm/gỡ hồ sơ khỏi danh sách, tạo/xóa danh sách.
-    listDanhSach: () => req('GET', '/api/danh-sach'),
+    listDanhSach: (baoGomAn) => req('GET', '/api/danh-sach' + (baoGomAn ? '?bao_gom_an=true' : '')),
     createDanhSach: (body) => req('POST', '/api/danh-sach', body),
+    patchDanhSach: (id, body) => req('PATCH', `/api/danh-sach/${id}`, body),
     deleteDanhSach: (id) => req('DELETE', `/api/danh-sach/${id}`),
     themHoSoVaoDanhSach: (id, maHoSoList) => req('POST', `/api/danh-sach/${id}/them-ho-so`, { ma_ho_so_list: maHoSoList }),
     goHoSoKhoiDanhSach: (id, maHoSoList) => req('POST', `/api/danh-sach/${id}/go-ho-so`, { ma_ho_so_list: maHoSoList }),
