@@ -1421,7 +1421,12 @@ const ListView = (() => {
     // tiêu chí 14: ẩn hẳn (không hiện dạng disable) các danh sách không có
     // quyền để tránh rối. Tạo mới (ô "Tên danh sách mới…") KHÔNG cần quyền,
     // luôn hiển thị riêng bên dưới list này.
-    const listCoQuyen = list.filter((ds) => coQuyenGhiDanhSach(ds));
+    // Phản hồi anh Khôi: đang xem/lọc theo 1 danh sách cụ thể (filters.
+    // danh_sach_id) -> ẩn LUÔN chính danh sách đó khỏi popover "Thêm vào
+    // danh sách" (case đang thấy đã thuộc danh sách này rồi, thêm lại vô
+    // nghĩa) — không đụng "Gỡ khỏi danh sách này" (nút riêng, đã có sẵn).
+    const listCoQuyen = list.filter((ds) => coQuyenGhiDanhSach(ds)
+      && String(ds.id) !== String(filters.danh_sach_id || ''));
     renderAddListPopoverContent(pop, listCoQuyen);
   }
 
