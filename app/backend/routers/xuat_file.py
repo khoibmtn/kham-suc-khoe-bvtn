@@ -14,7 +14,7 @@ from typing import List, Optional
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import db  # noqa: E402
 import auth  # noqa: E402
-from services import export_xlsm, nhap_doi_soat, auto_backup  # noqa: E402
+from services import export_xlsm, nhap_doi_soat, ghi_chu_ra_soat, auto_backup  # noqa: E402
 
 from urllib.parse import quote
 
@@ -128,6 +128,29 @@ async def nhap_doi_soat_ep(file: UploadFile = File(...),
                 'sheet_list': e.sheet_names,
                 'thong_bao': 'File có nhiều sheet — hãy chọn sheet cần đối soát.',
             })
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+    finally:
+        conn.close()
+    return result
+
+
+@router.post('/xuat-file/ghi-chu-ra-soat')
+async def ghi_chu_ra_soat_ep(file: UploadFile = File(...),
+                             ap_dung: bool = Form(False),
+                             admin=Depends(auth.require_admin)):
+    """Nhập lại file "Đối soát" (xuất từ nút "Xuất Excel" của khối "Nhập lại
+    file đã chỉnh sửa" — 9 cột: STT|Mã hồ sơ|Họ tên|Danh sách|Sẽ áp dụng|
+    Loại thay đổi|Trường|Giá trị cũ|Giá trị mới, sheet 'Đối soát'), gộp các
+    dòng thay đổi của TỪNG hồ sơ thành 1 đoạn ghi chú, APPEND vào cột
+    ghi_chu_ra_soat. ap_dung=False -> chỉ XEM TRƯỚC (không ghi). ap_dung=True
+    -> ghi thật (UPDATE + nhat_ky), commit 1 lần."""
+    content = await file.read()
+    conn = db.get_connection()
+    try:
+        try:
+            result = ghi_chu_ra_soat.xu_ly(conn, content, apply=ap_dung,
+                                           user_id=admin['id'])
         except ValueError as e:
             raise HTTPException(400, str(e))
     finally:

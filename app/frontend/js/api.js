@@ -212,6 +212,31 @@ const Api = (() => {
       const m = /filename\*=UTF-8''([^;]+)/i.exec(cd);
       return { blob, name: m ? decodeURIComponent(m[1]) : 'KSK_DoiSoat.xlsx' };
     },
+    // Ghi chú rà soát: nhập lại file "Đối soát" (xuất từ nút "Xuất Excel" ở
+    // trên) — với MỖI hồ sơ, ghép các dòng thay đổi thành 1 đoạn ghi chú,
+    // APPEND vào ghi_chu_ra_soat. apDung=false -> chỉ xem trước (không ghi).
+    // req() hiện tại LUÔN giả định body JSON (tự set Content-Type: application/
+    // json + JSON.stringify) nên KHÔNG dùng được cho multipart/form-data — bắt
+    // chước đúng cách xử lý response/lỗi của nhapDoiSoat() ở trên.
+    ghiChuRaSoat: async (fileObj, apDung) => {
+      const fd = new FormData();
+      fd.append('file', fileObj);
+      fd.append('ap_dung', apDung ? 'true' : 'false');
+      const res = await fetch('/api/xuat-file/ghi-chu-ra-soat', {
+        method: 'POST', body: fd, credentials: 'same-origin',
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        if (res.status === 401 && onUnauthorized) onUnauthorized();
+        const detail = data && data.detail;
+        const msg = typeof detail === 'string' ? detail : (detail && detail.thong_bao) || `Lỗi ${res.status}`;
+        const err = new Error(msg);
+        err.status = res.status;
+        err.data = data;
+        throw err;
+      }
+      return data;
+    },
     xuatFileJobs: () => req('GET', '/api/xuat-file/jobs'),
     xuatFileJob: (id) => req('GET', `/api/xuat-file/jobs/${encodeURIComponent(id)}`),
 

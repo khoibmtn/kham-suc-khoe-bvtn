@@ -96,6 +96,21 @@ const ExportView = (() => {
         </div>
       </div>
 
+      <div class="xf-block xf-roundtrip-block">
+        <div class="xf-label">Ghi chú rà soát</div>
+        <p class="xf-hint">Tải lên file đã xuất từ nút &ldquo;Xuất Excel&rdquo;
+          (khối &ldquo;Nhập lại file đã chỉnh sửa&rdquo; ở trên) — hệ thống tự
+          ghi tóm tắt các thay đổi (Bổ sung/Ghi đè) vào trường &ldquo;Ghi chú
+          rà soát (hệ thống)&rdquo; của từng hồ sơ tương ứng.</p>
+
+        <div class="xf-ds-import">
+          <label class="xf-ds-filelbl">Chọn file đối soát đã xuất:
+            <input type="file" id="xf-gcrs-file" accept=".xlsx">
+          </label>
+          <div id="xf-gcrs-result" class="xf-ds-result"></div>
+        </div>
+      </div>
+
       <div class="xf-block xf-cmd-block">
         <div class="xf-label">✅ Xuất .xlsm chuẩn Bộ — đã sẵn sàng</div>
         <p class="xf-hint">Hệ thống đang chạy trực tiếp trên máy chủ nội bộ nên
@@ -175,6 +190,7 @@ const ExportView = (() => {
     panel.querySelector('#xf-start-btn').addEventListener('click', doStart);
     panel.querySelector('#xf-edit-btn').addEventListener('click', doExportChinhSua);
     panel.querySelector('#xf-ds-file').addEventListener('change', doDoiSoatPreview);
+    panel.querySelector('#xf-gcrs-file').addEventListener('change', doGhiChuRaSoatPreview);
     panel.querySelector('#xf-backup-create-btn').addEventListener('click', doBackupCreate);
 
     const extToggle = panel.querySelector('#xf-extended-enabled');
@@ -508,6 +524,76 @@ const ExportView = (() => {
       status.textContent = ' ' + err.message;
       status.className = 'xf-plain-status error';
     } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // ---- Ghi chú rà soát: nhập lại file "Đối soát" (nút "Xuất Excel" ở khối
+  // trên) -> ghép các dòng thay đổi của TỪNG hồ sơ thành 1 đoạn ghi chú,
+  // APPEND vào "Ghi chú rà soát (hệ thống)". Chọn file -> xem trước ngay
+  // (ap_dung=false, mẫu doDoiSoatPreview) -> bấm "Áp dụng" -> ghi thật. ----
+  async function doGhiChuRaSoatPreview(e) {
+    const file = e.target.files[0];
+    const box = panel.querySelector('#xf-gcrs-result');
+    if (!file) { box.innerHTML = ''; return; }
+    box.innerHTML = '<div class="xf-hint">Đang đọc file...</div>';
+    try {
+      const r = await Api.ghiChuRaSoat(file, false);
+      renderGhiChuRaSoat(r, file);
+    } catch (err) {
+      box.innerHTML = `<div class="xf-error">${esc(err.message)}</div>`;
+    }
+  }
+
+  function renderGhiChuRaSoat(r, file) {
+    const box = panel.querySelector('#xf-gcrs-result');
+    const soKhop = r.tong_ma_ho_so - r.so_khong_khop;
+    const khongKhopBox = r.so_khong_khop
+      ? `<div class="xf-ds-warn">⚠ ${r.so_khong_khop} mã hồ sơ KHÔNG khớp CSDL — sẽ bỏ qua${r.khong_khop.length ? ' (vd: ' + esc(r.khong_khop.slice(0, 3).join(', ')) + ')' : ''}.</div>`
+      : '';
+    const rowsHtml = (r.chi_tiet || []).slice(0, 100).map((c) => `
+      <div class="xf-ds-row">
+        <div class="xf-ds-ma">${esc(c.ma_ho_so)} — ${esc(c.ho_ten)}
+          <span class="xf-ds-tag" style="background:#dbeafe;color:#1d4ed8">${c.so_dong_thay_doi} thay đổi</span></div>
+        <pre class="pl-muc-dk">${esc(c.noi_dung_them)}</pre>
+      </div>`).join('');
+    const chiTietBox = rowsHtml ? `
+      <div class="xf-ds-detail">${rowsHtml}${(r.chi_tiet || []).length > 100 ? '<div class="xf-hint">... (chỉ hiện 100 hồ sơ đầu)</div>' : ''}</div>` : '';
+    box.innerHTML = `
+      <div class="xf-ds-summary">
+        Tổng mã hồ sơ trong file: <b>${r.tong_ma_ho_so}</b> · Khớp CSDL: <b class="xf-ok">${soKhop}</b>
+        ${r.so_khong_khop ? ` · Không khớp: <b class="xf-red">${r.so_khong_khop}</b>` : ''}<br>
+        Sẽ ghi: <b class="xf-ok">${r.so_luong_ghi}</b> hồ sơ
+        ${r.bo_qua_trung ? ` · Bỏ qua (đã có ghi chú trùng): <b>${r.bo_qua_trung}</b>` : ''}
+      </div>
+      ${khongKhopBox}
+      ${chiTietBox}
+      ${r.so_luong_ghi > 0 ? `
+        <div class="xf-ds-apply">
+          <button id="xf-gcrs-apply-btn" type="button">Áp dụng — ghi vào Ghi chú rà soát</button>
+          <span id="xf-gcrs-apply-status" class="xf-plain-status"></span>
+        </div>` : (r.tong_ma_ho_so ? '<div class="xf-hint">Không có hồ sơ nào cần ghi (đã trùng hết hoặc không khớp CSDL).</div>' : '')}
+    `;
+    if (r.so_luong_ghi > 0) {
+      panel.querySelector('#xf-gcrs-apply-btn').addEventListener('click', () => doGhiChuRaSoatApply(file, r.so_luong_ghi));
+    }
+  }
+
+  async function doGhiChuRaSoatApply(file, soLuongGhi) {
+    const btn = panel.querySelector('#xf-gcrs-apply-btn');
+    const status = panel.querySelector('#xf-gcrs-apply-status');
+    if (!confirm(`Ghi tóm tắt thay đổi vào "Ghi chú rà soát (hệ thống)" cho ${soLuongGhi} hồ sơ?\n\nThao tác GHÉP THÊM vào ghi chú hiện có (không xóa nội dung cũ), được ghi nhật ký.`)) return;
+    btn.disabled = true;
+    status.textContent = ' Đang ghi...';
+    status.className = 'xf-plain-status';
+    try {
+      const r = await Api.ghiChuRaSoat(file, true);
+      status.textContent = ` Đã ghi ${r.so_luong_ghi} hồ sơ, bỏ qua ${r.bo_qua_trung} trùng${r.so_khong_khop ? `, ${r.so_khong_khop} không khớp` : ''}.`;
+      status.className = 'xf-plain-status ok';
+      btn.textContent = 'Đã áp dụng ✓';
+    } catch (err) {
+      status.textContent = ' ' + err.message;
+      status.className = 'xf-plain-status error';
       btn.disabled = false;
     }
   }
