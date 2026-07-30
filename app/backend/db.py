@@ -279,6 +279,7 @@ def init_schema(conn=None):
     _migrate_ngay_thang_khong_hop_le(conn)
     _migrate_gan_nguoi_tao_danh_sach(conn)
     _migrate_danh_sach_an(conn)
+    _migrate_danh_sach_khoa(conn)
     if own:
         conn.close()
 
@@ -822,6 +823,30 @@ def _migrate_danh_sach_an(conn):
         return
     try:
         conn.execute('ALTER TABLE danh_sach ADD COLUMN an INTEGER NOT NULL DEFAULT 0')
+        conn.commit()
+    except Exception:
+        # cột đã được instance khác thêm đồng thời, hoặc lỗi tạm — không
+        # chặn khởi động server vì việc này.
+        pass
+
+
+def _migrate_danh_sach_khoa(conn):
+    """ALTER TABLE danh_sach ADD COLUMN khoa nếu DB đã tồn tại TRƯỚC KHI
+    schema.sql có cột này — cùng khuôn với _migrate_danh_sach_an ở trên. Cờ
+    "khóa danh sách" (khối "Quản lý danh sách" ở Cài đặt, admin-only) — chặn
+    TUYỆT ĐỐI (kể cả admin/chủ sở hữu) hành động thêm/gỡ hồ sơ khỏi danh
+    sách đó (xem routers/danh_sach.py:_require_quyen_them_go), KHÔNG ảnh
+    hưởng xem/lọc/xóa/ẩn/sửa tên. DEFAULT 0 -> mọi danh_sach hiện có tự động
+    "chưa khóa" sau migration, giữ nguyên hành vi trước khi có tính năng
+    này."""
+    try:
+        cols = {r['name'] for r in conn.execute('PRAGMA table_info(danh_sach)')}
+    except Exception:
+        return
+    if 'khoa' in cols:
+        return
+    try:
+        conn.execute('ALTER TABLE danh_sach ADD COLUMN khoa INTEGER NOT NULL DEFAULT 0')
         conn.commit()
     except Exception:
         # cột đã được instance khác thêm đồng thời, hoặc lỗi tạm — không

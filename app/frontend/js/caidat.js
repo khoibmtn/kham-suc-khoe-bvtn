@@ -166,7 +166,9 @@ const CaiDatView = (() => {
       <p class="cd-hint">Tạo/sửa/xóa/ẩn "Danh sách tùy chỉnh" (gom case để xử lý/xuất
         file, xem ở trang Danh sách). Ẩn 1 danh sách sẽ KHÔNG xóa hồ sơ đã có trong
         đó — chỉ ẩn khỏi dropdown "Xem theo danh sách" và popup "Thêm vào danh
-        sách" của MỌI người dùng; vẫn quản lý được ở đây và hiện lại bất kỳ lúc nào.</p>
+        sách" của MỌI người dùng; vẫn quản lý được ở đây và hiện lại bất kỳ lúc nào.
+        Khóa 1 danh sách sẽ chặn MỌI người (kể cả admin) thêm/gỡ hồ sơ khỏi danh
+        sách đó cho tới khi mở khóa lại — không ảnh hưởng xem/lọc/xóa/ẩn.</p>
       <form id="cd-ds-create-form" class="cd-form">
         <div class="cd-row">
           <label>Tên danh sách mới
@@ -177,7 +179,7 @@ const CaiDatView = (() => {
       </form>
       <div id="cd-ds-result"></div>
       <table class="nd-table" id="cd-ds-table">
-        <thead><tr><th>Tên</th><th>Người tạo</th><th>Số hồ sơ</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+        <thead><tr><th>Tên</th><th>Người tạo</th><th>Số hồ sơ</th><th>Trạng thái</th><th>Khóa</th><th>Thao tác</th></tr></thead>
         <tbody id="cd-ds-table-body"></tbody>
       </table>
 
@@ -357,11 +359,13 @@ const CaiDatView = (() => {
     danhSachQuanLyList.forEach((row) => {
       const tr = document.createElement('tr');
       const trangThaiNhan = row.an ? 'Đã ẩn' : 'Đang hiện';
+      const khoaNhan = row.khoa ? 'Đã khóa' : 'Chưa khóa';
       tr.innerHTML = `
         <td>${esc(row.ten)}</td>
         <td>${esc(row.nguoi_tao_ten || '—')}</td>
         <td>${esc(row.so_luong)}</td>
         <td class="${row.an ? 'nd-inactive' : 'nd-active'}">${esc(trangThaiNhan)}</td>
+        <td class="${row.khoa ? 'nd-inactive' : 'nd-active'}">${esc(khoaNhan)}</td>
         <td class="nd-actions"></td>
       `;
       const actions = tr.querySelector('.nd-actions');
@@ -377,6 +381,12 @@ const CaiDatView = (() => {
       btnToggle.textContent = row.an ? 'Hiện' : 'Ẩn';
       btnToggle.addEventListener('click', () => onDanhSachQuanLyToggleAn(row));
       actions.appendChild(btnToggle);
+
+      const btnToggleKhoa = document.createElement('button');
+      btnToggleKhoa.type = 'button';
+      btnToggleKhoa.textContent = row.khoa ? 'Mở khóa' : 'Khóa';
+      btnToggleKhoa.addEventListener('click', () => onDanhSachQuanLyToggleKhoa(row));
+      actions.appendChild(btnToggleKhoa);
 
       const btnXoa = document.createElement('button');
       btnXoa.type = 'button';
@@ -431,6 +441,24 @@ const CaiDatView = (() => {
     if (!confirm(msg)) return;
     try {
       await Api.patchDanhSach(row.id, { an: target });
+      danhSachQuanLyList = await Api.listDanhSach(true);
+      renderDanhSachQuanLyRows();
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  async function onDanhSachQuanLyToggleKhoa(row) {
+    const target = row.khoa ? 0 : 1;
+    const msg = target
+      ? `Khóa danh sách "${row.ten}"? Sẽ KHÔNG AI thêm/gỡ được hồ sơ khỏi `
+        + 'danh sách này nữa (kể cả admin) cho tới khi mở khóa lại — không '
+        + 'ảnh hưởng xem/lọc/xóa/ẩn.'
+      : `Mở khóa danh sách "${row.ten}"? Mọi người sẽ thêm/gỡ hồ sơ được `
+        + 'bình thường trở lại.';
+    if (!confirm(msg)) return;
+    try {
+      await Api.patchDanhSach(row.id, { khoa: target });
       danhSachQuanLyList = await Api.listDanhSach(true);
       renderDanhSachQuanLyRows();
     } catch (err) {

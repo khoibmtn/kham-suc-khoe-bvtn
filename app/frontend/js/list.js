@@ -1366,7 +1366,9 @@ const ListView = (() => {
     const dsHienTai = filters.danh_sach_id
       ? danhSachList.find((d) => String(d.id) === String(filters.danh_sach_id))
       : null;
-    if (filters.danh_sach_id && coQuyenThemGoDanhSach(dsHienTai)) {
+    // !dsHienTai.khoa — danh sách đang xem bị khóa thì không hiện nút gỡ
+    // (khóa chặn tuyệt đối hành động gỡ, kể cả với người có quyền thêm/gỡ).
+    if (filters.danh_sach_id && coQuyenThemGoDanhSach(dsHienTai) && !dsHienTai.khoa) {
       const removeBtn = document.createElement('button');
       removeBtn.type = 'button';
       removeBtn.className = 'action-bar-remove';
@@ -1442,7 +1444,10 @@ const ListView = (() => {
     // danh_sach_id) -> ẩn LUÔN chính danh sách đó khỏi popover "Thêm vào
     // danh sách" (case đang thấy đã thuộc danh sách này rồi, thêm lại vô
     // nghĩa) — không đụng "Gỡ khỏi danh sách này" (nút riêng, đã có sẵn).
+    // Loại trừ luôn danh sách ĐANG BỊ KHÓA (!ds.khoa) — khóa chặn tuyệt đối
+    // hành động thêm nên hiện trong popover này chỉ để thêm luôn thất bại.
     const listCoQuyen = list.filter((ds) => coQuyenThemGoDanhSach(ds)
+      && !ds.khoa
       && String(ds.id) !== String(filters.danh_sach_id || ''));
     renderAddListPopoverContent(pop, listCoQuyen);
   }

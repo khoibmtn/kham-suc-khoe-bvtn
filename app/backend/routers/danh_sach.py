@@ -51,15 +51,26 @@ def _require_quyen_them_go(conn, danh_sach_id, user):
     nhóm, không phải sở hữu riêng của admin). Danh sách do tài khoản THƯỜNG
     tạo vẫn giữ quy tắc CŨ (chỉ chính người tạo hoặc admin). KHÔNG áp dụng
     cho xóa/sửa tên/ẩn-hiện — 3 hành động đó vẫn dùng _require_quyen_ghi
-    (strict) không đổi."""
+    (strict) không đổi.
+
+    Kiểm tra "khóa" (khoa=1) đứng TRƯỚC TIÊN, TRƯỚC mọi kiểm tra quyền admin/
+    chủ sở hữu ở trên — khóa là TRẠNG THÁI của chính danh sách, chặn TUYỆT
+    ĐỐI mọi người KHÔNG PHÂN BIỆT vai trò/quyền sở hữu (khác hẳn các quy tắc
+    phân quyền dựa-trên-người ở phía dưới), cho tới khi được mở khóa lại ở
+    Cài đặt > Quản lý danh sách."""
     row = conn.execute(
         'SELECT ds.id AS id, ds.nguoi_tao_id AS nguoi_tao_id, '
-        'nd.vai_tro AS nguoi_tao_vai_tro '
+        'nd.vai_tro AS nguoi_tao_vai_tro, ds.khoa AS khoa '
         'FROM danh_sach ds '
         'LEFT JOIN nguoi_dung nd ON nd.id = ds.nguoi_tao_id '
         'WHERE ds.id=?', (danh_sach_id,)).fetchone()
     if not row:
         raise HTTPException(404, 'Không tìm thấy danh sách')
+    if row['khoa']:
+        raise HTTPException(
+            409,
+            'Danh sách đã bị khóa — không thể thêm/gỡ hồ sơ. Mở khóa ở Cài '
+            'đặt > Quản lý danh sách để tiếp tục.')
     nguoi_tao_la_admin = row['nguoi_tao_vai_tro'] == 'admin'
     if (user['vai_tro'] == 'admin' or row['nguoi_tao_id'] == user['id']
             or nguoi_tao_la_admin):
@@ -92,7 +103,7 @@ def list_danh_sach(bao_gom_an: bool = Query(False),
         sql = (
             'SELECT ds.id AS id, ds.ten AS ten, ds.nguoi_tao_id AS nguoi_tao_id, '
             'nd.ho_ten AS nguoi_tao_ten, nd.vai_tro AS nguoi_tao_vai_tro, '
-            'ds.thoi_diem_tao AS thoi_diem_tao, ds.an AS an, '
+            'ds.thoi_diem_tao AS thoi_diem_tao, ds.an AS an, ds.khoa AS khoa, '
             'COUNT(dsh.id) AS so_luong '
             'FROM danh_sach ds '
             'LEFT JOIN danh_sach_ho_so dsh ON dsh.danh_sach_id = ds.id '
@@ -100,7 +111,7 @@ def list_danh_sach(bao_gom_an: bool = Query(False),
         if not bao_gom_an:
             sql += 'WHERE ds.an = 0 '
         sql += ('GROUP BY ds.id, ds.ten, ds.nguoi_tao_id, nd.ho_ten, '
-                'nd.vai_tro, ds.thoi_diem_tao, ds.an '
+                'nd.vai_tro, ds.thoi_diem_tao, ds.an, ds.khoa '
                 'ORDER BY ds.ten')
         rows = conn.execute(sql).fetchall()
     finally:
@@ -163,6 +174,7 @@ def delete_danh_sach(id: int, user=Depends(auth.get_current_user)):
 class DanhSachPatchBody(BaseModel):
     ten: Optional[str] = None
     an: Optional[int] = None
+    khoa: Optional[int] = None
 
 
 @router.patch('/danh-sach/{id}')
@@ -192,18 +204,23 @@ def patch_danh_sach(id: int, body: DanhSachPatchBody, admin=Depends(auth.require
                 raise HTTPException(400, 'an phải là 0 hoặc 1')
             conn.execute('UPDATE danh_sach SET an=? WHERE id=?', (body.an, id))
 
+        if body.khoa is not None:
+            if body.khoa not in (0, 1):
+                raise HTTPException(400, 'khoa phải là 0 hoặc 1')
+            conn.execute('UPDATE danh_sach SET khoa=? WHERE id=?', (body.khoa, id))
+
         conn.commit()
         row = conn.execute(
             'SELECT ds.id AS id, ds.ten AS ten, ds.nguoi_tao_id AS nguoi_tao_id, '
             'nd.ho_ten AS nguoi_tao_ten, '
-            'ds.thoi_diem_tao AS thoi_diem_tao, ds.an AS an, '
+            'ds.thoi_diem_tao AS thoi_diem_tao, ds.an AS an, ds.khoa AS khoa, '
             'COUNT(dsh.id) AS so_luong '
             'FROM danh_sach ds '
             'LEFT JOIN danh_sach_ho_so dsh ON dsh.danh_sach_id = ds.id '
             'LEFT JOIN nguoi_dung nd ON nd.id = ds.nguoi_tao_id '
             'WHERE ds.id=? '
             'GROUP BY ds.id, ds.ten, ds.nguoi_tao_id, nd.ho_ten, '
-            'ds.thoi_diem_tao, ds.an', (id,)).fetchone()
+            'ds.thoi_diem_tao, ds.an, ds.khoa', (id,)).fetchone()
     finally:
         conn.close()
     return dict(row)
