@@ -28,10 +28,13 @@ router = APIRouter(prefix='/api', tags=['danh_sach'])
 
 
 def _require_quyen_ghi(conn, danh_sach_id, user):
-    """Chặn hành động GHI (xóa danh sách/thêm-bớt case) cho mọi người TRỪ
+    """Chặn hành động GHI (xóa danh sách/sửa tên/ẩn-hiện) cho mọi người TRỪ
     người đã TẠO ra danh sách đó hoặc admin — xem/lọc theo danh sách (GET)
-    KHÔNG bị giới hạn bởi hàm này, chỉ áp dụng cho DELETE/POST ghi dữ liệu.
-    Trả về row {id, nguoi_tao_id} để nơi gọi tái dùng, tránh query lại."""
+    KHÔNG bị giới hạn bởi hàm này, chỉ áp dụng cho DELETE ghi dữ liệu.
+    Trả về row {id, nguoi_tao_id} để nơi gọi tái dùng, tránh query lại.
+    LƯU Ý: hàm này CHỈ còn dùng cho delete_danh_sach — thêm/gỡ case đã tách
+    sang _require_quyen_them_go (nới quyền hơn, xem hàm đó) theo yêu cầu
+    user: danh sách do admin tạo là công cụ dùng chung cho cả nhóm."""
     row = conn.execute(
         'SELECT id, nguoi_tao_id FROM danh_sach WHERE id=?', (danh_sach_id,)).fetchone()
     if not row:
@@ -41,13 +44,42 @@ def _require_quyen_ghi(conn, danh_sach_id, user):
     return row
 
 
+def _require_quyen_them_go(conn, danh_sach_id, user):
+    """Chặn hành động THÊM/GỠ case cho mọi người TRỪ: (1) admin, (2) người đã
+    TẠO ra danh sách đó, (3) BẤT KỲ ai đã đăng nhập — NẾU danh sách đó do một
+    TÀI KHOẢN ADMIN tạo (danh sách do admin tạo là công cụ dùng chung cho cả
+    nhóm, không phải sở hữu riêng của admin). Danh sách do tài khoản THƯỜNG
+    tạo vẫn giữ quy tắc CŨ (chỉ chính người tạo hoặc admin). KHÔNG áp dụng
+    cho xóa/sửa tên/ẩn-hiện — 3 hành động đó vẫn dùng _require_quyen_ghi
+    (strict) không đổi."""
+    row = conn.execute(
+        'SELECT ds.id AS id, ds.nguoi_tao_id AS nguoi_tao_id, '
+        'nd.vai_tro AS nguoi_tao_vai_tro '
+        'FROM danh_sach ds '
+        'LEFT JOIN nguoi_dung nd ON nd.id = ds.nguoi_tao_id '
+        'WHERE ds.id=?', (danh_sach_id,)).fetchone()
+    if not row:
+        raise HTTPException(404, 'Không tìm thấy danh sách')
+    nguoi_tao_la_admin = row['nguoi_tao_vai_tro'] == 'admin'
+    if (user['vai_tro'] == 'admin' or row['nguoi_tao_id'] == user['id']
+            or nguoi_tao_la_admin):
+        return row
+    raise HTTPException(
+        403,
+        'Chỉ người tạo danh sách này, admin, hoặc bất kỳ ai (nếu danh sách '
+        'do admin tạo) mới có quyền thêm/gỡ hồ sơ')
+
+
 @router.get('/danh-sach')
 def list_danh_sach(bao_gom_an: bool = Query(False),
                     user=Depends(auth.get_current_user)):
     """Trả mọi danh sách (kể cả rỗng), kèm so_luong = đếm hồ sơ trong đó.
     Mở cho MỌI nhân viên xem/lọc như cũ (KHÔNG lọc theo chủ sở hữu) — chỉ
     thêm nguoi_tao_id vào response để frontend tự quyết định ẩn/disable nút
-    ghi cho danh sách không phải của mình.
+    ghi cho danh sách không phải của mình. Kèm nguoi_tao_la_admin (bool) —
+    danh sách do một TÀI KHOẢN ADMIN tạo thì MỌI người đã đăng nhập được
+    thêm/gỡ case (xem _require_quyen_them_go) — frontend dùng cờ này để hiện
+    nút "Thêm vào danh sách"/"Gỡ khỏi danh sách này" tương ứng.
 
     bao_gom_an=True (chỉ admin — khối "Quản lý danh sách" ở Cài đặt) trả
     TẤT CẢ, kể cả danh sách đã ẩn (an=1). Mặc định (bao_gom_an=False — hành
@@ -59,7 +91,7 @@ def list_danh_sach(bao_gom_an: bool = Query(False),
     try:
         sql = (
             'SELECT ds.id AS id, ds.ten AS ten, ds.nguoi_tao_id AS nguoi_tao_id, '
-            'nd.ho_ten AS nguoi_tao_ten, '
+            'nd.ho_ten AS nguoi_tao_ten, nd.vai_tro AS nguoi_tao_vai_tro, '
             'ds.thoi_diem_tao AS thoi_diem_tao, ds.an AS an, '
             'COUNT(dsh.id) AS so_luong '
             'FROM danh_sach ds '
@@ -68,12 +100,17 @@ def list_danh_sach(bao_gom_an: bool = Query(False),
         if not bao_gom_an:
             sql += 'WHERE ds.an = 0 '
         sql += ('GROUP BY ds.id, ds.ten, ds.nguoi_tao_id, nd.ho_ten, '
-                'ds.thoi_diem_tao, ds.an '
+                'nd.vai_tro, ds.thoi_diem_tao, ds.an '
                 'ORDER BY ds.ten')
         rows = conn.execute(sql).fetchall()
     finally:
         conn.close()
-    return [dict(r) for r in rows]
+    result = []
+    for r in rows:
+        d = dict(r)
+        d['nguoi_tao_la_admin'] = d.pop('nguoi_tao_vai_tro', None) == 'admin'
+        result.append(d)
+    return result
 
 
 class DanhSachBody(BaseModel):
@@ -183,7 +220,7 @@ def them_ho_so_vao_danh_sach(id: int, body: HoSoListBody,
         raise HTTPException(400, 'Danh sách mã hồ sơ không được để trống')
     conn = db.get_connection()
     try:
-        _require_quyen_ghi(conn, id, user)
+        _require_quyen_them_go(conn, id, user)
         # Lọc chỉ mã THẬT SỰ tồn tại trong ho_so trước khi insert — tránh lỗi
         # FK (danh_sach_ho_so.ma_ho_so REFERENCES ho_so) cho mã sai/đã xóa.
         placeholders = ','.join('?' * len(body.ma_ho_so_list))
@@ -216,7 +253,7 @@ def go_ho_so_khoi_danh_sach(id: int, body: HoSoListBody,
         raise HTTPException(400, 'Danh sách mã hồ sơ không được để trống')
     conn = db.get_connection()
     try:
-        _require_quyen_ghi(conn, id, user)
+        _require_quyen_them_go(conn, id, user)
         placeholders = ','.join('?' * len(body.ma_ho_so_list))
         cur = conn.execute(
             f'DELETE FROM danh_sach_ho_so WHERE danh_sach_id=? '

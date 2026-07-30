@@ -57,6 +57,19 @@ const ListView = (() => {
     return user && ds.nguoi_tao_id === user.id;
   }
 
+  // Quyền THÊM/GỠ case (khác coQuyenGhiDanhSach ở trên — chỉ dùng cho nút
+  // xóa "🗑"/sửa tên/ẩn-hiện, KHÔNG đổi): nới thêm cho MỌI người đã đăng
+  // nhập nếu danh sách đó do MỘT TÀI KHOẢN ADMIN tạo (nguoi_tao_la_admin —
+  // field mới từ backend, xem danh_sach.py:_require_quyen_them_go) — danh
+  // sách admin tạo là công cụ dùng chung cho cả nhóm. Danh sách do tài
+  // khoản thường tạo vẫn giữ quy tắc CŨ (chỉ chính người tạo hoặc admin).
+  function coQuyenThemGoDanhSach(ds) {
+    if (!ds) return false;
+    if (user && user.vai_tro === 'admin') return true;
+    if (user && ds.nguoi_tao_id === user.id) return true;
+    return ds.nguoi_tao_la_admin === true;
+  }
+
   // Tùy chọn cho dropdown "Cờ cảnh báo": khi đã có coQcCounts thì gắn số lượng
   // vào nhãn + BỎ cờ 0 hồ sơ (giữ lại cờ đang được chọn dù = 0 để không mất
   // lựa chọn hiện tại). Chưa có count -> hiện toàn bộ như cũ.
@@ -1345,13 +1358,15 @@ const ListView = (() => {
     bar.appendChild(addBtn);
 
     // Chỉ hiện khi đang xem 1 danh sách cụ thể (tiêu chí 34) VÀ user có
-    // quyền GHI với danh sách đó (chủ sở hữu/admin) — nếu không tìm thấy
-    // trong danhSachList (vd vừa bị người khác xóa) thì coi như không có
-    // quyền, không hiện nút (tiêu chí 15).
+    // quyền THÊM/GỠ với danh sách đó (chủ sở hữu/admin/bất kỳ ai nếu danh
+    // sách do admin tạo — coQuyenThemGoDanhSach, KHÁC coQuyenGhiDanhSach
+    // strict dùng cho nút xóa) — nếu không tìm thấy trong danhSachList (vd
+    // vừa bị người khác xóa) thì coi như không có quyền, không hiện nút
+    // (tiêu chí 15).
     const dsHienTai = filters.danh_sach_id
       ? danhSachList.find((d) => String(d.id) === String(filters.danh_sach_id))
       : null;
-    if (filters.danh_sach_id && coQuyenGhiDanhSach(dsHienTai)) {
+    if (filters.danh_sach_id && coQuyenThemGoDanhSach(dsHienTai)) {
       const removeBtn = document.createElement('button');
       removeBtn.type = 'button';
       removeBtn.className = 'action-bar-remove';
@@ -1417,15 +1432,17 @@ const ListView = (() => {
     if (addListPopoverEl !== pop) return; // đã đóng trong lúc chờ mạng
     danhSachList = list;
     populateDanhSachSelect();
-    // CHỈ hiện danh sách mà user có quyền GHI (chủ sở hữu hoặc admin) —
-    // tiêu chí 14: ẩn hẳn (không hiện dạng disable) các danh sách không có
-    // quyền để tránh rối. Tạo mới (ô "Tên danh sách mới…") KHÔNG cần quyền,
-    // luôn hiển thị riêng bên dưới list này.
+    // CHỈ hiện danh sách mà user có quyền THÊM/GỠ (chủ sở hữu, admin, hoặc
+    // bất kỳ ai nếu danh sách do admin tạo — coQuyenThemGoDanhSach, KHÁC
+    // coQuyenGhiDanhSach strict dùng cho nút xóa) — tiêu chí 14: ẩn hẳn
+    // (không hiện dạng disable) các danh sách không có quyền để tránh rối.
+    // Tạo mới (ô "Tên danh sách mới…") KHÔNG cần quyền, luôn hiển thị riêng
+    // bên dưới list này.
     // Phản hồi anh Khôi: đang xem/lọc theo 1 danh sách cụ thể (filters.
     // danh_sach_id) -> ẩn LUÔN chính danh sách đó khỏi popover "Thêm vào
     // danh sách" (case đang thấy đã thuộc danh sách này rồi, thêm lại vô
     // nghĩa) — không đụng "Gỡ khỏi danh sách này" (nút riêng, đã có sẵn).
-    const listCoQuyen = list.filter((ds) => coQuyenGhiDanhSach(ds)
+    const listCoQuyen = list.filter((ds) => coQuyenThemGoDanhSach(ds)
       && String(ds.id) !== String(filters.danh_sach_id || ''));
     renderAddListPopoverContent(pop, listCoQuyen);
   }
