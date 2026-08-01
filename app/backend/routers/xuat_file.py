@@ -68,15 +68,18 @@ def _job_public(job):
 
 
 @router.post('/xuat-file/xlsx-chinh-sua')
-def xuat_xlsx_chinh_sua(body: PreviewBody, admin=Depends(auth.require_admin)):
+def xuat_xlsx_chinh_sua(body: StartBody, admin=Depends(auth.require_admin)):
     """Xuất .xlsx như đơn thuần NHƯNG kèm cột MÃ ĐỊNH DANH (ma_ho_so) ở đầu —
-    tải về, bổ sung/sửa dữ liệu, rồi nhập lại qua /nhap-doi-soat."""
+    tải về, bổ sung/sửa dữ liệu, rồi nhập lại qua /nhap-doi-soat. `extended`
+    (kế thừa từ StartBody, tùy chọn): nếu bật, NỐI THÊM cột mở rộng (§7.2)
+    vào cuối — hệt danh mục nút "Bắt đầu xuất .xlsm"."""
     conn = db.get_connection()
     try:
         try:
             data, count = export_xlsm.build_plain_xlsx(
                 conn, body.pham_vi, body.gia_tri, body.include_errors,
-                body.chi_rs_xong, with_id=True)
+                body.chi_rs_xong, with_id=True,
+                extended=(body.extended.model_dump() if body.extended else None))
         except ValueError as e:
             raise HTTPException(400, str(e))
     finally:

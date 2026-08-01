@@ -59,6 +59,7 @@ EXTENDED_COLUMNS = [
     ('CO_QC', 'Cờ QC'),
     ('SO_LOI', 'Số lỗi'),
     ('GHI_CHU_RA_SOAT', 'Ghi chú rà soát'),
+    ('GHI_CHU_CAN_BO', 'Ghi chú nhân viên'),
     ('NGUOI_RA_SOAT', 'Người rà soát'),
     ('TRANG_THAI', 'Trạng thái'),
     ('THOI_DIEM_HOAN_THANH', 'Thời điểm hoàn thành'),
@@ -196,13 +197,20 @@ ID_COL_CODE = 'MA_HO_SO'
 ID_COL_INSTR = 'Cột để đối soát khi nhập lại. Giữ nguyên, không sửa/xóa.'
 
 
-def _plain_xlsx_bytes(rows, with_id=False):
+def _plain_xlsx_bytes(rows, with_id=False, ext_columns=None, ext_data=None):
     """Dựng .xlsx write_only: 1 sheet 'Trên 18' (3 dòng header giống mẫu +
     dữ liệu từ dòng 4). with_id=True chèn cột MÃ ĐỊNH DANH (ma_ho_so) ở ĐẦU để
-    nhập lại đối soát. Trả (bytes, số_dòng)."""
+    nhập lại đối soát. `ext_columns`: list mã cột mở rộng (subset của
+    EXTENDED_CODES) cần NỐI THÊM vào CUỐI mỗi dòng — None/rỗng giữ nguyên
+    hành vi cũ (không cột mở rộng). `ext_data`: {ma_ho_so: {MÃ_CỘT: giá_trị}}
+    đã tính SẴN ở nơi gọi (build_plain_xlsx) — hàm này chỉ đọc, không tự tính.
+    Trả (bytes, số_dòng)."""
     import openpyxl
     from openpyxl.cell import WriteOnlyCell
     from openpyxl.styles import Alignment, Font, PatternFill
+
+    ext_columns = ext_columns or []
+    ext_data = ext_data or {}
 
     header_rows, code2col = _template_header()
     text_cols = {code2col[c] for c in _PLAIN_TEXT_CODES if c in code2col}
@@ -215,6 +223,13 @@ def _plain_xlsx_bytes(rows, with_id=False):
     id_fill = PatternFill('solid', fgColor='FFF2CC')  # tô vàng cột khóa
 
     id_head = [ID_COL_LABEL, ID_COL_CODE, ID_COL_INSTR]
+    # Dòng header cột mở rộng: dòng 1 = nhãn (in đậm), dòng 2 = mã (khớp cơ
+    # chế đối soát theo tên cột của nhap_doi_soat.py), dòng 3 = trống.
+    ext_head_rows = [
+        [EXTENDED_LABELS[c] for c in ext_columns],
+        list(ext_columns),
+        [None] * len(ext_columns),
+    ]
     for ri, hrow in enumerate(header_rows, 1):
         cells = []
         if with_id:
@@ -226,6 +241,12 @@ def _plain_xlsx_bytes(rows, with_id=False):
             cells.append(c)
         for v in hrow:
             c = WriteOnlyCell(ws, value=(v if v not in (None, '') else None))
+            if ri == 1:
+                c.font = bold
+            c.alignment = wrap
+            cells.append(c)
+        for v in ext_head_rows[ri - 1]:
+            c = WriteOnlyCell(ws, value=v)
             if ri == 1:
                 c.font = bold
             c.alignment = wrap
@@ -250,6 +271,9 @@ def _plain_xlsx_bytes(rows, with_id=False):
             if ci in text_cols and v not in (None, ''):
                 c.number_format = '@'                  # giữ CCCD/ngày dạng text
             cells.append(c)
+        row_ext = ext_data.get(row['ma_ho_so'], {}) if ext_columns else {}
+        for code in ext_columns:
+            cells.append(WriteOnlyCell(ws, value=row_ext.get(code)))
         ws.append(cells)
 
     bio = io.BytesIO()
@@ -259,11 +283,13 @@ def _plain_xlsx_bytes(rows, with_id=False):
 
 
 def build_plain_xlsx(conn, pham_vi, gia_tri, include_errors, chi_rs_xong=False,
-                     with_id=False):
+                     with_id=False, extended=None):
     """Xuất .xlsx đơn thuần cho phạm vi đã chọn (gộp mọi hồ sơ vào 1 sheet).
     Loại hồ sơ còn cờ đỏ khi include_errors=False, hệt logic .xlsm. with_id=True
-    thêm cột MÃ ĐỊNH DANH để chỉnh sửa rồi nhập lại. Ném ValueError nếu phạm vi
-    rỗng — router chuyển thành 400."""
+    thêm cột MÃ ĐỊNH DANH để chỉnh sửa rồi nhập lại. `extended`:
+    {'enabled': bool, 'columns': [...]} hoặc None (mặc định, tương thích
+    ngược) — bật thì NỐI THÊM cột mở rộng (§7.2) vào cuối, hệt danh mục nút
+    .xlsm. Ném ValueError nếu phạm vi rỗng — router chuyển thành 400."""
     where_sql, args = resolve_scope_where(pham_vi, gia_tri)
     where_sql = _apply_rs_xong(where_sql, chi_rs_xong)
     rows = conn.execute(
@@ -280,7 +306,31 @@ def build_plain_xlsx(conn, pham_vi, gia_tri, include_errors, chi_rs_xong=False,
         if not rows:
             raise ValueError('Toàn bộ hồ sơ trong phạm vi đều còn cờ đỏ — '
                              'bật "Xuất kèm cả hồ sơ lỗi" nếu vẫn muốn xuất')
-    return _plain_xlsx_bytes(rows, with_id=with_id)
+
+    ext_enabled = bool(extended and extended.get('enabled'))
+    ext_columns = []
+    if ext_enabled:
+        ext_columns = [c for c in (extended.get('columns') or []) if c in EXTENDED_CODES]
+
+    ext_data = {}
+    if ext_columns:
+        user_map = {r['id']: r['ho_ten'] for r in
+                    conn.execute('SELECT id, ho_ten FROM nguoi_dung')}
+        ma_list = [r['ma_ho_so'] for r in rows]
+        danh_sach_map = {}
+        if ma_list:
+            ph_ds = ','.join('?' * len(ma_list))
+            for r_ds in conn.execute(
+                    f'SELECT dsh.ma_ho_so AS ma_ho_so, ds.ten AS ten '
+                    f'FROM danh_sach_ho_so dsh JOIN danh_sach ds ON ds.id = dsh.danh_sach_id '
+                    f'WHERE dsh.ma_ho_so IN ({ph_ds})', ma_list):
+                danh_sach_map.setdefault(r_ds['ma_ho_so'], []).append(r_ds['ten'])
+        for r in rows:
+            full = _row_ext(r, user_map.get(r['nguoi_ra_soat_id'], ''), danh_sach_map)
+            ext_data[r['ma_ho_so']] = {c: full[c] for c in ext_columns}
+
+    return _plain_xlsx_bytes(rows, with_id=with_id, ext_columns=ext_columns,
+                             ext_data=ext_data)
 
 
 # ============================= XÂY BẢN GHI =============================
@@ -314,6 +364,7 @@ def _row_ext(row, ho_ten_ra_soat, danh_sach_map):
         'CO_QC': row['co_qc'],
         'SO_LOI': row['so_loi'],
         'GHI_CHU_RA_SOAT': row['ghi_chu_ra_soat'],
+        'GHI_CHU_CAN_BO': row['ghi_chu_can_bo'],
         'NGUOI_RA_SOAT': ho_ten_ra_soat,
         'TRANG_THAI': TRANG_THAI_NHAN.get(row['trang_thai'], row['trang_thai']),
         'THOI_DIEM_HOAN_THANH': row['thoi_diem_hoan_thanh'],

@@ -279,13 +279,22 @@ const ExportView = (() => {
 
   async function doExportChinhSua() {
     const scope = currentScope();
+    // Đợt 21 (phản hồi anh Khôi): dùng CHUNG state UI "Thêm cột mở rộng" với
+    // nút .xlsm (doStart) — trước đây nút này không gửi `extended` nên cột
+    // mở rộng KHÔNG có mặt trong file .xlsx dù đã tick chọn.
+    const extEnabled = panel.querySelector('#xf-extended-enabled').checked;
+    const columns = extEnabled
+      ? Array.from(panel.querySelectorAll('.ext-col-check:checked')).map((c) => c.value)
+      : [];
     const btn = panel.querySelector('#xf-edit-btn');
     const status = panel.querySelector('#xf-edit-status');
     btn.disabled = true;
     status.textContent = ' Đang tạo file ...';
     status.className = 'xf-plain-status';
     try {
-      const { blob, name } = await Api.xuatFileXlsxChinhSua({ ...scope, ...currentOptions() });
+      const { blob, name } = await Api.xuatFileXlsxChinhSua({
+        ...scope, ...currentOptions(), extended: { enabled: extEnabled, columns },
+      });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url; a.download = name;
