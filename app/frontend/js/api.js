@@ -77,6 +77,7 @@ const Api = (() => {
     caiDatGet: () => req('GET', '/api/cai-dat'),
     caiDatPut: (body) => req('PUT', '/api/cai-dat', body),
     raSoatSinhHieu: (apply) => req('POST', `/api/admin/ra-soat-sinh-hieu?apply=${apply ? 'true' : 'false'}`),
+    quetCccdTrung: (apply) => req('POST', `/api/admin/quet-cccd-trung?apply=${apply ? 'true' : 'false'}`),
     capNhatNgay: () => req('POST', '/api/admin/cap-nhat-ngay'),
 
     listHoSo: (params) => req('GET', '/api/ho-so?' + qs(params)),

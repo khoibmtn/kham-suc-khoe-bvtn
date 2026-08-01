@@ -235,6 +235,54 @@ def recompute_cccd_flags(conn, ma_ho_so, old_cccd, new_cccd, user_id):
     return conn.execute('SELECT co_qc FROM ho_so WHERE ma_ho_so=?', (ma_ho_so,)).fetchone()['co_qc']
 
 
+def quet_cccd_trung(conn, apply, nguoi_dung_id):
+    """Quét TOÀN BỘ ho_so, đảm bảo cờ CCCD_TRUNG khớp ĐÚNG thực tế trùng lặp
+    so_cccd hiện có — gắn cờ nếu đang trùng mà thiếu, gỡ cờ nếu không còn
+    trùng mà vẫn còn (dữ liệu tích lũy lệch từ trước khi có cơ chế đồng bộ
+    gia tăng recompute_cccd_flags() — phản hồi anh Khôi, nút "Quét & gắn cờ
+    CCCD trùng" trong Cài đặt). apply=False chỉ đếm (dry-run), không ghi gì;
+    apply=True mới thực sự ghi + nhat_ky. Trả {'apply', 'tong_quet',
+    'nhom_trung', 'se_them'/'da_them' (tuỳ apply), 'se_go'/'da_go' (tuỳ
+    apply)}."""
+    def log(ma, cu, moi):
+        conn.execute(
+            'INSERT INTO nhat_ky(ma_ho_so, nguoi_dung_id, ten_truong, '
+            'gia_tri_cu, gia_tri_moi) VALUES (?,?,?,?,?)',
+            (ma, nguoi_dung_id, 'co_qc', cu or '', moi or ''))
+
+    dup_rows = conn.execute(
+        "SELECT so_cccd FROM ho_so WHERE so_cccd IS NOT NULL AND so_cccd<>'' "
+        "GROUP BY so_cccd HAVING COUNT(*) > 1").fetchall()
+    dup_set = {r['so_cccd'] for r in dup_rows}
+
+    rows = conn.execute('SELECT ma_ho_so, so_cccd, co_qc FROM ho_so').fetchall()
+    n_them = n_go = 0
+    done = 0
+    for r in rows:
+        if apply and done and done % 1000 == 0:
+            conn.commit()
+        done += 1
+        should_have = bool(r['so_cccd']) and r['so_cccd'] in dup_set
+        has = 'CCCD_TRUNG' in flags_of(r['co_qc'])
+        if should_have and not has:
+            if apply:
+                moi = add_flag(conn, r['ma_ho_so'], 'CCCD_TRUNG')
+                log(r['ma_ho_so'], r['co_qc'], moi)
+            n_them += 1
+        elif has and not should_have:
+            if apply:
+                moi = remove_flags(conn, r['ma_ho_so'], ['CCCD_TRUNG'])
+                log(r['ma_ho_so'], r['co_qc'], moi)
+            n_go += 1
+
+    if apply:
+        conn.commit()
+    key_them = 'da_them' if apply else 'se_them'
+    key_go = 'da_go' if apply else 'se_go'
+    return {'apply': apply, 'tong_quet': len(rows), 'nhom_trung': len(dup_set),
+            key_them: n_them, key_go: n_go}
+
+
 def check_invariant(row):
     """row: dict-like (sqlite3.Row hoặc dict) có đủ 14 cột *_pl + kham_the_luc_pl
     (Thể lực) + phan_loai_sk.

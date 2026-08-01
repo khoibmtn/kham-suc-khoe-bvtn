@@ -145,6 +145,18 @@ const CaiDatView = (() => {
       </div>
       <div id="cd-rasoat-result"></div>
 
+      <h2>Quét &amp; gắn cờ CCCD trùng</h2>
+      <p class="cd-hint">Quét TOÀN BỘ hồ sơ, đảm bảo cờ "CCCD trùng" khớp đúng thực
+        tế trùng lặp Số CCCD hiện có trong dữ liệu — gắn cờ còn thiếu, gỡ cờ đã hết
+        trùng. Dùng khi nghi ngờ cờ bị lệch so với dữ liệu thật (vd sau khi sửa
+        nhiều CCCD hàng loạt). Bấm "Xem trước" để xem số lượng dự kiến trước khi
+        Áp dụng.</p>
+      <div class="cd-row">
+        <button type="button" id="cd-cccd-preview">Xem trước (dry-run)</button>
+        <button type="button" id="cd-cccd-apply" disabled>Áp dụng</button>
+      </div>
+      <div id="cd-cccd-result"></div>
+
       <h2>Danh mục khoa/phòng</h2>
       <p class="cd-hint">Dùng để gán nhân viên và giao chỉ tiêu số lượng hồ sơ
         theo khoa/phòng (màn Phân công). Không xóa cứng — chỉ vô hiệu hóa.</p>
@@ -190,6 +202,8 @@ const CaiDatView = (() => {
     panel.querySelector('#cd-capnhat-ngay').addEventListener('click', onCapNhatNgay);
     panel.querySelector('#cd-rasoat-preview').addEventListener('click', () => onRaSoat(false));
     panel.querySelector('#cd-rasoat-apply').addEventListener('click', () => onRaSoat(true));
+    panel.querySelector('#cd-cccd-preview').addEventListener('click', () => onQuetCccd(false));
+    panel.querySelector('#cd-cccd-apply').addEventListener('click', () => onQuetCccd(true));
     panel.querySelector('#cd-kp-create-form').addEventListener('submit', onKhoaPhongCreate);
     renderKhoaPhongRows();
     panel.querySelector('#cd-ds-create-form').addEventListener('submit', onDanhSachQuanLyCreate);
@@ -509,6 +523,40 @@ const CaiDatView = (() => {
       const kq = await Api.raSoatSinhHieu(apply);
       resultBox.innerHTML = (apply ? '✅ Đã áp dụng.<br>' : '👁 Xem trước (chưa ghi gì) —<br>')
         + fmtRaSoat(kq);
+      resultBox.className = 'ok';
+      applyBtn.disabled = apply; // sau khi áp dụng thật -> phải Xem trước lại mới cho áp dụng tiếp
+    } catch (err) {
+      resultBox.textContent = err.message;
+      resultBox.className = 'error';
+    } finally {
+      previewBtn.disabled = false;
+      if (!apply) applyBtn.disabled = false;
+    }
+  }
+
+  function fmtQuetCccd(kq) {
+    const them = kq.da_them !== undefined ? kq.da_them : kq.se_them;
+    const go = kq.da_go !== undefined ? kq.da_go : kq.se_go;
+    return `Quét: <b>${kq.tong_quet}</b> hồ sơ<br>`
+      + `Số CCCD đang trùng (≥2 hồ sơ): <b>${kq.nhom_trung}</b> nhóm<br>`
+      + `${kq.apply ? 'Đã gắn' : 'Sẽ gắn'} cờ CCCD trùng: <b>${them}</b><br>`
+      + `${kq.apply ? 'Đã gỡ' : 'Sẽ gỡ'} cờ CCCD trùng (hết trùng): <b>${go}</b>`;
+  }
+
+  async function onQuetCccd(apply) {
+    const resultBox = panel.querySelector('#cd-cccd-result');
+    const previewBtn = panel.querySelector('#cd-cccd-preview');
+    const applyBtn = panel.querySelector('#cd-cccd-apply');
+    if (apply && !confirm('Áp dụng gắn/gỡ cờ CCCD trùng cho TOÀN BỘ hồ sơ như '
+      + 'số liệu vừa xem trước? Thao tác ghi thẳng vào dữ liệu (có ghi nhật ký).')) return;
+    previewBtn.disabled = true;
+    applyBtn.disabled = true;
+    resultBox.className = '';
+    resultBox.textContent = apply ? 'Đang áp dụng…' : 'Đang quét…';
+    try {
+      const kq = await Api.quetCccdTrung(apply);
+      resultBox.innerHTML = (apply ? '✅ Đã áp dụng.<br>' : '👁 Xem trước (chưa ghi gì) —<br>')
+        + fmtQuetCccd(kq);
       resultBox.className = 'ok';
       applyBtn.disabled = apply; // sau khi áp dụng thật -> phải Xem trước lại mới cho áp dụng tiếp
     } catch (err) {

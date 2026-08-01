@@ -12,7 +12,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import db  # noqa: E402
 import auth  # noqa: E402
-from services import sinh_hieu_valid, auto_backup, batch_sinh_hieu, git_update  # noqa: E402
+from services import sinh_hieu_valid, auto_backup, batch_sinh_hieu, git_update, qc  # noqa: E402
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -118,6 +118,20 @@ def ra_soat_sinh_hieu(apply: bool = Query(False), admin=Depends(auth.require_adm
     conn = db.get_connection()
     try:
         return batch_sinh_hieu.chay(conn, apply, admin['id'])
+    finally:
+        conn.close()
+
+
+@router.post('/admin/quet-cccd-trung')
+def quet_cccd_trung(apply: bool = Query(False), admin=Depends(auth.require_admin)):
+    """Quét TOÀN BỘ ho_so, đảm bảo cờ CCCD_TRUNG khớp đúng thực tế trùng lặp
+    Số CCCD hiện có trong dữ liệu (gắn cờ thiếu, gỡ cờ đã hết trùng) — bù cho
+    recompute_cccd_flags() chỉ tính lại gia tăng theo THAO TÁC sửa CCCD, không
+    quét lại dữ liệu tích lũy lệch từ trước. apply=false (mặc định) chỉ đếm
+    (dry-run), không ghi gì; apply=true mới thực sự ghi."""
+    conn = db.get_connection()
+    try:
+        return qc.quet_cccd_trung(conn, apply, admin['id'])
     finally:
         conn.close()
 
