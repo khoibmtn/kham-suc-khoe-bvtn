@@ -132,6 +132,23 @@ def build_search_cols(rec):
     return ho_ten_kd, blob
 
 
+def dong_bo_search_cols(conn, ma_ho_so):
+    """Đọc lại dòng ho_so MỚI NHẤT (kể cả thay đổi CHƯA commit trong cùng
+    transaction — SQLite/libsql đọc được ghi chưa commit trên CHÍNH kết nối
+    đang mở) rồi tính lại + ghi ho_ten_kd/search_blob_kd. GỌI SAU MỌI thao
+    tác ghi có thể đổi 1 trong các trường cấu thành blob tìm kiếm (xem
+    build_search_cols() để biết danh sách đầy đủ 19 trường) — phản hồi anh
+    Khôi: sửa CCCD/họ tên/ngày sinh... qua panel chi tiết KHÔNG cập nhật lại
+    2 cột tìm kiếm này, khiến tìm theo giá trị MỚI không ra kết quả dù dữ
+    liệu thật đã đúng (chỉ tìm theo mã hồ sơ mới ra vì ma_ho_so không đổi)."""
+    row = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?', (ma_ho_so,)).fetchone()
+    if not row:
+        return
+    ho_ten_kd, blob = build_search_cols(row)
+    conn.execute('UPDATE ho_so SET ho_ten_kd=?, search_blob_kd=? WHERE ma_ho_so=?',
+                 (ho_ten_kd, blob, ma_ho_so))
+
+
 def token_order_whole_word_match(tokens_str, candidate_raw, mode='contains'):
     """Dùng bởi UDF `ksk_token_match` (db.py) cho Box điều kiện (Bộ lọc nâng
     cao, ho_so.py) — toán tử Chứa/Không chứa/Bắt đầu bằng/Kết thúc bằng.

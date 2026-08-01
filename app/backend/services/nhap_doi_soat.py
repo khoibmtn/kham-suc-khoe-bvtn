@@ -21,7 +21,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from services import export_xlsm, ngay_thang_valid, sinh_hieu_valid, qc, the_luc  # noqa: E402
+from services import export_xlsm, fuzzy, ngay_thang_valid, sinh_hieu_valid, qc, the_luc  # noqa: E402
 
 # Trường KHÔNG cho nhập lại (khóa/định danh/quản lý rà soát/tự tính).
 MANAGED = {
@@ -345,6 +345,13 @@ def _apply_row(conn, ma, db_row, changes, cho_ghi_de, nguong, user_id, loi_out):
     if set_clauses:
         args.append(ma)
         conn.execute(f'UPDATE ho_so SET {", ".join(set_clauses)} WHERE ma_ho_so=?', args)
+        # Phản hồi anh Khôi: file đối soát có thể sửa CCCD/họ tên/ngày sinh...
+        # (1 trong 19 trường blob tìm kiếm) -> đồng bộ lại ho_ten_kd/
+        # search_blob_kd ngay, giống hệt lý do PATCH thủ công qua panel chi
+        # tiết (routers/ho_so.py patch_ho_so) — xem services/fuzzy.
+        # dong_bo_search_cols(). CÙNG conn đang ghi, TRƯỚC commit của caller
+        # (doi_soat() chỉ commit 1 lần ở cuối khi apply=True).
+        fuzzy.dong_bo_search_cols(conn, ma)
 
     if 'so_cccd' in field_moi:
         qc.recompute_cccd_flags(conn, ma, old_cccd, field_moi['so_cccd'], user_id)

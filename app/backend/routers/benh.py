@@ -11,7 +11,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import db  # noqa: E402
 import auth  # noqa: E402
-from services import csst, qc  # noqa: E402
+from services import csst, fuzzy, qc  # noqa: E402
 from routers.ho_so import _load_ho_so_or_404  # noqa: E402
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -134,6 +134,10 @@ def add_benh(ma_ho_so: str, body: BenhBody, user=Depends(auth.get_current_user))
             if ho_so_row['phan_loai_sk'] in (4, 5):
                 qc.remove_flags(conn, ma_ho_so,
                                 ['CO_PHAN_LOAI_NHUNG_KHONG_CO_CHAN_DOAN'])
+            # Nhánh này vừa đổi ket_luan_benh (1 trong 19 trường blob tìm
+            # kiếm — xem services/fuzzy.build_search_cols) -> đồng bộ lại ô
+            # Tìm kiếm ngay (phản hồi anh Khôi, xem dong_bo_search_cols()).
+            fuzzy.dong_bo_search_cols(conn, ma_ho_so)
 
         # Phản hồi anh Khôi (Phase 1/Đợt 12): thêm 1 mã ICD hợp lệ = đã bổ sung
         # ánh xạ chẩn đoán -> tự gỡ cờ 'Còn chẩn đoán chưa ánh xạ' Ở BACKEND
@@ -219,6 +223,9 @@ def patch_benh(ma_ho_so: str, benh_id: int, body: BenhBody,
                          (co_quan_benh_chinh_moi, ma_ho_so))
             _log(conn, ma_ho_so, user['id'], 'co_quan_benh_chinh',
                  old['co_quan'], co_quan_benh_chinh_moi)
+            # co_quan_benh_chinh là 1 trong 19 trường blob tìm kiếm -> đồng bộ
+            # lại ô Tìm kiếm (phản hồi anh Khôi, xem dong_bo_search_cols()).
+            fuzzy.dong_bo_search_cols(conn, ma_ho_so)
             conn.commit()
 
         # Đồng bộ cờ VI_PHAM_BAT_BIEN_QD1613 — bắt kịp mọi thao tác ghi.
@@ -306,6 +313,11 @@ def set_benh_chinh(ma_ho_so: str, body: SetBenhChinhBody,
         if ho_so_row['phan_loai_sk'] in (4, 5):
             qc.remove_flags(conn, ma_ho_so,
                              ['CO_PHAN_LOAI_NHUNG_KHONG_CO_CHAN_DOAN'])
+
+        # ma_benh_chinh/ket_luan_benh/co_quan_benh_chinh vừa đổi ở trên (3
+        # trong 19 trường blob tìm kiếm) -> đồng bộ lại ô Tìm kiếm (phản hồi
+        # anh Khôi, xem services/fuzzy.dong_bo_search_cols()).
+        fuzzy.dong_bo_search_cols(conn, ma_ho_so)
         conn.commit()
 
         new_row = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?',
@@ -340,6 +352,17 @@ def tu_chan_doan_sinh_ton(ma_ho_so: str, user=Depends(auth.get_current_user)):
     co_qc, so_loi, qd1613, noi_khoa_tuan_hoan}. added=[] nghĩa là không thêm
     mã mới nào (noi_khoa_tuan_hoan có thể vẫn đổi — xem Đợt 14 bên dưới)."""
     def _payload(conn, added):
+        # Phản hồi anh Khôi: đồng bộ lại ho_ten_kd/search_blob_kd 1 LẦN DUY
+        # NHẤT Ở CUỐI TOÀN BỘ HÀM — cả 2 điểm return của hàm này (không có
+        # `muon` / đã thêm xong) đều đi qua _payload(), nên đặt ở đây là đủ,
+        # không cần rải rác nhiều lần trong hàm. Hàm này (kể cả nhánh "không
+        # có muon") có thể đã đổi cac_benh_tat_neu_co/ma_benh_chinh/
+        # ket_luan_benh/co_quan_benh_chinh/phan_loai_sk — đều thuộc 19 trường
+        # blob tìm kiếm (xem services/fuzzy.build_search_cols). commit ngay
+        # để gộp cùng transaction với các UPDATE ở trên (đã commit riêng lẻ
+        # trước đó theo pattern sẵn có của hàm này).
+        fuzzy.dong_bo_search_cols(conn, ma_ho_so)
+        conn.commit()
         rows = conn.execute(
             'SELECT * FROM benh WHERE ma_ho_so=? ORDER BY la_benh_chinh DESC, '
             'stt_benh', (ma_ho_so,)).fetchall()

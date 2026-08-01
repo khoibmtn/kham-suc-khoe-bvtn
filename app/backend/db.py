@@ -280,6 +280,7 @@ def init_schema(conn=None):
     _migrate_gan_nguoi_tao_danh_sach(conn)
     _migrate_danh_sach_an(conn)
     _migrate_danh_sach_khoa(conn)
+    _migrate_dong_bo_lai_search_cols(conn)
     if own:
         conn.close()
 
@@ -851,6 +852,43 @@ def _migrate_danh_sach_khoa(conn):
     except Exception:
         # cột đã được instance khác thêm đồng thời, hoặc lỗi tạm — không
         # chặn khởi động server vì việc này.
+        pass
+
+
+def _migrate_dong_bo_lai_search_cols(conn):
+    """Backfill 1 LẦN cho DỮ LIỆU ĐÃ CÓ: tính lại ho_ten_kd/search_blob_kd
+    cho TOÀN BỘ hồ sơ (services/fuzzy.dong_bo_search_cols) — phản hồi anh
+    Khôi: 2 cột này trước đây CHỈ được tính lúc nhập dữ liệu ban đầu
+    (import_data.py) hoặc khi chạy tay scripts/build_search_cols.py, nhưng
+    KHÔNG endpoint ghi dữ liệu nào (PATCH hồ sơ, thêm/đổi bệnh chính, nhập
+    lại file đối soát, rà soát sinh hiệu hàng loạt) tự tính lại — nên hồ sơ
+    nào bị sửa 1 trong 19 trường cấu thành blob tìm kiếm (vd sửa CCCD qua
+    panel chi tiết) SẼ "mù" tìm kiếm theo giá trị MỚI dù cột thật đã đúng
+    (ca cụ thể: 2 hồ sơ trùng CCCD 031155006425, ô Tìm kiếm chỉ ra 1 hồ sơ
+    vì hồ sơ kia có search_blob_kd cũ từ TRƯỚC lần sửa CCCD). Từ nay Phần C
+    (routers/ho_so.py, routers/benh.py, services/nhap_doi_soat.py,
+    services/batch_sinh_hieu.py) tự đồng bộ lại sau mỗi lần ghi — hàm này
+    CHỈ xử lý phần dữ liệu ĐÃ bị lệch TỪ TRƯỚC lúc code mới lên.
+
+    1 LẦN DUY NHẤT (đánh dấu qua cai_dat) — 13.326 hồ sơ, tránh quét + tính
+    lại toàn bộ mỗi lần khởi động server. commit 1 LẦN Ở CUỐI (không commit
+    từng dòng)."""
+    _KHOA = 'search_cols_backfill_lan_dau_da_chay'
+    try:
+        da_chay = conn.execute(
+            'SELECT 1 FROM cai_dat WHERE khoa=?', (_KHOA,)).fetchone()
+        if da_chay:
+            return
+        from services import fuzzy  # noqa: E402 — import trễ, xem _ksk_token_match
+        ma_list = [r['ma_ho_so'] for r in
+                   conn.execute('SELECT ma_ho_so FROM ho_so').fetchall()]
+        for ma in ma_list:
+            fuzzy.dong_bo_search_cols(conn, ma)
+        conn.execute(
+            'INSERT INTO cai_dat(khoa, gia_tri) VALUES (?, ?) '
+            'ON CONFLICT(khoa) DO NOTHING', (_KHOA, 'true'))
+        conn.commit()
+    except Exception:
         pass
 
 

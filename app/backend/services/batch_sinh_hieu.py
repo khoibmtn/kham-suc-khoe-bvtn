@@ -30,7 +30,7 @@ Idempotent: chạy lại không đổi gì thêm. Dùng chung bởi:
   - routers/cai_dat.py POST /api/admin/ra-soat-sinh-hieu (nút bấm trong app,
     Cài đặt -> admin có thể chạy từ XA qua tunnel, không cần CMD trên máy
     server)."""
-from services import csst, qc, the_luc
+from services import csst, fuzzy, qc, the_luc
 from routers.benh import chan_doan_tu_sinh_hieu
 
 
@@ -220,6 +220,16 @@ def chay(conn, apply, nguoi_dung_id):
                              (gmax, ma))
                 log(ma, 'phan_loai_sk', pl, gmax)
             n_sk += 1
+
+        # Phản hồi anh Khôi: ĐÚNG VỊ TRÍ này — SAU TOÀN BỘ nhánh 0-3 ở trên đã
+        # xử lý xong hồ sơ `ma` của lượt lặp NÀY (kể cả bước 2 có thể đổi
+        # ma_benh_chinh/ket_luan_benh/co_quan_benh_chinh, bước 3 đổi
+        # phan_loai_sk — đều thuộc 19 trường blob tìm kiếm, xem
+        # services/fuzzy.build_search_cols) -> đồng bộ lại ho_ten_kd/
+        # search_blob_kd của ĐÚNG hồ sơ đang xử lý (KHÔNG đồng bộ toàn DB mỗi
+        # lượt lặp). CHỈ khi apply=True (dry-run preview không ghi gì).
+        if apply:
+            fuzzy.dong_bo_search_cols(conn, ma)
 
     if apply:
         conn.commit()

@@ -1015,6 +1015,17 @@ def patch_ho_so(ma_ho_so: str, body: PatchBody,
         if qc.sync_ngay_thang_flag(conn, ma_ho_so, row_now):
             conn.commit()
 
+        # Phản hồi anh Khôi: đồng bộ lại ho_ten_kd/search_blob_kd (2 cột dùng
+        # cho ô "Tìm kiếm" chính) SAU MỌI nhánh UPDATE nội bộ ở trên (kể cả
+        # nhánh tự nâng phan_loai_sk) — sửa 1 trong 19 trường cấu thành blob
+        # tìm kiếm (vd so_cccd/ho_ten/ngay_sinh) qua panel chi tiết mà KHÔNG
+        # đồng bộ lại sẽ khiến ô Tìm kiếm không ra kết quả theo giá trị MỚI
+        # dù cột thật đã đúng (xem services/fuzzy.dong_bo_search_cols). Luôn
+        # chạy tới đây nghĩa là `changes` đã chắc chắn không rỗng (early
+        # return ở đầu hàm khi rỗng).
+        fuzzy.dong_bo_search_cols(conn, ma_ho_so)
+        conn.commit()
+
         new_row = conn.execute('SELECT * FROM ho_so WHERE ma_ho_so=?',
                                 (ma_ho_so,)).fetchone()
         qd1613 = qc.check_invariant(new_row)
