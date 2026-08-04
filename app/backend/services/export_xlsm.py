@@ -17,6 +17,7 @@ import datetime
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 import threading
@@ -331,6 +332,295 @@ def build_plain_xlsx(conn, pham_vi, gia_tri, include_errors, chi_rs_xong=False,
 
     return _plain_xlsx_bytes(rows, with_id=with_id, ext_columns=ext_columns,
                              ext_data=ext_data)
+
+
+# ============================= XUẤT HIS (.xlsx) =============================
+# Nút "Xuất HIS" — KHÁC HẲN 2 pipeline trên: không dựng theo mẫu BYT (103/
+# 119 cột khác nhau, mã trường khác nhau) mà theo ĐÚNG định dạng import của
+# phần mềm HIS đơn vị đang dùng — 119 cột, đối chiếu field-by-field với file
+# mẫu thật `doc/minh-lo/Minhlo_KSK trên 18T TT25.xls` (dòng 1 = mã cột, dữ
+# liệu từ dòng 2, ô trống ghi chuỗi "NULL"). Tái dùng CÙNG resolve_scope_where
+# + _apply_rs_xong + _red_flag_where như build_plain_xlsx — mọi phạm vi/tuỳ
+# chọn hoạt động giống hệt nút "Tải .xlsx (kèm mã định danh)".
+HIS_COLUMNS = [
+    'makcb', 'soksk', 'ngay_lap_phieu', 'nguon_kinh_phi', 'nhom_mau', 'ly_do_ksk',
+    'tsgd', 'tsgd_ma_benh',
+] + [f'tien_su_ban_than_{i}' for i in range(1, 23)] + [
+    'benh_tat_khac', 'dang_dieu_tri', 'dang_dieu_tri_benh', 'thai_san', 'thai_san_benh',
+    'chieu_cao', 'can_nang', 'bmi', 'mach', 'huyet_ap_tam_thu', 'huyet_ap_tam_truong',
+    'kham_the_luc_pl',
+    'tuan_hoan_manv', 'tuan_hoan', 'tuan_hoan_pl',
+    'ho_hap_manv', 'ho_hap', 'ho_hap_pl',
+    'tieu_hoa_manv', 'tieu_hoa', 'tieu_hoa_pl',
+    'than_tiet_nieu_manv', 'than_tiet_nieu', 'than_tiet_nieu_pl',
+    'noi_tiet_manv', 'noi_tiet', 'noi_tiet_pl',
+    'co_xuong_khop_manv', 'co_xuong_khop', 'co_xuong_khop_pl',
+    'than_kinh_manv', 'than_kinh', 'than_kinh_pl',
+    'tam_than_manv', 'tam_than', 'tam_than_pl',
+    'ngoai_khoa_manv', 'ngoai_khoa', 'ngoai_khoa_pl',
+    'da_lieu_manv', 'da_lieu', 'da_lieu_pl',
+    'san_manv', 'san', 'san_pl',
+    'mat_manv', 'mat_kk_mat_phai', 'mat_kk_mat_trai', 'mat_ck_mat_phai',
+    'mat_ck_mat_trai', 'mat_benh', 'mat_pl',
+    'tmh_manv', 'tmh_tai_trai_noi_thuong', 'tmh_tai_trai_noi_tham',
+    'tmh_tai_phai_noi_thuong', 'tmh_tai_phai_noi_tham', 'tmh_benh', 'tmh_pl',
+    'rhm_manv', 'rhm_ham_tren', 'rhm_ham_duoi', 'rhm_benh', 'rhm_pl',
+    'mau_manv', 'huyet_hoc', 'mau_duong_mau', 'mau_ure', 'mau_creatinin',
+    'mau_sgot', 'mau_alat',
+    'nuocTieu_manv', 'nuoc_tieu', 'nuoc_tieu_khac',
+    'cdha_manv', 'cdha',
+    'cls_khac_manv', 'cls_khac',
+    'cls_manv', 'cls_ket_qua',
+    'kl_manv', 'kl_phan_loai', 'kl_ten_benh', 'kl_ngay', 'isDangLam', 'ailam',
+    'daky', 'kl_benh', 'doi_tuong',
+]
+assert len(HIS_COLUMNS) == 119, f'HIS_COLUMNS phải đúng 119 cột, đang có {len(HIS_COLUMNS)}'
+
+# 4 cột phụ thêm SAU 119 cột chính — để user VLOOKUP makcb rồi xóa đi.
+HIS_EXTRA_COLUMNS = ['phu_ma_ho_so', 'phu_ho_ten', 'phu_so_cccd', 'phu_ngay_sinh']
+
+# Thứ tự ĐÚNG 22 cờ tiền sử bản thân — khớp tien_su_ban_than_1..22.
+_TSBT_ORDER = (
+    'tsbt_benh_trong_5_nam_qua', 'tsbt_benh_than_kinh', 'tsbt_benh_mat',
+    'tsbt_benh_tai', 'tsbt_benh_tim', 'tsbt_phau_thuat_tim',
+    'tsbt_tang_huyet_ap', 'tsbt_kho_tho', 'tsbt_benh_phoi', 'tsbt_benh_than',
+    'tsbt_nghien_ruou', 'tsbt_dai_thao_duong', 'tsbt_benh_tam_than',
+    'tsbt_mat_y_thuc', 'tsbt_ngat', 'tsbt_benh_tieu_hoa',
+    'tsbt_roi_loan_giac_ngu', 'tsbt_tai_bien', 'tsbt_benh_cot_song',
+    'tsbt_ruou_thuong_xuyen', 'tsbt_ma_tuy', 'tsbt_benh_khac',
+)
+assert len(_TSBT_ORDER) == 22
+
+# 11 khối cơ quan (mã cột HIS -> field text/pl trong ho_so) dựng theo mẫu
+# tuan_hoan_manv/tuan_hoan/tuan_hoan_pl — dùng chung cho vòng lặp cột VÀ để
+# dựng kl_benh (cộng thêm mắt/TMH/RHM ở _KL_BLOCKS bên dưới).
+_ORGAN_TEXT_BLOCKS = (
+    ('tuan_hoan', 'noi_khoa_tuan_hoan', 'noi_khoa_tuan_hoan_pl'),
+    ('ho_hap', 'noi_khoa_ho_hap', 'noi_khoa_ho_hap_pl'),
+    ('tieu_hoa', 'noi_khoa_tieu_hoa', 'noi_khoa_tieu_hoa_pl'),
+    ('than_tiet_nieu', 'noi_khoa_than_tn_sd', 'noi_khoa_than_tietnieu_pl'),
+    ('noi_tiet', 'noi_khoa_noi_tiet', 'noi_khoa_noi_tiet_pl'),
+    ('co_xuong_khop', 'noi_khoa_co_xuong_khop', 'noi_khoa_co_xuong_khop_pl'),
+    ('than_kinh', 'noi_khoa_than_kinh', 'noi_khoa_than_kinh_pl'),
+    ('tam_than', 'noi_khoa_tam_than', 'noi_khoa_tam_than_pl'),
+    ('ngoai_khoa', 'ket_qua_kham_ngoai_khoa', 'kham_ngoai_khoa_pl'),
+    ('da_lieu', 'ket_qua_kham_da_lieu', 'kham_da_lieu_pl'),
+    ('san', 'ket_qua_kham_san_phu_khoa', 'kham_san_phu_khoa_pl'),
+)
+
+# 14 khối cơ quan (nhãn hiển thị -> field text/pl) để dựng cột 118 kl_benh —
+# 11 khối nội khoa ở trên + mắt/TMH/RHM (khác cấu trúc cột nên liệt kê riêng).
+_KL_BLOCKS = (
+    ('Tuần hoàn', 'noi_khoa_tuan_hoan', 'noi_khoa_tuan_hoan_pl'),
+    ('Hô hấp', 'noi_khoa_ho_hap', 'noi_khoa_ho_hap_pl'),
+    ('Tiêu hóa', 'noi_khoa_tieu_hoa', 'noi_khoa_tieu_hoa_pl'),
+    ('Thận-Tiết niệu', 'noi_khoa_than_tn_sd', 'noi_khoa_than_tietnieu_pl'),
+    ('Nội tiết', 'noi_khoa_noi_tiet', 'noi_khoa_noi_tiet_pl'),
+    ('Cơ xương khớp', 'noi_khoa_co_xuong_khop', 'noi_khoa_co_xuong_khop_pl'),
+    ('Thần kinh', 'noi_khoa_than_kinh', 'noi_khoa_than_kinh_pl'),
+    ('Tâm thần', 'noi_khoa_tam_than', 'noi_khoa_tam_than_pl'),
+    ('Ngoại khoa', 'ket_qua_kham_ngoai_khoa', 'kham_ngoai_khoa_pl'),
+    ('Da liễu', 'ket_qua_kham_da_lieu', 'kham_da_lieu_pl'),
+    ('Sản', 'ket_qua_kham_san_phu_khoa', 'kham_san_phu_khoa_pl'),
+    ('Mắt', 'benh_khac_mat', 'kham_mat_pl'),
+    ('Tai mũi họng', 'benh_khac_tai_mui_hong', 'kham_tai_mui_hong_pl'),
+    ('Răng hàm mặt', 'benh_khac_rang_ham_mat', 'kham_rang_ham_mat_pl'),
+)
+
+# 4 cột thính lực HIS (m) — cùng cơ chế đổi dấu thập phân '.'->',' như
+# _doi_dau_thap_phan() ở trên, áp dụng cho TỪNG giá trị đơn lẻ.
+_TRUONG_THINH_LUC_HIS = ('tai_trai_noi_thuong', 'tai_trai_noi_tham',
+                         'tai_phai_noi_thuong', 'tai_phai_noi_tham')
+
+
+def _his_null(v):
+    """Ô trống -> chuỗi "NULL" (khớp file mẫu HIS thật), ngược lại giữ nguyên."""
+    return 'NULL' if v in (None, '') else v
+
+
+def _his_pl(v):
+    """Quy tắc cột *_pl (phân loại 1..5): 0/None/'' -> "NULL", ngược lại số."""
+    return 'NULL' if v in (None, 0, '') else v
+
+
+def _his_flag(v):
+    """22 cờ tiền sử + đang điều trị/thai sản: ho_so lưu chuỗi 'Có'/'Không'
+    (KHÔNG phải 1/'1'/True như mô tả ban đầu — đã kiểm tra thực tế DB, mọi
+    giá trị chỉ là 'Có'/'Không'/rỗng) -> "1" nếu 'Có', ngược lại "NULL"."""
+    return '1' if v == 'Có' else 'NULL'
+
+
+def _his_thinh_luc(v):
+    if v in (None, ''):
+        return 'NULL'
+    s = str(v)
+    return s.replace('.', ',') if '.' in s else s
+
+
+def _his_split_huyet_ap(v):
+    if v in (None, ''):
+        return 'NULL', 'NULL'
+    m = re.search(r'(\d+)\s*/\s*(\d+)', str(v))
+    if not m:
+        return 'NULL', 'NULL'
+    return m.group(1), m.group(2)
+
+
+def _his_cls_khac(kq_sieu_am, kq_dien_tim):
+    parts = []
+    if kq_sieu_am not in (None, ''):
+        parts.append(f'Siêu âm: {kq_sieu_am}')
+    if kq_dien_tim not in (None, ''):
+        parts.append(f'Điện tim: {kq_dien_tim}')
+    return '\n'.join(parts) if parts else 'NULL'
+
+
+def _his_kl_benh(row):
+    lines = []
+    for nhan, text_field, pl_field in _KL_BLOCKS:
+        text = row[text_field]
+        pl = row[pl_field]
+        bat_thuong_pl = pl not in (None, 0, '') and int(pl) >= 2
+        bat_thuong_text = (text not in (None, '')
+                           and str(text).strip().lower() != 'bình thường')
+        if bat_thuong_pl or bat_thuong_text:
+            lines.append(f'{nhan}: {text if text not in (None, "") else ""}')
+    return '\n'.join(lines) if lines else 'NULL'
+
+
+def _his_row(row):
+    """Dựng 1 dòng 119 giá trị theo ĐÚNG thứ tự HIS_COLUMNS từ 1 dòng ho_so."""
+    rec = {
+        'makcb': '',                                     # để trống thật, user tự dán
+        'soksk': 'NULL',
+        'ngay_lap_phieu': _his_null(row['ngay_vao']),
+        'nguon_kinh_phi': 'NULL',
+        'nhom_mau': _his_null(row['nhom_mau']),
+        'ly_do_ksk': _his_null(row['ly_do_vv']),
+        'tsgd': _his_null(row['tsgd_mac_benh']),
+        'tsgd_ma_benh': _his_null(row['tsgd_ma_benh']),
+        'benh_tat_khac': _his_null(row['tsbt_ma_benh_khac']),
+        'dang_dieu_tri': _his_flag(row['tsbt_dang_dieu_tri_benh']),
+        'dang_dieu_tri_benh': _his_null(row['tsbt_ma_benh']),
+        'thai_san': _his_flag(row['tsbt_thai_san']),
+        'thai_san_benh': _his_null(row['tsbt_ma_benh_thai_san']),
+        'chieu_cao': _his_null(row['chieu_cao']),
+        'can_nang': _his_null(row['can_nang']),
+        'bmi': _his_null(row['chi_so_bmi']),
+        'mach': _his_null(row['mach']),
+        'kham_the_luc_pl': _his_pl(row['kham_the_luc_pl']),
+        'mat_manv': 'NULL',
+        'mat_kk_mat_phai': _his_null(row['khong_kinh_mat_phai']),
+        'mat_kk_mat_trai': _his_null(row['khong_kinh_mat_trai']),
+        'mat_ck_mat_phai': _his_null(row['co_kinh_mat_phai']),
+        'mat_ck_mat_trai': _his_null(row['co_kinh_mat_trai']),
+        'mat_benh': _his_null(row['benh_khac_mat']),
+        'mat_pl': _his_pl(row['kham_mat_pl']),
+        'tmh_manv': 'NULL',
+        'tmh_tai_trai_noi_thuong': _his_thinh_luc(row['tai_trai_noi_thuong']),
+        'tmh_tai_trai_noi_tham': _his_thinh_luc(row['tai_trai_noi_tham']),
+        'tmh_tai_phai_noi_thuong': _his_thinh_luc(row['tai_phai_noi_thuong']),
+        'tmh_tai_phai_noi_tham': _his_thinh_luc(row['tai_phai_noi_tham']),
+        'tmh_benh': _his_null(row['benh_khac_tai_mui_hong']),
+        'tmh_pl': _his_pl(row['kham_tai_mui_hong_pl']),
+        'rhm_manv': 'NULL',
+        'rhm_ham_tren': _his_null(row['ham_tren']),
+        'rhm_ham_duoi': _his_null(row['ham_duoi']),
+        'rhm_benh': _his_null(row['benh_khac_rang_ham_mat']),
+        'rhm_pl': _his_pl(row['kham_rang_ham_mat_pl']),
+        'mau_manv': 'NULL', 'huyet_hoc': 'NULL',
+        'mau_duong_mau': _his_null(row['glu_gia_tri']),
+        'mau_ure': 'NULL', 'mau_creatinin': 'NULL',
+        'mau_sgot': 'NULL', 'mau_alat': 'NULL',
+        'nuocTieu_manv': 'NULL', 'nuoc_tieu': 'NULL', 'nuoc_tieu_khac': 'NULL',
+        'cdha_manv': 'NULL', 'cdha': 'NULL',
+        'cls_khac_manv': 'NULL',
+        'cls_khac': _his_cls_khac(row['kq_sieu_am_o_bung'], row['kq_dien_tim']),
+        'cls_manv': 'NULL', 'cls_ket_qua': 'NULL',
+        'kl_manv': 'NULL',
+        'kl_phan_loai': _his_pl(row['phan_loai_sk']),
+        'kl_ten_benh': _his_null(row['ket_luan_benh']),
+        'kl_ngay': _his_null(row['ngay_vao']),
+        'isDangLam': 'NULL', 'ailam': 'NULL', 'daky': 'NULL',
+        'kl_benh': _his_kl_benh(row),
+        'doi_tuong': _his_null(row['doi_tuong']),
+    }
+    for i, field in enumerate(_TSBT_ORDER, 1):
+        rec[f'tien_su_ban_than_{i}'] = _his_flag(row[field])
+    sys_v, dia_v = _his_split_huyet_ap(row['huyet_ap'])
+    rec['huyet_ap_tam_thu'] = sys_v
+    rec['huyet_ap_tam_truong'] = dia_v
+    for code_prefix, text_field, pl_field in _ORGAN_TEXT_BLOCKS:
+        rec[f'{code_prefix}_manv'] = 'NULL'
+        rec[code_prefix] = _his_null(row[text_field])
+        rec[f'{code_prefix}_pl'] = _his_pl(row[pl_field])
+    return [rec[c] for c in HIS_COLUMNS]
+
+
+def _his_xlsx_bytes(rows):
+    """Dựng .xlsx write_only: 1 sheet 'Table1' — dòng 1 = header (119 mã cột
+    HIS + 4 mã cột phụ), dữ liệu từ dòng 2. Cột phụ tô vàng nhạt để phân biệt
+    với 119 cột chính (khớp mã HIS, KHÔNG được sửa thứ tự/tên)."""
+    import openpyxl
+    from openpyxl.cell import WriteOnlyCell
+    from openpyxl.styles import Font, PatternFill
+
+    wb = openpyxl.Workbook(write_only=True)
+    ws = wb.create_sheet('Table1')
+    ws.freeze_panes = 'A2'
+    bold = Font(bold=True)
+    phu_fill = PatternFill('solid', fgColor='FFF2CC')
+
+    header_cells = []
+    for code in HIS_COLUMNS:
+        c = WriteOnlyCell(ws, value=code)
+        c.font = bold
+        header_cells.append(c)
+    for code in HIS_EXTRA_COLUMNS:
+        c = WriteOnlyCell(ws, value=code)
+        c.font = bold
+        c.fill = phu_fill
+        header_cells.append(c)
+    ws.append(header_cells)
+
+    for row in rows:
+        cells = [WriteOnlyCell(ws, value=v) for v in _his_row(row)]
+        for v in (row['ma_ho_so'], row['ho_ten'], row['so_cccd'] or '',
+                 row['ngay_sinh'] or ''):
+            c = WriteOnlyCell(ws, value=v)
+            c.fill = phu_fill
+            cells.append(c)
+        ws.append(cells)
+
+    bio = io.BytesIO()
+    wb.save(bio)
+    wb.close()
+    return bio.getvalue(), len(rows)
+
+
+def build_his_xlsx(conn, pham_vi, gia_tri, include_errors, chi_rs_xong=False):
+    """Xuất .xlsx đúng định dạng import phần mềm HIS (khác hẳn build_plain_xlsx/
+    build_xlsm — mẫu BYT). Tái dùng CÙNG resolve_scope_where + _apply_rs_xong +
+    _red_flag_where như build_plain_xlsx nên bộ lọc phạm vi/tuỳ chọn hoạt
+    động giống hệt nút "Tải .xlsx (kèm mã định danh)". Ném ValueError nếu
+    phạm vi rỗng — router chuyển thành 400. Trả (bytes, count)."""
+    where_sql, args = resolve_scope_where(pham_vi, gia_tri)
+    where_sql = _apply_rs_xong(where_sql, chi_rs_xong)
+    rows = conn.execute(
+        f'SELECT * FROM ho_so WHERE {where_sql} ORDER BY maxa_cu_tru, tt',
+        args).fetchall()
+    if not rows:
+        raise ValueError('Không có hồ sơ nào khớp phạm vi đã chọn')
+    if not include_errors:
+        red_sql, red_args = _red_flag_where()
+        red_set = {r['ma_ho_so'] for r in conn.execute(
+            f'SELECT ma_ho_so FROM ho_so WHERE {where_sql} AND {red_sql}',
+            args + red_args)}
+        rows = [r for r in rows if r['ma_ho_so'] not in red_set]
+        if not rows:
+            raise ValueError('Toàn bộ hồ sơ trong phạm vi đều còn cờ đỏ — '
+                             'bật "Xuất kèm cả hồ sơ lỗi" nếu vẫn muốn xuất')
+    return _his_xlsx_bytes(rows)
 
 
 # ============================= XÂY BẢN GHI =============================

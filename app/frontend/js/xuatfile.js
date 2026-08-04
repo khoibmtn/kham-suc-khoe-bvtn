@@ -80,6 +80,8 @@ const ExportView = (() => {
         <button id="xf-start-btn" type="button">Bắt đầu xuất .xlsm (nộp Bộ)</button>
         <button id="xf-edit-btn" type="button">Tải .xlsx (kèm mã định danh)</button>
         <span id="xf-edit-status" class="xf-plain-status"></span>
+        <button id="xf-his-btn" type="button">Xuất HIS</button>
+        <span id="xf-his-status" class="xf-plain-status"></span>
       </div>
 
       <div class="xf-block xf-roundtrip-block">
@@ -189,6 +191,7 @@ const ExportView = (() => {
     panel.querySelector('#xf-preview-btn').addEventListener('click', doPreview);
     panel.querySelector('#xf-start-btn').addEventListener('click', doStart);
     panel.querySelector('#xf-edit-btn').addEventListener('click', doExportChinhSua);
+    panel.querySelector('#xf-his-btn').addEventListener('click', doExportHis);
     panel.querySelector('#xf-ds-file').addEventListener('change', doDoiSoatPreview);
     panel.querySelector('#xf-gcrs-file').addEventListener('change', doGhiChuRaSoatPreview);
     panel.querySelector('#xf-backup-create-btn').addEventListener('click', doBackupCreate);
@@ -295,6 +298,33 @@ const ExportView = (() => {
       const { blob, name } = await Api.xuatFileXlsxChinhSua({
         ...scope, ...currentOptions(), extended: { enabled: extEnabled, columns },
       });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      status.textContent = ` Đã tải: ${name}`;
+      status.className = 'xf-plain-status ok';
+    } catch (err) {
+      status.textContent = ' ' + err.message;
+      status.className = 'xf-plain-status error';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // Nút "Xuất HIS" — .xlsx đúng định dạng import phần mềm HIS (119 cột theo
+  // mã trường HIS, khác hẳn mẫu BYT của .xlsm/"Tải .xlsx"). KHÔNG dùng cột
+  // mở rộng (§7.2) — soi gương doExportChinhSua() nhưng bỏ `extended`.
+  async function doExportHis() {
+    const scope = currentScope();
+    const btn = panel.querySelector('#xf-his-btn');
+    const status = panel.querySelector('#xf-his-status');
+    btn.disabled = true;
+    status.textContent = ' Đang tạo file ...';
+    status.className = 'xf-plain-status';
+    try {
+      const { blob, name } = await Api.xuatFileHisXlsx({ ...scope, ...currentOptions() });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url; a.download = name;

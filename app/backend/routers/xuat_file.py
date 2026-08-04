@@ -93,6 +93,30 @@ def xuat_xlsx_chinh_sua(body: StartBody, admin=Depends(auth.require_admin)):
         headers={'Content-Disposition': f"attachment; filename*=UTF-8''{quote(fn)}"})
 
 
+@router.post('/xuat-file/his-xlsx')
+def xuat_his_xlsx(body: PreviewBody, admin=Depends(auth.require_admin)):
+    """Xuất .xlsx ĐÚNG định dạng import phần mềm HIS (119 cột theo mã trường
+    HIS — khác hẳn mẫu BYT của .xlsm/"Tải .xlsx (kèm mã định danh)"). Tái
+    dùng CÙNG bộ lọc phạm vi + tuỳ chọn như /xlsx-chinh-sua (PreviewBody)."""
+    conn = db.get_connection()
+    try:
+        try:
+            data, count = export_xlsm.build_his_xlsx(
+                conn, body.pham_vi, body.gia_tri, body.include_errors,
+                body.chi_rs_xong)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+    finally:
+        conn.close()
+    import datetime
+    fn = f'KSK_HIS_{count}ca_{datetime.datetime.now():%Y%m%d_%H%M}.xlsx'
+    return Response(
+        content=data,
+        media_type=('application/vnd.openxmlformats-officedocument'
+                    '.spreadsheetml.sheet'),
+        headers={'Content-Disposition': f"attachment; filename*=UTF-8''{quote(fn)}"})
+
+
 @router.post('/xuat-file/nhap-doi-soat')
 async def nhap_doi_soat_ep(file: UploadFile = File(...),
                            ap_dung: bool = Form(False),

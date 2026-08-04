@@ -155,6 +155,25 @@ const Api = (() => {
       const m = /filename\*=UTF-8''([^;]+)/i.exec(cd);
       return { blob, name: m ? decodeURIComponent(m[1]) : 'KSK_ChinhSua.xlsx' };
     },
+    // Xuất .xlsx ĐÚNG định dạng import phần mềm HIS (119 cột theo mã trường
+    // HIS — khác hẳn mẫu BYT của xuatFileXlsxChinhSua ở trên). Soi gương y
+    // hệt cơ chế đọc blob + filename từ Content-Disposition.
+    xuatFileHisXlsx: async (body) => {
+      const res = await fetch('/api/xuat-file/his-xlsx', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin', body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        let detail = `Lỗi ${res.status}`;
+        try { const d = await res.json(); if (d && d.detail) detail = d.detail; } catch (e) { /* */ }
+        if (res.status === 401 && onUnauthorized) onUnauthorized();
+        throw new Error(detail);
+      }
+      const blob = await res.blob();
+      const cd = res.headers.get('Content-Disposition') || '';
+      const m = /filename\*=UTF-8''([^;]+)/i.exec(cd);
+      return { blob, name: m ? decodeURIComponent(m[1]) : 'KSK_HIS.xlsx' };
+    },
     // Nhập lại file đã sửa để đối soát. apDung=false -> xem trước. cot: mảng
     // tên field muốn cập nhật (rỗng/undefined -> tất cả cột phát hiện được).
     // maLoaiTru: mảng mã hồ sơ bị bỏ tick ở checkbox từng dòng — chỉ có tác
