@@ -475,6 +475,42 @@ def _his_cls_khac(kq_sieu_am, kq_dien_tim):
     return '\n'.join(parts) if parts else 'NULL'
 
 
+def _build_ten_to_ma_icd(conn, rows):
+    """Gom TẤT CẢ giá trị TÊN bệnh distinct khác rỗng của 4 trường lưu TÊN
+    (không phải mã) trong ho_so — tsbt_ma_benh_khac, tsbt_ma_benh,
+    tsbt_ma_benh_thai_san, tsgd_ma_benh — rồi tra ngược sang mã ICD qua
+    bảng dm_icd(ma, ten) 1 LẦN DUY NHẤT (không N+1). Nếu 1 tên khớp nhiều
+    mã, giữ mã ĐẦU TIÊN gặp (setdefault). Chia lô 500 để tránh giới hạn
+    tham số SQLite (999) dù thực tế chỉ ~200-300 tên distinct."""
+    ten_fields = ('tsbt_ma_benh_khac', 'tsbt_ma_benh', 'tsbt_ma_benh_thai_san',
+                 'tsgd_ma_benh')
+    ten_set = set()
+    for r in rows:
+        for f in ten_fields:
+            v = r[f]
+            if v not in (None, ''):
+                ten_set.add(v)
+    ten_to_ma = {}
+    ten_list = list(ten_set)
+    for i in range(0, len(ten_list), 500):
+        batch = ten_list[i:i + 500]
+        ph = ','.join('?' * len(batch))
+        for r in conn.execute(f'SELECT ten, ma FROM dm_icd WHERE ten IN ({ph})', batch):
+            ten_to_ma.setdefault(r['ten'], r['ma'])
+    return ten_to_ma
+
+
+def _ma_icd_tu_ten(ten, ten_to_ma):
+    """Tra ngược mã ICD từ TÊN bệnh — ho_so lưu TÊN ở 4 trường tsbt_ma_benh*/
+    tsgd_ma_benh (đặt tên sai lệch, thực chất là tên chứ không phải mã).
+    Fallback GIỮ NGUYÊN TÊN gốc khi không khớp dm_icd (không mất dữ liệu —
+    ~15% tên là chuỗi tự do không chuẩn ICD). Rỗng/None -> None (để _his_null
+    ghi "NULL" như quy tắc hiện có)."""
+    if ten in (None, ''):
+        return None
+    return ten_to_ma.get(ten, ten)
+
+
 def _his_kl_benh(row):
     lines = []
     for nhan, text_field, pl_field in _KL_BLOCKS:
@@ -488,8 +524,10 @@ def _his_kl_benh(row):
     return '\n'.join(lines) if lines else 'NULL'
 
 
-def _his_row(row):
-    """Dựng 1 dòng 119 giá trị theo ĐÚNG thứ tự HIS_COLUMNS từ 1 dòng ho_so."""
+def _his_row(row, ten_to_ma):
+    """Dựng 1 dòng 119 giá trị theo ĐÚNG thứ tự HIS_COLUMNS từ 1 dòng ho_so.
+    `ten_to_ma`: dict {tên bệnh: mã ICD} dựng sẵn 1 lần (xem
+    _build_ten_to_ma_icd) — dùng để tra ngược 4 cột lưu TÊN bệnh sang mã."""
     rec = {
         'makcb': '',                                     # để trống thật, user tự dán
         'soksk': 'NULL',
@@ -498,12 +536,12 @@ def _his_row(row):
         'nhom_mau': _his_null(row['nhom_mau']),
         'ly_do_ksk': _his_null(row['ly_do_vv']),
         'tsgd': _his_null(row['tsgd_mac_benh']),
-        'tsgd_ma_benh': _his_null(row['tsgd_ma_benh']),
-        'benh_tat_khac': _his_null(row['tsbt_ma_benh_khac']),
+        'tsgd_ma_benh': _his_null(_ma_icd_tu_ten(row['tsgd_ma_benh'], ten_to_ma)),
+        'benh_tat_khac': _his_null(_ma_icd_tu_ten(row['tsbt_ma_benh_khac'], ten_to_ma)),
         'dang_dieu_tri': _his_flag(row['tsbt_dang_dieu_tri_benh']),
-        'dang_dieu_tri_benh': _his_null(row['tsbt_ma_benh']),
+        'dang_dieu_tri_benh': _his_null(_ma_icd_tu_ten(row['tsbt_ma_benh'], ten_to_ma)),
         'thai_san': _his_flag(row['tsbt_thai_san']),
-        'thai_san_benh': _his_null(row['tsbt_ma_benh_thai_san']),
+        'thai_san_benh': _his_null(_ma_icd_tu_ten(row['tsbt_ma_benh_thai_san'], ten_to_ma)),
         'chieu_cao': _his_null(row['chieu_cao']),
         'can_nang': _his_null(row['can_nang']),
         'bmi': _his_null(row['chi_so_bmi']),
@@ -539,7 +577,10 @@ def _his_row(row):
         'cls_manv': 'NULL', 'cls_ket_qua': 'NULL',
         'kl_manv': 'NULL',
         'kl_phan_loai': _his_pl(row['phan_loai_sk']),
-        'kl_ten_benh': _his_null(row['ket_luan_benh']),
+        # Đổi sang mã ICD sẵn có (ma_benh_chinh), KHÔNG còn tên bệnh —
+        # yêu cầu user: cột kl_ten_benh của HIS cần MÃ, không cần tra dm_icd
+        # vì ma_benh_chinh đã là mã ICD chuẩn.
+        'kl_ten_benh': _his_null(row['ma_benh_chinh']),
         'kl_ngay': _his_null(row['ngay_vao']),
         'isDangLam': 'NULL', 'ailam': 'NULL', 'daky': 'NULL',
         'kl_benh': _his_kl_benh(row),
@@ -557,10 +598,11 @@ def _his_row(row):
     return [rec[c] for c in HIS_COLUMNS]
 
 
-def _his_xlsx_bytes(rows):
+def _his_xlsx_bytes(rows, ten_to_ma):
     """Dựng .xlsx write_only: 1 sheet 'Table1' — dòng 1 = header (119 mã cột
     HIS + 4 mã cột phụ), dữ liệu từ dòng 2. Cột phụ tô vàng nhạt để phân biệt
-    với 119 cột chính (khớp mã HIS, KHÔNG được sửa thứ tự/tên)."""
+    với 119 cột chính (khớp mã HIS, KHÔNG được sửa thứ tự/tên). `ten_to_ma`:
+    dict tra ngược tên bệnh -> mã ICD, xem _build_ten_to_ma_icd."""
     import openpyxl
     from openpyxl.cell import WriteOnlyCell
     from openpyxl.styles import Font, PatternFill
@@ -584,7 +626,7 @@ def _his_xlsx_bytes(rows):
     ws.append(header_cells)
 
     for row in rows:
-        cells = [WriteOnlyCell(ws, value=v) for v in _his_row(row)]
+        cells = [WriteOnlyCell(ws, value=v) for v in _his_row(row, ten_to_ma)]
         for v in (row['ma_ho_so'], row['ho_ten'], row['so_cccd'] or '',
                  row['ngay_sinh'] or ''):
             c = WriteOnlyCell(ws, value=v)
@@ -620,7 +662,10 @@ def build_his_xlsx(conn, pham_vi, gia_tri, include_errors, chi_rs_xong=False):
         if not rows:
             raise ValueError('Toàn bộ hồ sơ trong phạm vi đều còn cờ đỏ — '
                              'bật "Xuất kèm cả hồ sơ lỗi" nếu vẫn muốn xuất')
-    return _his_xlsx_bytes(rows)
+    # Gom TÊN bệnh distinct từ rows CUỐI (đã lọc phạm vi + cờ đỏ) rồi tra
+    # ngược sang mã ICD 1 LẦN DUY NHẤT — xem _build_ten_to_ma_icd.
+    ten_to_ma = _build_ten_to_ma_icd(conn, rows)
+    return _his_xlsx_bytes(rows, ten_to_ma)
 
 
 # ============================= XÂY BẢN GHI =============================
