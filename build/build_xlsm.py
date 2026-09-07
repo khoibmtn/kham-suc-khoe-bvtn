@@ -200,9 +200,28 @@ def write_xlsm(recs, path):
     # KHÔNG thêm bất kỳ cột nào ngoài 103 cột của mẫu — cổng BYT chỉ nhận đúng
     # cấu trúc mẫu. Toàn bộ trường bổ sung nằm ở file KSK_DuLieuQuanLy_*.xlsx.
     TEXT_COLS = {'SO_CCCD', 'NGAY_VAO', 'NGAY_SINH', 'NGAYCAP_CCCD'}
-    # công thức cột phụ trợ M (TINH_ID). Cột O là lookup cấp huyện cũ, đã hỏng
-    # (#REF!) sau khi bỏ cấp huyện — để trống, cột này không có mã trường ở
-    # dòng 2 nên không thuộc dữ liệu xuất.
+
+    # Cột phụ trợ ẨN M (mã tỉnh) và O (mã xã). Trong file mẫu chúng là công
+    # thức, nhưng openpyxl KHÔNG tính được công thức nên chỉ ghi ra ô rỗng —
+    # mà trình đọc Excel của cổng (SheetJS) chỉ đọc GIÁ TRỊ đã tính sẵn. Vì
+    # vậy phải tự tra danh mục và ghi GIÁ TRỊ THẬT.
+    #
+    # Cột O là trường QUYẾT ĐỊNH phường/xã: cổng gửi lên server đúng con số ở
+    # ô này (payload `ward`), tên xã ở cột N không hề được gửi. Công thức gốc
+    # của Bộ lấy nhầm cột D (HUYEN_ID, mã nội bộ) và còn kèm lỗi #REF!; mã
+    # server thực nhận là cột E (MAHUYEN) — đã kiểm chứng bằng cách đẩy thật
+    # 1 ca lên csdlksk.vn ngày 2026-09-07. Ghi dạng TEXT vì nhiều xã có mã bắt
+    # đầu bằng số 0 (vd '01708'), ghi dạng số sẽ mất số 0 đầu.
+    ws_tinh, ws_huyen = wb['dmtinh'], wb['dmhuyen']
+    tinh_id = {}                      # tên tỉnh -> TINH_ID
+    for row in ws_tinh.iter_rows(min_row=2, values_only=True):
+        if row[0] not in (None, '') and row[1] not in (None, ''):
+            tinh_id.setdefault(str(row[0]).strip(), row[1])
+    ma_xa = {}                        # f'{TINH_ID}{tên xã}' -> MAHUYEN
+    for row in ws_huyen.iter_rows(min_row=2, values_only=True):
+        if row[2] not in (None, '') and row[4] not in (None, ''):
+            ma_xa.setdefault(str(row[2]).strip(), str(row[4]).strip())
+
     for i, rec in enumerate(recs):
         r = FIRST_ROW + i
         ws.cell(r, 1, rec['TT'])
@@ -212,8 +231,12 @@ def write_xlsm(recs, path):
                 cell = ws.cell(r, c, v if v != '' else None)
                 if code in TEXT_COLS and v:
                     cell.number_format = '@'
-        ws.cell(r, 13, f'=INDEX(dmtinh!$A:$B,MATCH(L{r},dmtinh!$A:$A,0),2)')
-        ws.cell(r, 15, None)
+        ten_tinh = str(rec.get('MATINH_CU_TRU') or '').strip()
+        ten_xa = str(rec.get('MAXA_CU_TRU') or '').strip()
+        tid = tinh_id.get(ten_tinh)
+        ws.cell(r, 13, tid)
+        cell_o = ws.cell(r, 15, ma_xa.get(f'{tid}{ten_xa}') if tid else None)
+        cell_o.number_format = '@'
 
     # xóa các dòng mẫu thừa còn lại của template (nếu dữ liệu ít hơn)
     last = FIRST_ROW + len(recs)

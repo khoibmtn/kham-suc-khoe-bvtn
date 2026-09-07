@@ -677,12 +677,43 @@ def _merged_filename(so_ca):
     return f'KSK_Import_{so_ca}ca_{ts}.xlsm'
 
 
-def _row_to_rec(row, tt):
+def _noi_ma_icd(*phan):
+    """Nối các mã ICD thành chuỗi ';' — bỏ rỗng, khử trùng lặp, GIỮ THỨ TỰ.
+    Mỗi phần có thể tự nó đã là chuỗi ';' (vd ma_benh_kem='I10;E11.9')."""
+    ra = []
+    for p in phan:
+        for ma in str(p or '').replace(',', ';').split(';'):
+            ma = ma.strip()
+            if ma and ma not in ra:
+                ra.append(ma)
+    return ';'.join(ra)
+
+
+def _row_to_rec(row, tt, ten_to_ma=None):
     """Đảo ngược import_data.py: tên cột `ho_so` viết hoa == mã trường BYT
     (đã kiểm chứng field-by-field với dòng 2 của template — xem docstring
-    module). write_xlsm() tự bỏ qua các khoá không khớp mã trường mẫu."""
+    module). write_xlsm() tự bỏ qua các khoá không khớp mã trường mẫu.
+
+    4 cột bệnh phải là MÃ ICD, phân tách bằng ';' — KHÔNG được là tên bệnh và
+    KHÔNG được chứa dấu phẩy. Đã xác minh trên cổng csdlksk.vn (2026-09-07):
+    trình đọc Excel của cổng tách chuỗi theo `; , |` rồi dò regex mã ICD; nếu
+    không rút được mã nào nó GHI ĐÈ trường bằng chuỗi rỗng chứ không giữ
+    nguyên tên. Riêng CAC_BENH_TAT_NEU_CO (CY) được cổng đọc TRƯỚC và ghi đè
+    luôn KET_LUAN_BENH (CX), nên CY sai là mất cả hai."""
     rec = _doi_dau_thap_phan({k.upper(): row[k] for k in row.keys()})
     rec['TT'] = tt
+
+    ten_to_ma = ten_to_ma or {}
+    rec['KET_LUAN_BENH'] = _noi_ma_icd(row['ma_benh_chinh'])
+    rec['CAC_BENH_TAT_NEU_CO'] = _noi_ma_icd(row['ma_benh_chinh'], row['ma_benh_kem'])
+    # tsbt_ma_benh*/tsgd_ma_benh lưu TÊN bệnh (tên cột đặt sai lệch) — tra
+    # ngược sang mã ICD như bên xuất HIS. Không khớp dm_icd thì giữ nguyên tên:
+    # cổng bỏ qua, nhưng không làm mất dữ liệu ở các bản dùng nội bộ.
+    for ma_truong, cot_nguon in (('TSBT_MA_BENH', 'tsbt_ma_benh'),
+                                 ('TSBT_MA_BENH_KHAC', 'tsbt_ma_benh_khac'),
+                                 ('TSGD_MA_BENH', 'tsgd_ma_benh')):
+        if ma_truong in rec:
+            rec[ma_truong] = _ma_icd_tu_ten(row[cot_nguon], ten_to_ma) or ''
     return rec
 
 
@@ -836,9 +867,17 @@ def _run_job(job_id, rows, red_set, user_map, include_errors, ext_enabled, ext_c
 
     _log(job, f"Đang ghi {len(included_rows)} ca vào 1 file .xlsm gộp ...")
 
+    # Bảng tra ngược TÊN bệnh -> mã ICD, dựng 1 LẦN cho cả lô (không N+1) —
+    # dùng chung với đường xuất HIS, xem _build_ten_to_ma_icd.
+    _conn = db.get_connection()
+    try:
+        ten_to_ma = _build_ten_to_ma_icd(_conn, included_rows)
+    finally:
+        _conn.close()
+
     recs = []
     for i, r in enumerate(included_rows, 1):
-        rec = _row_to_rec(r, i)
+        rec = _row_to_rec(r, i, ten_to_ma)
         if ext_enabled:
             rec['_EXT'] = _row_ext(r, user_map.get(r['nguoi_ra_soat_id'], ''), danh_sach_map)
         recs.append(rec)
