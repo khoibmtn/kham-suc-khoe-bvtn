@@ -8,6 +8,10 @@ tong-hop.xlsx
 *.db
 *.db.bak*
 *.sqlite
+KSK-upload/
+doc/minh-lo/
+doc/du-lieu-xa/
+doc/csdlksk_byt/
 
 # ==== Môi trường & file tạm ====
 app/.venv/
