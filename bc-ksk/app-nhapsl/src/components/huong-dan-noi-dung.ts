@@ -23,7 +23,8 @@ export const NAM_BUOC: { so: number; ten: string; mo: string }[] = [
 ];
 
 export const PHIM_TAT: { phim: string; viec: string }[] = [
-  { phim: '/', viec: 'Đưa con trỏ vào ô tìm kiếm' },
+  { phim: '/', viec: 'Đưa con trỏ vào ô tìm kiếm / quay lại ô tìm (chữ cũ tự bôi đen để gõ đè)' },
+  { phim: '↓ / Enter (đang ở ô tìm)', viec: 'Xuống danh sách, chọn dòng đầu kết quả' },
   { phim: '↑ / ↓', viec: 'Chọn dòng trên / dòng dưới' },
   { phim: 'Space', viec: 'Xác nhận hoặc bỏ xác nhận hồ sơ đang chọn' },
   { phim: '1 – 8', viec: 'Đổi ô cận lâm sàng thứ 1–8 (CTM, GLU, URE, CRE, GOT, GPT, NT, SA)' },
@@ -92,10 +93,27 @@ export const MUC: Muc[] = [
     khiNao: 'Khi cầm một hồ sơ giấy và cần tìm đúng dòng của người đó.',
     khoi: [
       {
-        anh: { file: '04-tim-kiem-trong-danh-sach.png', alt: 'Gõ “hung” vào ô tìm, bảng chỉ còn 3 hồ sơ khớp' },
+        anh: {
+          file: '04-tim-kiem-trong-danh-sach.png',
+          alt: 'Gõ “hung” vào ô tìm (nền màu gạch), bảng lọc còn 3 / 38 hồ sơ và bấm ↓ chọn dòng đầu',
+        },
         buoc: [
-          { n: 1, t: 'Bấm vào **ô tìm** (hoặc nhấn `/`) rồi gõ **tên không dấu**, năm sinh hoặc 4 số cuối CCCD.' },
-          { n: 2, t: 'Nhìn dòng **Đang hiển thị 3 / 38 hồ sơ**: bảng chỉ còn những người khớp từ khóa.' },
+          {
+            n: 1,
+            t: 'Bấm vào **ô tìm** (hoặc nhấn `/`) rồi gõ **tên không dấu**, năm sinh hoặc 4 số cuối CCCD. Ô trống có nền **vàng cam nhạt** (chưa tìm); khi có chữ sẽ đổi sang nền **màu gạch**, chữ trắng (đang tìm).',
+          },
+          {
+            n: 2,
+            t: 'Nhìn dòng **Đang hiển thị 3 / 38 hồ sơ**: bảng chỉ còn những người khớp từ khóa.',
+          },
+          {
+            n: 3,
+            t: 'Nhấn `↓` hoặc `Enter` để từ ô tìm **xuống danh sách**, chọn dòng đầu kết quả (có viền nhấn); sau đó dùng `Space`, `1`–`8`, `Enter`, `K`, `C` bình thường trên danh sách đã lọc.',
+          },
+          {
+            n: 4,
+            t: 'Nhấn `/` để **quay lại ô tìm** (chữ cũ được bôi đen để gõ đè tên người tiếp theo).',
+          },
         ],
       },
     ],
@@ -272,6 +290,37 @@ export const MUC: Muc[] = [
           { n: 2, t: 'Bấm **Từ chối** nếu không đúng (có thể ghi lý do ngắn gọn).' },
         ],
       },
+    ],
+  },
+  {
+    id: 'thong-bao-de-nghi',
+    tieuDe: 'Thông báo đề nghị chuyển',
+    khiNao: 'Khi nhân viên khác gửi đề nghị xin chuyển hồ sơ từ buổi bạn đang phụ trách sang buổi của họ.',
+    khoi: [
+      {
+        anh: {
+          file: '13b-thong-bao-de-nghi.png',
+          alt: 'Dải thông báo màu vàng dưới thanh trên cùng, nút Xem và xử lý và popup góc phải khi có đề nghị chuyển mới',
+        },
+        buoc: [
+          {
+            n: 1,
+            t: '**Dải vàng** ngay dưới thanh trên cùng báo bạn có bao nhiêu đề nghị chuyển hồ sơ đang chờ xử lý và đề nghị mới nhất từ ai.',
+          },
+          {
+            n: 2,
+            t: 'Bấm **Xem và xử lý →** trên dải vàng (hoặc **Xem và xử lý** trong popup) để mở tab **Đề nghị chuyển**, rồi bấm **Đồng ý** hoặc **Từ chối** (như ảnh mục trên).',
+          },
+          {
+            n: 3,
+            t: 'Đọc **popup góc phải** cho mỗi đề nghị mới: biết rõ ai xin chuyển, hồ sơ nào, từ buổi nào về buổi nào và lý do.',
+          },
+        ],
+      },
+    ],
+    luuY: [
+      'Popup góc phải **tự mờ và tắt sau 10 giây**, nhưng **dải vàng** vẫn còn cho đến khi bạn xử lý xong hết các đề nghị.',
+      'Trên thanh menu, mục **Kho chờ** cũng hiện huy hiệu **Đề nghị: N** báo số đề nghị đang chờ.',
     ],
   },
   {

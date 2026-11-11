@@ -74,7 +74,16 @@ async function hopCua(v: Vung): Promise<Hop> {
 }
 
 async function chup(page: Page, ten: string, dau: Dau[], clip?: Hop, fullPage = false) {
-  await page.addStyleTag({ content: '.toast-region{display:none!important}' });
+  await page.evaluate((hienThongBao: boolean) => {
+    document.getElementById('__an-thong-bao')?.remove();
+    const s = document.createElement('style');
+    s.id = '__an-thong-bao';
+    s.textContent = hienThongBao
+      ? '.toast-region{display:none!important}[class*="popupStack"] [role="alert"]{animation:none!important;opacity:1!important;transform:none!important}'
+      : '.toast-region,[class*="banner"]:has([class*="bannerLink"]),[class*="popupStack"]{display:none!important}';
+    document.head.appendChild(s);
+  }, ten === '13b-thong-bao-de-nghi');
+  await page.waitForTimeout(50);
   const cacHop = [];
   for (const d of dau) cacHop.push({ d: { n: d.n, nhan: d.nhan, vitri: d.vitri, pad: d.pad, khongVien: d.khongVien }, h: await hopCua(d.vung) });
   type Muc = { d: Pick<Dau, 'n' | 'nhan' | 'vitri' | 'pad' | 'khongVien'>; h: Hop };
@@ -241,9 +250,12 @@ async function main() {
   const oTim = page.getByPlaceholder(/Tìm họ tên/).first();
   await oTim.fill('hung');
   await doi(page, 800);
+  await oTim.press('ArrowDown');
+  await doi(page, 200);
   await chup(page, '04-tim-kiem-trong-danh-sach', [
     { vung: oTim, n: 1, vitri: 'tl' },
     { vung: page.getByText(/Đang hiển thị/).first(), n: 2, vitri: 'tr' },
+    { vung: page.locator('tbody tr.hoso-row-selected').first(), n: 3, vitri: 'tl', pad: 2 },
   ], { x: 0, y: 0, w: 1366, h: 540 });
   await page.getByRole('button', { name: 'Xóa nội dung tìm kiếm' }).click();
   await doi(page, 500);
@@ -414,8 +426,22 @@ async function main() {
     await api(ngan, 'post', '/api/de-nghi-chuyen', { ho_so_id: h.id, den_buoi: 'TN-20260907', ly_do: 'Có phiếu giấy trong tập ngày 07/09 của tôi' });
   }
 
-  // ---- 13 đề nghị chuyển (Trinh xử lý) ----
+  // ---- 13b thông báo đề nghị chuyển (Trinh vừa đăng nhập, thấy dải vàng + popup) ----
   const pTrinh = await trinh.newPage();
+  await pTrinh.goto('/');
+  const daiVang = pTrinh.locator('[class*="banner"]:has([class*="bannerLink"])').first();
+  await daiVang.waitFor({ state: 'visible' });
+  const popup = pTrinh.locator('[class*="popupStack"] [role="alert"]').first();
+  await popup.waitFor({ state: 'visible' });
+  await doi(pTrinh, 400);
+  const bDai = (await daiVang.boundingBox())!;
+  await chup(pTrinh, '13b-thong-bao-de-nghi', [
+    { vung: { x: 14, y: bDai.y + 2, w: 1338, h: bDai.height - 4 }, n: 1, vitri: 'tl', pad: 0 },
+    { vung: pTrinh.locator('[class*="bannerLink"]').first(), n: 2, vitri: 'l', pad: 2 },
+    { vung: popup, n: 3, vitri: 'tl', pad: 2 },
+  ], { x: 0, y: 0, w: 1366, h: 480 });
+
+  // ---- 13 đề nghị chuyển (Trinh xử lý) ----
   await pTrinh.goto('/kho');
   await pTrinh.getByRole('tab', { name: /Đề nghị chuyển/ }).click();
   await pTrinh.waitForSelector('button:has-text("Đồng ý")');

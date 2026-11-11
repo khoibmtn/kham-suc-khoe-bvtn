@@ -21,9 +21,10 @@ Rà soát hồ sơ giấy khám sức khỏe toàn dân 2026. Làm theo từng b
 - [11. Nhận hồ sơ vào danh sách (từ kho)](#nhan-tu-kho)
 - [12. Kho chờ cá nhân và kho chờ chung](#kho-cho)
 - [13. Tìm toàn app và đề nghị chuyển](#tim-toan-app)
-- [14. Chốt danh sách](#chot)
-- [15. Câu hỏi thường gặp](#hoi-dap)
-- [16. Dành cho admin](#admin)
+- [14. Thông báo đề nghị chuyển](#thong-bao-de-nghi)
+- [15. Chốt danh sách](#chot)
+- [16. Câu hỏi thường gặp](#hoi-dap)
+- [17. Dành cho admin](#admin)
 
 ## 5 bước rà soát một hồ sơ
 
@@ -39,7 +40,8 @@ Rà soát hồ sơ giấy khám sức khỏe toàn dân 2026. Làm theo từng b
 
 | Phím | Việc làm |
 |---|---|
-| `/` | Đưa con trỏ vào ô tìm kiếm |
+| `/` | Đưa con trỏ vào ô tìm kiếm / quay lại ô tìm (chữ cũ tự bôi đen để gõ đè) |
+| `↓ / Enter (đang ở ô tìm)` | Xuống danh sách, chọn dòng đầu kết quả |
 | `↑ / ↓` | Chọn dòng trên / dòng dưới |
 | `Space` | Xác nhận hoặc bỏ xác nhận hồ sơ đang chọn |
 | `1 – 8` | Đổi ô cận lâm sàng thứ 1–8 (CTM, GLU, URE, CRE, GOT, GPT, NT, SA) |
@@ -109,11 +111,15 @@ Rà soát hồ sơ giấy khám sức khỏe toàn dân 2026. Làm theo từng b
 
 **Khi nào dùng:** Khi cầm một hồ sơ giấy và cần tìm đúng dòng của người đó.
 
-![Gõ “hung” vào ô tìm, bảng chỉ còn 3 hồ sơ khớp](../public/huong-dan/04-tim-kiem-trong-danh-sach.png)
+![Gõ “hung” vào ô tìm (nền màu gạch), bảng lọc còn 3 / 38 hồ sơ và bấm ↓ chọn dòng đầu](../public/huong-dan/04-tim-kiem-trong-danh-sach.png)
 
-① Bấm vào **ô tìm** (hoặc nhấn `/`) rồi gõ **tên không dấu**, năm sinh hoặc 4 số cuối CCCD.
+① Bấm vào **ô tìm** (hoặc nhấn `/`) rồi gõ **tên không dấu**, năm sinh hoặc 4 số cuối CCCD. Ô trống có nền **vàng cam nhạt** (chưa tìm); khi có chữ sẽ đổi sang nền **màu gạch**, chữ trắng (đang tìm).
 
 ② Nhìn dòng **Đang hiển thị 3 / 38 hồ sơ**: bảng chỉ còn những người khớp từ khóa.
+
+③ Nhấn `↓` hoặc `Enter` để từ ô tìm **xuống danh sách**, chọn dòng đầu kết quả (có viền nhấn); sau đó dùng `Space`, `1`–`8`, `Enter`, `K`, `C` bình thường trên danh sách đã lọc.
+
+④ Nhấn `/` để **quay lại ô tìm** (chữ cũ được bôi đen để gõ đè tên người tiếp theo).
 
 > **Lưu ý**
 > - Tìm không phân biệt dấu và chữ hoa/thường: gõ “thuy” vẫn ra “Thủy”, “Thuỷ”.
@@ -286,9 +292,27 @@ Rà soát hồ sơ giấy khám sức khỏe toàn dân 2026. Làm theo từng b
 
 ② Bấm **Từ chối** nếu không đúng (có thể ghi lý do ngắn gọn).
 
+<a id="thong-bao-de-nghi"></a>
+
+## 14. Thông báo đề nghị chuyển
+
+**Khi nào dùng:** Khi nhân viên khác gửi đề nghị xin chuyển hồ sơ từ buổi bạn đang phụ trách sang buổi của họ.
+
+![Dải thông báo màu vàng dưới thanh trên cùng, nút Xem và xử lý và popup góc phải khi có đề nghị chuyển mới](../public/huong-dan/13b-thong-bao-de-nghi.png)
+
+① **Dải vàng** ngay dưới thanh trên cùng báo bạn có bao nhiêu đề nghị chuyển hồ sơ đang chờ xử lý và đề nghị mới nhất từ ai.
+
+② Bấm **Xem và xử lý →** trên dải vàng (hoặc **Xem và xử lý** trong popup) để mở tab **Đề nghị chuyển**, rồi bấm **Đồng ý** hoặc **Từ chối** (như ảnh mục trên).
+
+③ Đọc **popup góc phải** cho mỗi đề nghị mới: biết rõ ai xin chuyển, hồ sơ nào, từ buổi nào về buổi nào và lý do.
+
+> **Lưu ý**
+> - Popup góc phải **tự mờ và tắt sau 10 giây**, nhưng **dải vàng** vẫn còn cho đến khi bạn xử lý xong hết các đề nghị.
+> - Trên thanh menu, mục **Kho chờ** cũng hiện huy hiệu **Đề nghị: N** báo số đề nghị đang chờ.
+
 <a id="chot"></a>
 
-## 14. Chốt danh sách
+## 15. Chốt danh sách
 
 **Khi nào dùng:** Khi mọi hồ sơ của buổi đã xác nhận xong.
 
@@ -313,7 +337,7 @@ Rà soát hồ sơ giấy khám sức khỏe toàn dân 2026. Làm theo từng b
 
 <a id="hoi-dap"></a>
 
-## 15. Câu hỏi thường gặp
+## 16. Câu hỏi thường gặp
 
 **Khi nào dùng:** Khi gặp tình huống chưa rõ phải làm gì.
 
@@ -327,7 +351,7 @@ Rà soát hồ sơ giấy khám sức khỏe toàn dân 2026. Làm theo từng b
 
 <a id="admin"></a>
 
-## 16. Dành cho admin
+## 17. Dành cho admin
 
 **Khi nào dùng:** Chỉ tài khoản quản trị (BS Bùi Minh Khôi) thấy các mục này trên menu.
 
