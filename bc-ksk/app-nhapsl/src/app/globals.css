@@ -2780,3 +2780,23 @@ textarea {
 
 
 
+
+/* Session list (home): text-heavy columns stay on one line and take the width;
+   numeric columns stay narrow with headers allowed to wrap onto two lines. */
+.buoi-table thead th {
+  white-space: normal;
+  vertical-align: bottom;
+  line-height: 1.25;
+}
+.buoi-table thead th.num-col {
+  width: 1%;
+  min-width: 64px;
+  max-width: 96px;
+}
+.buoi-table td.col-text {
+  white-space: nowrap;
+}
+.buoi-table td.num-col {
+  width: 1%;
+  white-space: nowrap;
+}

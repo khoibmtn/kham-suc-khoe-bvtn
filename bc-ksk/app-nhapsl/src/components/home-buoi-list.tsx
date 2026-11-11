@@ -761,7 +761,7 @@ export function HomeBuoiList({
 
       {filteredBuoi.length > 0 && (
         <div className="table-wrap">
-          <table className="data-table">
+          <table className="data-table buoi-table">
             <thead>
               <tr>
                 <th>Đơn vị</th>
@@ -793,10 +793,9 @@ export function HomeBuoiList({
                     }
                   }}
                 >
-                  <td>
-                    <span className="font-semibold">{b.ten_don_vi}</span>
-                    <span className="text-muted text-xs ml-1">
-                      ({b.don_vi})
+                  <td className="col-text" title={b.ten_don_vi}>
+                    <span className="font-semibold">
+                      {b.ten_don_vi.replace(/^(Phường|Xã) /, '')}
                     </span>
                   </td>
                   <td className="nowrap">
@@ -808,21 +807,16 @@ export function HomeBuoiList({
                       {formatDate(b.ngay_kham)}
                     </Link>
                   </td>
-                  <td>
+                  <td className="col-text">
                     <div>{b.diem_kham || '—'}</div>
                     {b.doan_kham && (
                       <div className="sub-text">{b.doan_kham}</div>
                     )}
                   </td>
                   {isAdmin && (
-                    <td>
+                    <td className="col-text">
                       {b.phu_trach ? (
-                        <span>
-                          {b.phu_trach.ho_ten}{' '}
-                          <span className="text-muted">
-                            ({b.phu_trach.username})
-                          </span>
-                        </span>
+                        <span title={b.phu_trach.username}>{b.phu_trach.ho_ten}</span>
                       ) : (
                         <span className="badge badge-warning">
                           Chưa phân công
@@ -846,8 +840,8 @@ export function HomeBuoiList({
                   </td>
                   <td className="num-col">
                     {b.thua > 0 ? (
-                      <span className="badge badge-warning">
-                        Thừa +{formatNumber(b.thua)}
+                      <span className="badge badge-warning" title={`Thừa ${b.thua} hồ sơ so với ${NHAN.SO_DOAN}`}>
+                        +{formatNumber(b.thua)}
                       </span>
                     ) : (
                       <span className="text-muted">0</span>
@@ -855,8 +849,8 @@ export function HomeBuoiList({
                   </td>
                   <td className="num-col">
                     {b.thieu > 0 ? (
-                      <span className="badge badge-warning">
-                        Thiếu {formatNumber(b.thieu)}
+                      <span className="badge badge-warning" title={`Thiếu ${b.thieu} hồ sơ so với ${NHAN.SO_DOAN}`}>
+                        −{formatNumber(b.thieu)}
                       </span>
                     ) : (
                       <span className="text-muted">0</span>
