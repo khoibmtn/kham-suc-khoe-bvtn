@@ -33,7 +33,10 @@ Thư mục dự án: `/Users/buiminhkhoi/Documents/Antigravity/kham-suc-khoe/bc-
 - `npm run users:create` — tạo tài khoản từ `nguoi_dung.csv` của gói, sinh mật khẩu ngẫu nhiên, in ra **một lần** để admin phát cho nhân viên
 - `npm run export:cowork` — xuất kết quả rà soát về `handoff/export/<YYYYMMDD-HHMM>/`
 - `npm test`
-- Deploy: `vercel --prod` (xem `docs/04` mục 5)
+- Production: https://ksk-ra-soat-2026.vercel.app (project Vercel `ksk-ra-soat-2026`, Neon `ksk-ra-soat-db` Singapore)
+- Chạy lệnh quản trị với CSDL production: `vercel env pull .env.vercel.production --environment=production --yes` rồi `node scripts/prod-env.mjs <lệnh>` (vd `node scripts/prod-env.mjs npm run export:cowork`) — không in khóa ra màn hình
+- Deploy: `vercel build --prod` → kiểm `.vercel/output` không có CSV/XLSX → `vercel deploy --prebuilt --prod` (xem `docs/04` mục 5)
+- Đăng nhập: chọn tên từ danh sách, mật khẩu mặc định `123456` (anh Khôi chốt 11/11/2026, chấp nhận rủi ro vì app dùng 2 ngày)
 
 ## Giao tiếp với Cowork
 - Gói dữ liệu Cowork đặt ở `data/import/<phien_ban>/`.

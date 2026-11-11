@@ -2,7 +2,8 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { closeDb, getSql } from '@/db/client';
-import { docGoiTuThuMuc, parseGoi } from '@/lib/import/goi';
+import { parseGoi } from '@/lib/import/goi';
+import { docGoiTuThuMuc } from '@/lib/import/doc-thu-muc';
 import { apDung, docTongThucTe, lapKeHoach, NapTuChoi } from '@/lib/import/nap';
 import { khongDau } from '@/lib/text';
 import { taoGoiThu, type Bien } from './helpers/goi-thu';
@@ -162,9 +163,6 @@ describe('nạp vào DB', () => {
     await expect(apDung(sql(), kq.goi!, 'cli:test')).rejects.toThrow(/cũ hơn hoặc đã được nạp/);
     expect(await demDb()).toEqual(truoc);
 
-    // phiên bản mới hơn → báo thuộc GĐ7, không ghi
-    const moi = parseThu({ phienBan: 'v1-test-2' });
-    await expect(apDung(sql(), moi.kq.goi!, 'cli:test')).rejects.toThrow(/GĐ7/);
     // phiên bản cũ hơn
     const cu = parseThu({ phienBan: 'v0-test-0' });
     await expect(apDung(sql(), cu.kq.goi!, 'cli:test')).rejects.toThrow(/cũ hơn/);

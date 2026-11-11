@@ -118,6 +118,7 @@ export function AppShell({ user: propUser, children, fullWidth = false }: AppShe
   const isTimKiemActive = pathname === '/tim-kiem' || pathname.startsWith('/tim-kiem/');
   const isPhanCongActive = pathname.startsWith('/admin/phan-cong');
   const isNguoiDungActive = pathname.startsWith('/admin/nguoi-dung');
+  const isNapDuLieuActive = pathname.startsWith('/admin/nap-du-lieu');
   const isNhatKyActive = pathname.startsWith('/admin/nhat-ky');
   const isDoiMatKhauActive = pathname.startsWith('/doi-mat-khau');
 
@@ -199,6 +200,13 @@ export function AppShell({ user: propUser, children, fullWidth = false }: AppShe
                       aria-current={isNguoiDungActive ? 'page' : undefined}
                     >
                       Người dùng
+                    </Link>
+                    <Link
+                      href="/admin/nap-du-lieu"
+                      className={`app-nav-link ${isNapDuLieuActive ? 'active' : ''}`}
+                      aria-current={isNapDuLieuActive ? 'page' : undefined}
+                    >
+                      Nạp dữ liệu
                     </Link>
                     <Link
                       href="/admin/nhat-ky"

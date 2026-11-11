@@ -1,4 +1,8 @@
-import type { ThongTinChuyen, TrangThaiBuoi } from '@/lib/api-types';
+import type {
+  KeHoachNap,
+  ThongTinChuyen,
+  TrangThaiBuoi,
+} from '@/lib/api-types';
 import { CANH_BAO_MO_TA, CANH_BAO_NHAN, CLS, DON_VI, NHAN } from '@/lib/cls';
 
 /**
@@ -369,4 +373,132 @@ export function getLinkDoiTuongNhatKy(row: {
   }
 
   return null;
+}
+
+// ---- Phase 7: Nạp dữ liệu (Admin upload & reload) ----
+
+export const TEN_FILE_GOI_NAP = [
+  'manifest.json',
+  'buoi_kham.csv',
+  'ho_so.csv',
+  'nguoi_dung.csv',
+] as const;
+
+export type TenFileGoiNap = (typeof TEN_FILE_GOI_NAP)[number];
+
+/** Giới hạn 4,3 MB khi tải gói qua web (Vercel body limit ~ 4,5 MB). */
+export const GIOI_HAN_GOI_WEB_BYTES = Math.round(4.3 * 1024 * 1024);
+
+export function formatFileSizeKB(bytes: number | null | undefined): string {
+  if (bytes === null || bytes === undefined || Number.isNaN(Number(bytes))) {
+    return '0,0 KB';
+  }
+  const kb = Math.max(0, Number(bytes)) / 1024;
+  return `${kb.toLocaleString('vi-VN', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })} KB`;
+}
+
+export function formatFileSizeMB(bytes: number | null | undefined): string {
+  if (bytes === null || bytes === undefined || Number.isNaN(Number(bytes))) {
+    return '0,00 MB';
+  }
+  const mb = Math.max(0, Number(bytes)) / (1024 * 1024);
+  return `${mb.toLocaleString('vi-VN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })} MB`;
+}
+
+export function isTuChoiDoPhienBanCu(tuChoi: string | null | undefined): boolean {
+  if (!tuChoi) return false;
+  return /cũ hơn|đã được nạp|đã nạp|phiên bản|force/i.test(tuChoi);
+}
+
+export function formatXacNhanGhiGoi(keHoach: KeHoachNap): string {
+  const cheDoNhan = keHoach.che_do === 'lan_dau' ? 'lần đầu' : 'nạp lại';
+  if (keHoach.che_do === 'nap_lai' && keHoach.nap_lai) {
+    const nl = keHoach.nap_lai;
+    const goTong = nl.ho_so_go_khoi_nguon_an + nl.ho_so_go_khoi_nguon_giu;
+    return `Nạp phiên bản ${keHoach.phien_ban} (${cheDoNhan}): thêm ${formatNumber(nl.ho_so_them_moi)} hồ sơ, cập nhật ${formatNumber(nl.ho_so_cap_nhat)}, gỡ ${formatNumber(goTong)}… Không hoàn tác được.`;
+  }
+  return `Nạp phiên bản ${keHoach.phien_ban} (${cheDoNhan}): thêm ${formatNumber(keHoach.ho_so_them_tong)} hồ sơ, cập nhật 0, gỡ 0… Không hoàn tác được.`;
+}
+
+export function formatTomTatLichSuNap(
+  cheDo: string | null | undefined,
+  tomTat: unknown,
+): string {
+  if (!tomTat || typeof tomTat !== 'object') {
+    return '—';
+  }
+  const raw = tomTat as Record<string, unknown>;
+  const nestedNapLai =
+    raw.nap_lai && typeof raw.nap_lai === 'object'
+      ? (raw.nap_lai as Record<string, unknown>)
+      : null;
+  const nl = nestedNapLai ?? raw;
+
+  if (
+    cheDo === 'nap_lai' ||
+    'ho_so_them_moi' in nl ||
+    'ho_so_cap_nhat' in nl
+  ) {
+    const themMoi = Number(nl.ho_so_them_moi ?? 0);
+    const capNhat = Number(nl.ho_so_cap_nhat ?? 0);
+    const thamChieu = Number(nl.ho_so_cap_nhat_tham_chieu ?? 0);
+    const giuDaCham = Number(nl.ho_so_giu_do_da_cham ?? 0);
+    const goAn = Number(nl.ho_so_go_khoi_nguon_an ?? 0);
+    const goGiu = Number(nl.ho_so_go_khoi_nguon_giu ?? 0);
+    const buoiThem = Array.isArray(nl.buoi_them)
+      ? nl.buoi_them.length
+      : Number(nl.buoi_them ?? 0);
+    const buoiCapNhat = Number(nl.buoi_cap_nhat ?? 0);
+
+    const parts: string[] = [
+      `Thêm: ${formatNumber(themMoi)} hồ sơ`,
+      `Cập nhật: ${formatNumber(capNhat)}`,
+    ];
+    if (thamChieu > 0) {
+      parts.push(`Tham chiếu: ${formatNumber(thamChieu)}`);
+    }
+    if (giuDaCham > 0) {
+      parts.push(`Giữ đã rà soát: ${formatNumber(giuDaCham)}`);
+    }
+    if (goAn + goGiu > 0) {
+      parts.push(`Gỡ: ${formatNumber(goAn + goGiu)}`);
+    }
+    if (buoiThem > 0 || buoiCapNhat > 0) {
+      parts.push(
+        `Buổi: +${formatNumber(buoiThem)} / cập nhật ${formatNumber(buoiCapNhat)}`,
+      );
+    }
+    return parts.join(' · ');
+  }
+
+  const buoiThem = Array.isArray(raw.buoi_them)
+    ? raw.buoi_them.length
+    : Number(raw.buoi_them ?? raw.buoiThem ?? 0);
+  const hoSoThem = Number(
+    raw.ho_so_them ?? raw.ho_so_them_tong ?? raw.hoSoThemTong ?? 0,
+  );
+  const khoChung = Number(
+    raw.ho_so_them_kho_chung ?? raw.hoSoThemKhoChung ?? 0,
+  );
+  const userThem = Array.isArray(raw.user_them)
+    ? raw.user_them.length
+    : Number(raw.user_them ?? 0);
+
+  const parts: string[] = [
+    `Thêm ${formatNumber(buoiThem)} buổi`,
+    `${formatNumber(hoSoThem)} hồ sơ`,
+  ];
+  if (khoChung > 0) {
+    parts.push(`(kho chung: ${formatNumber(khoChung)})`);
+  }
+  if (userThem > 0) {
+    parts.push(`${formatNumber(userThem)} tài khoản`);
+  }
+  return parts.join(' · ');
 }

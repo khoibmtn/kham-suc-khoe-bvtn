@@ -6,17 +6,24 @@ import {
   formatDate,
   formatDateTime,
   formatDateTimeSeconds,
+  formatFileSizeKB,
+  formatFileSizeMB,
   formatHisTimestamp,
   formatMaViTri,
   formatNguonGocChuyen,
   formatNumber,
   formatPercent,
   formatShortDateTime,
+  formatTomTatLichSuNap,
+  formatXacNhanGhiGoi,
   getCanhBaoTooltip,
   getDoiTuongNhan,
   getLinkDoiTuongNhatKy,
   getTenDonVi,
   getTruongNhan,
+  GIOI_HAN_GOI_WEB_BYTES,
+  isTuChoiDoPhienBanCu,
+  TEN_FILE_GOI_NAP,
   TRANG_THAI_BUOI_NHAN,
 } from '@/lib/client/format';
 import { tinhTheTongHopTuBuoi } from '@/components/home-buoi-list';
@@ -160,5 +167,85 @@ describe('UI client format helpers', () => {
     expect(the.chenh_lech).toBe(-3);
     expect(the.bo_sung).toBe(2);
     expect(the.kho_ca_nhan).toBe(4);
+  });
+
+  it('formats phase 7 import file sizes, confirmation text, and batch history summary', () => {
+    expect(TEN_FILE_GOI_NAP).toEqual([
+      'manifest.json',
+      'buoi_kham.csv',
+      'ho_so.csv',
+      'nguoi_dung.csv',
+    ]);
+    expect(GIOI_HAN_GOI_WEB_BYTES).toBe(Math.round(4.3 * 1024 * 1024));
+    expect(formatFileSizeKB(2048)).toBe('2,0 KB');
+    expect(formatFileSizeMB(1024 * 1024)).toBe('1,00 MB');
+
+    expect(
+      isTuChoiDoPhienBanCu(
+        'Phiên bản "v1-20261111-1400" cũ hơn hoặc đã được nạp',
+      ),
+    ).toBe(true);
+    expect(isTuChoiDoPhienBanCu(null)).toBe(false);
+
+    const confirmText = formatXacNhanGhiGoi({
+      phien_ban: 'v2-20261112-0800',
+      che_do: 'nap_lai',
+      tu_choi: null,
+      buoi_them: 0,
+      ho_so_them_tong: 15,
+      user_them: [],
+      tong_sau_nap: {
+        TN: { so_buoi: 25, so_doan: 5000, ho_so_trong_buoi: 5010 },
+        LK: { so_buoi: 31, so_doan: 6000, ho_so_trong_buoi: 6000 },
+        VK: { so_buoi: 4, so_doan: 1003, ho_so_trong_buoi: 1003 },
+      },
+      nap_lai: {
+        buoi_them: [],
+        buoi_cap_nhat: 1,
+        buoi_khong_con_trong_goi: [],
+        ho_so_them_moi: 15,
+        ho_so_cap_nhat: 42,
+        ho_so_cap_nhat_tham_chieu: 10,
+        ho_so_giu_do_da_cham: 5,
+        ho_so_chuyen_vi_tri: 2,
+        ho_so_go_khoi_nguon_an: 3,
+        ho_so_go_khoi_nguon_giu: 1,
+        ho_so_khong_doi: 11900,
+        da_xac_nhan_nguon_doi: [],
+        them_tay_trung_goi: [],
+        khong_vao_buoi_khoa: 0,
+        tong_truoc: {
+          TN: { so_buoi: 25, so_doan: 5000, ho_so_trong_buoi: 4995 },
+          LK: { so_buoi: 31, so_doan: 6000, ho_so_trong_buoi: 6000 },
+          VK: { so_buoi: 4, so_doan: 1003, ho_so_trong_buoi: 1003 },
+        },
+        tong_sau: {
+          TN: { so_buoi: 25, so_doan: 5000, ho_so_trong_buoi: 5010 },
+          LK: { so_buoi: 31, so_doan: 6000, ho_so_trong_buoi: 6000 },
+          VK: { so_buoi: 4, so_doan: 1003, ho_so_trong_buoi: 1003 },
+        },
+      },
+    });
+    expect(confirmText).toBe(
+      'Nạp phiên bản v2-20261112-0800 (nạp lại): thêm 15 hồ sơ, cập nhật 42, gỡ 4… Không hoàn tác được.',
+    );
+
+    expect(
+      formatTomTatLichSuNap('lan_dau', {
+        buoi_them: 60,
+        ho_so_them: 12354,
+        ho_so_them_kho_chung: 351,
+        user_them: 9,
+      }),
+    ).toContain('Thêm 60 buổi · 12.354 hồ sơ');
+
+    expect(
+      formatTomTatLichSuNap('nap_lai', {
+        ho_so_them_moi: 12,
+        ho_so_cap_nhat: 34,
+        ho_so_go_khoi_nguon_an: 2,
+        ho_so_go_khoi_nguon_giu: 1,
+      }),
+    ).toContain('Thêm: 12 hồ sơ · Cập nhật: 34');
   });
 });

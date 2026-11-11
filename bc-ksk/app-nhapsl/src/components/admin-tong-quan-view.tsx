@@ -149,6 +149,9 @@ export function AdminTongQuanView({
           <Link href="/" className="btn btn-secondary btn-sm">
             Danh sách 60 buổi khám →
           </Link>
+          <Link href="/admin/nap-du-lieu" className="btn btn-secondary btn-sm">
+            Nạp dữ liệu →
+          </Link>
           <Link href="/admin/nhat-ky" className="btn btn-secondary btn-sm">
             Nhật ký hoạt động →
           </Link>

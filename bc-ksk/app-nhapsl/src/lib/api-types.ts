@@ -296,3 +296,38 @@ export type NhatKyAdmin = NhatKyDong & { id: number; doi_tuong: string; doi_tuon
 //   filename 'bao-cao-ksk-<yyyymmdd-HHMM>.xlsx'. Audit 'xuat_bao_cao'.
 // GET /api/export/cowork.zip (admin) → zip with manifest.json, ho_so.csv, buoi_kham.csv, nhat_ky.csv, bao_cao.xlsx
 //   (docs/02 mục 7). Audit 'xuat_cowork'.
+
+// ---- Phase 7: reload a newer package + admin upload (PLAN6.md, docs/03 mục 4) ----
+export type TongDonVi = Record<'TN' | 'LK' | 'VK', { so_buoi: number; so_doan: number; ho_so_trong_buoi: number }>;
+export type TomTatNapLai = {
+  buoi_them: string[];                   // ma_buoi
+  buoi_cap_nhat: number;                 // existing sessions whose description/so_doan changed
+  buoi_khong_con_trong_goi: string[];    // kept, warning only
+  ho_so_them_moi: number;                // new ma_ho_so (by vi_tri_ban_dau)
+  ho_so_cap_nhat: number;                // untouched records whose identity/CLS/location got overwritten
+  ho_so_cap_nhat_tham_chieu: number;     // only reference fields (co_tt_ksk, canh_bao, …) changed
+  ho_so_giu_do_da_cham: number;          // touched records whose source changed → kept reviewer values, src updated
+  ho_so_chuyen_vi_tri: number;           // untouched, unconfirmed records moved to a new session / pool
+  ho_so_go_khoi_nguon_an: number;        // missing from new package, untouched & unconfirmed → vi_tri 'an'
+  ho_so_go_khoi_nguon_giu: number;       // missing but confirmed/touched → kept + DA_GO_KHOI_NGUON
+  ho_so_khong_doi: number;
+  da_xac_nhan_nguon_doi: { id: number; ma_ho_so: string; ma_buoi: string; truong: string[] }[];
+  them_tay_trung_goi: { ho_so_id: number; ma_ho_so_goi: string; theo: 'cccd' | 'ma_kcb' }[];
+  khong_vao_buoi_khoa: number;           // would move into a locked session → put into kho_chung with note
+  tong_truoc: TongDonVi;
+  tong_sau: TongDonVi;
+};
+export type KeHoachNap = {
+  phien_ban: string;
+  che_do: 'lan_dau' | 'nap_lai';
+  tu_choi: string | null;                // non-null → nothing will be / was written
+  buoi_them: number;
+  ho_so_them_tong: number;
+  user_them: string[];
+  tong_sau_nap: TongDonVi;
+  nap_lai: TomTatNapLai | null;          // only when che_do='nap_lai'
+};
+// POST /api/import/thu   multipart/form-data: files 'manifest.json','buoi_kham.csv','ho_so.csv','nguoi_dung.csv'
+//                        (+ field force=1 optional)  (admin) → { ok, errors: string[], warnings: string[], ke_hoach: KeHoachNap | null }
+// POST /api/import/ghi   same body → same shape; writes in ONE transaction only when ok && !tu_choi.
+// GET  /api/import/lich-su (admin) → { lan_nap: { phien_ban, che_do, nap_boi, nap_luc, tom_tat: unknown }[] } newest first

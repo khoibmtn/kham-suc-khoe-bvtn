@@ -1,11 +1,12 @@
 // Nạp gói `nhapsl-import-1` vào Postgres (docs/03-THIET-KE.md mục 4).
-// GĐ1: chỉ nạp lần đầu. Nạp lại (GĐ7) bổ sung ở `quyetDinhCheDo` (nhánh 'nap_lai') và
-// một hàm `apDungNapLai` riêng; `lapKeHoach`/`apDung` giữ nguyên chữ ký.
+// Lần đầu: `napLanDau`. Nạp lại phiên bản mới hơn: `nap-lai.ts` (cùng một hàm so khớp cho chạy thử và ghi).
 import type postgres from 'postgres';
 import { CLS } from '@/lib/cls';
 import { ghiNhatKy } from '@/lib/nhat-ky';
-import { khongDau } from '@/lib/text';
+import type { TomTatNapLai } from '@/lib/api-types';
 import type { Goi } from './goi';
+import { NapTuChoi, hangBuoi, hangHoSoMoi } from './hang';
+import { apDungNapLai, tinhNapLai, type ChiTietNapLai } from './nap-lai';
 
 type Sql = postgres.Sql | postgres.TransactionSql;
 const DON_VI = ['TN', 'LK', 'VK'] as const;
@@ -26,13 +27,20 @@ export type KeHoach = {
   userGiu: string[];
   /** Tổng sẽ có sau khi nạp (lần đầu = đúng bằng gói). */
   tongSauNap: Record<(typeof DON_VI)[number], { so_buoi: number; so_doan: number; ho_so_trong_buoi: number }>;
+  /** Chỉ có khi cheDo='nap_lai' và không bị từ chối: tóm tắt so khớp. */
+  napLai: TomTatNapLai | null;
+  /** Kết quả so khớp chi tiết (nội bộ, để apDung ghi đúng điều đã tính). */
+  chiTiet?: ChiTietNapLai;
 };
 
-export class NapTuChoi extends Error {}
+export { NapTuChoi };
 
 const khong = (): TheoDonVi => ({ TN: 0, LK: 0, VK: 0 });
 
-/** Quyết định chế độ nạp từ trạng thái DB. Điểm mở rộng cho GĐ7. */
+/**
+ * Quyết định chế độ nạp từ trạng thái DB.
+ * Nạp lại: phiên bản (so sánh chuỗi) lớn hơn mọi phiên bản đã nạp → cho phép; bằng/nhỏ hơn → từ chối trừ `force`.
+ */
 export async function quyetDinhCheDo(
   sql: Sql,
   phienBan: string,
@@ -52,11 +60,10 @@ export async function quyetDinhCheDo(
   if (phienBan <= max! && !opts.force) {
     return { cheDo: 'nap_lai', tuChoi: `Phiên bản "${phienBan}" cũ hơn hoặc đã được nạp (phiên bản lớn nhất đã nạp: "${max}")` };
   }
-  // GĐ7: ở đây sẽ trả { cheDo: 'nap_lai', tuChoi: null } và gọi apDungNapLai.
-  return { cheDo: 'nap_lai', tuChoi: 'Nạp lại phiên bản mới thuộc GĐ7, chưa có trong bản này (không ghi gì)' };
+  return { cheDo: 'nap_lai', tuChoi: null };
 }
 
-export async function lapKeHoach(sql: Sql, goi: Goi, opts: { force?: boolean } = {}): Promise<KeHoach> {
+export async function lapKeHoach(sql: Sql, goi: Goi, opts: { force?: boolean; khoa?: boolean } = {}): Promise<KeHoach> {
   const { cheDo, tuChoi } = await quyetDinhCheDo(sql, goi.manifest.phien_ban, opts);
   const coSan = new Set((await sql<{ username: string }[]>`SELECT username FROM users`).map((r) => r.username));
   const donViBuoi = new Map(goi.buoi.map((b) => [b.ma_buoi, b.don_vi]));
@@ -71,10 +78,11 @@ export async function lapKeHoach(sql: Sql, goi: Goi, opts: { force?: boolean } =
   const tong = {} as KeHoach['tongSauNap'];
   for (const dv of DON_VI) tong[dv] = { so_buoi: 0, so_doan: 0, ho_so_trong_buoi: trongBuoi[dv] };
   for (const b of goi.buoi) { tong[b.don_vi].so_buoi++; tong[b.don_vi].so_doan += b.so_doan_tong; }
-  return {
+  const kh: KeHoach = {
     phienBan: goi.manifest.phien_ban,
     cheDo,
     tuChoi,
+    napLai: null,
     buoiThem: goi.buoi.length,
     hoSoThemTrongBuoi: trongBuoi,
     hoSoThemKhoChung: khoChung,
@@ -83,16 +91,34 @@ export async function lapKeHoach(sql: Sql, goi: Goi, opts: { force?: boolean } =
     userGiu: goi.nguoiDung.filter((u) => coSan.has(u.username)).map((u) => u.username),
     tongSauNap: tong,
   };
+  if (cheDo === 'nap_lai' && !tuChoi) {
+    const ct = await tinhNapLai(sql, goi, { khoa: opts.khoa });
+    if (ct.tuChoi) {
+      kh.tuChoi = ct.tuChoi;
+      return kh;
+    }
+    kh.napLai = ct.tomTat;
+    kh.chiTiet = ct;
+    kh.buoiThem = ct.tomTat.buoi_them.length;
+    kh.hoSoThemTong = ct.tomTat.ho_so_them_moi;
+    kh.hoSoThemTrongBuoi = ct.themTrongBuoi;
+    kh.hoSoThemKhoChung = ct.themKhoChung;
+    kh.userThem = ct.userMoi.map((u) => u.username);
+    kh.userGiu = goi.nguoiDung.filter((u) => !kh.userThem.includes(u.username)).map((u) => u.username);
+    kh.tongSauNap = ct.tomTat.tong_sau;
+  }
+  return kh;
 }
 
-/** Nạp lần đầu trong MỘT transaction. Ném NapTuChoi (và rollback) nếu không đủ điều kiện. */
+/** Nạp (lần đầu hoặc nạp lại) trong MỘT transaction. Ném NapTuChoi (và rollback) nếu không đủ điều kiện. */
 export async function apDung(sql: postgres.Sql, goi: Goi, napBoi: string, opts: { force?: boolean } = {}): Promise<KeHoach> {
   return sql.begin(async (tx) => {
     // Chặn hai tiến trình nạp song song.
     await tx`LOCK TABLE import_batches IN EXCLUSIVE MODE`;
-    const kh = await lapKeHoach(tx, goi, opts);
+    const kh = await lapKeHoach(tx, goi, { ...opts, khoa: true });
     if (kh.tuChoi) throw new NapTuChoi(kh.tuChoi);
-    await napLanDau(tx, goi, kh, napBoi);
+    if (kh.cheDo === 'nap_lai') await apDungNapLai(tx, goi, napBoi, kh.chiTiet!, opts);
+    else await napLanDau(tx, goi, kh, napBoi);
     return kh;
   }) as Promise<KeHoach>;
 }
@@ -106,17 +132,7 @@ async function napLanDau(tx: postgres.TransactionSql, goi: Goi, kh: KeHoach, nap
   }
 
   // 2. buổi
-  const rowsBuoi = goi.buoi.map((b) => ({
-    ma_buoi: b.ma_buoi,
-    don_vi: b.don_vi,
-    ten_don_vi: b.ten_don_vi,
-    ngay_kham: b.ngay_kham,
-    diem_kham: b.diem_kham,
-    doan_kham: b.doan_kham,
-    nv_goi_y: b.nv_goi_y,
-    so_doan_tong: b.so_doan_tong,
-    so_doan: tx.json(b.so_doan),
-  }));
+  const rowsBuoi = goi.buoi.map((b) => hangBuoi(tx, b));
   const idBuoi = new Map<string, number>();
   for (let i = 0; i < rowsBuoi.length; i += LO) {
     const ids = await tx<{ id: number; ma_buoi: string }[]>`
@@ -126,42 +142,11 @@ async function napLanDau(tx: postgres.TransactionSql, goi: Goi, kh: KeHoach, nap
 
   // 3. hồ sơ theo lô
   for (let i = 0; i < goi.hoSo.length; i += LO) {
-    const rows = goi.hoSo.slice(i, i + LO).map((h) => {
-      const cls = Object.fromEntries(CLS.map((c) => [c.key, h.cls[c.key]]));
-      const clsCot = Object.fromEntries(CLS.map((c) => [c.col, h.cls[c.key]]));
-      const src = {
-        ma_kcb: h.ma_kcb, ho_ten: h.ho_ten, gioi_tinh: h.gioi_tinh, nam_sinh: h.nam_sinh,
-        cccd: h.cccd, dia_chi_chi_tiet: h.dia_chi_chi_tiet, cls,
-      };
-      return {
-        ma_ho_so: h.ma_ho_so,
-        nguon: 'cowork',
-        ma_kcb: h.ma_kcb,
-        ho_ten: h.ho_ten,
-        ho_ten_kd: khongDau(h.ho_ten),
-        gioi_tinh: h.gioi_tinh,
-        nam_sinh: h.nam_sinh,
-        cccd: h.cccd,
-        so_the_bhyt: h.so_the_bhyt,
-        so_dt: h.so_dt,
-        dia_chi_chi_tiet: h.dia_chi_chi_tiet,
-        ...clsCot,
-        src: tx.json(src),
-        dia_chi_the: h.dia_chi_the,
-        ngay_gio_dang_ky_his: h.ngay_gio_dang_ky_his,
-        cls_ghi_chu: h.cls_ghi_chu,
-        co_tt_ksk: h.co_tt_ksk,
-        so_ksk: h.so_ksk,
-        ky_so: h.ky_so,
-        ket_luan_phan_loai: h.ket_luan_phan_loai,
-        canh_bao: h.canh_bao,
-        ghi_chu_cowork: h.ghi_chu_cowork,
-        don_vi_goi_y: h.don_vi_goi_y,
+    const rows = goi.hoSo.slice(i, i + LO).map((h) =>
+      hangHoSoMoi(tx, h, {
         vi_tri: h.vi_tri_ban_dau,
         buoi_id: h.vi_tri_ban_dau === 'buoi' ? idBuoi.get(h.ma_buoi)! : null,
-        ma_buoi_ban_dau: h.ma_buoi,
-      };
-    });
+      }));
     await tx`INSERT INTO ho_so ${tx(rows)}`;
   }
 

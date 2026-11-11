@@ -1,8 +1,6 @@
 // Đọc và kiểm hợp lệ gói nhập `nhapsl-import-1` (docs/02-DAC-TA-DU-LIEU.md mục 1–6).
 // Thuần hàm: không đụng DB. Dùng lại cho CLI (`npm run import`) và trang Admin (GĐ7, file upload).
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
-import path from 'node:path';
 import { parse } from 'csv-parse/sync';
 import { CLS } from '@/lib/cls';
 
@@ -380,17 +378,3 @@ export function parseGoi(files: Record<string, Buffer | string>): KetQuaGoi {
   return xong({ manifest, buoi, hoSo, nguoiDung });
 }
 
-/** Đọc 4 file của một thư mục gói thành Buffer rồi gọi parseGoi. */
-export async function docGoiTuThuMuc(dir: string): Promise<KetQuaGoi> {
-  const files: Record<string, Buffer> = {};
-  const loi: string[] = [];
-  for (const ten of TEN_FILE) {
-    try {
-      files[ten] = await readFile(path.join(dir, ten));
-    } catch {
-      loi.push(`Không đọc được ${path.join(dir, ten)}`);
-    }
-  }
-  if (loi.length) return { ok: false, errors: loi, warnings: [], goi: null };
-  return parseGoi(files);
-}

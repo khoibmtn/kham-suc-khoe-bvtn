@@ -7,6 +7,7 @@ type ConfirmDialogProps = {
   title: string;
   children: ReactNode;
   confirmLabel: string;
+  loadingLabel?: string;
   cancelLabel?: string;
   danger?: boolean;
   loading?: boolean;
@@ -19,6 +20,7 @@ export function ConfirmDialog({
   title,
   children,
   confirmLabel,
+  loadingLabel = 'Đang xử lý…',
   cancelLabel = 'Hủy bỏ',
   danger = false,
   loading = false,
@@ -72,7 +74,7 @@ export function ConfirmDialog({
             onClick={onConfirm}
             disabled={loading}
           >
-            {loading ? 'Đang xử lý…' : confirmLabel}
+            {loading ? loadingLabel : confirmLabel}
           </button>
         </div>
       </div>
