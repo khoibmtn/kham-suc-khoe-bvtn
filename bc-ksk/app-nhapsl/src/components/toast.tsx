@@ -37,6 +37,9 @@ const ToastContext = createContext<ToastContextValue>({
 
 let nextToastId = 1;
 
+export const TOAST_DURATION_MS = 4000;
+export const TOAST_ACTION_DURATION_MS = 12000;
+
 const KIND_PREFIX: Record<ToastKind, string> = {
   info: 'Thông báo',
   success: 'Thành công',
@@ -55,9 +58,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     (message: string, kind: ToastKind = 'info', action?: ToastAction) => {
       const id = nextToastId++;
       setToasts((prev) => [...prev.slice(-4), { id, kind, message, action }]);
-      window.setTimeout(() => {
-        removeToast(id);
-      }, action ? 8000 : 4500);
+      window.setTimeout(
+        () => {
+          removeToast(id);
+        },
+        action ? TOAST_ACTION_DURATION_MS : TOAST_DURATION_MS,
+      );
     },
     [removeToast],
   );

@@ -99,6 +99,100 @@ export function formatDateTime(value: string | null | undefined): string {
 }
 
 /**
+ * Định dạng thời điểm ISO hoặc chuỗi sang 'dd/mm/yyyy HH:mm:ss' (dùng cho bảng Nhật ký).
+ */
+export function formatDateTimeSeconds(value: string | null | undefined): string {
+  if (!value) return '—';
+  const trimmed = value.trim();
+  if (!trimmed) return '—';
+
+  if (/^\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}:\d{2}/.test(trimmed)) {
+    return trimmed.slice(0, 19);
+  }
+
+  const sqlMatch =
+    /^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2}))?/.exec(trimmed);
+  if (sqlMatch && !trimmed.endsWith('Z') && !/[+-]\d{2}:?\d{2}$/.test(trimmed)) {
+    const sec = sqlMatch[6] ?? '00';
+    return `${sqlMatch[3]}/${sqlMatch[2]}/${sqlMatch[1]} ${sqlMatch[4]}:${sqlMatch[5]}:${sec}`;
+  }
+
+  const date = new Date(trimmed);
+  if (Number.isNaN(date.getTime())) {
+    return trimmed;
+  }
+
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+
+  const map: Record<string, string> = {};
+  for (const part of parts) {
+    map[part.type] = part.value;
+  }
+  return `${map.day}/${map.month}/${map.year} ${map.hour}:${map.minute}:${map.second}`;
+}
+
+/**
+ * Định dạng hoạt động gần nhất 'dd/mm HH:mm', trả về 'chưa đăng nhập' nếu null/rỗng.
+ */
+export function formatShortDateTime(value: string | null | undefined): string {
+  if (!value) return 'chưa đăng nhập';
+  const trimmed = value.trim();
+  if (!trimmed) return 'chưa đăng nhập';
+
+  const dmyMatch = /^(\d{2})\/(\d{2})(?:\/\d{4})?\s+(\d{2}:\d{2})/.exec(trimmed);
+  if (dmyMatch) {
+    return `${dmyMatch[1]}/${dmyMatch[2]} ${dmyMatch[3]}`;
+  }
+
+  const sqlMatch = /^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})/.exec(trimmed);
+  if (sqlMatch && !trimmed.endsWith('Z') && !/[+-]\d{2}:?\d{2}$/.test(trimmed)) {
+    return `${sqlMatch[3]}/${sqlMatch[2]} ${sqlMatch[4]}:${sqlMatch[5]}`;
+  }
+
+  const date = new Date(trimmed);
+  if (Number.isNaN(date.getTime())) {
+    return trimmed;
+  }
+
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+
+  const map: Record<string, string> = {};
+  for (const part of parts) {
+    map[part.type] = part.value;
+  }
+  return `${map.day}/${map.month} ${map.hour}:${map.minute}`;
+}
+
+/**
+ * Định dạng chênh lệch có dấu (+N / -N / 0) với dấu chấm ngăn nghìn.
+ */
+export function formatChenhLech(value: number | null | undefined): string {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return '0';
+  }
+  const n = Number(value);
+  if (n > 0) return `+${formatNumber(n)}`;
+  if (n < 0) return `-${formatNumber(Math.abs(n))}`;
+  return '0';
+}
+
+/**
  * Rút gọn ngày giờ ĐK HIS để hiển thị gọn trên dòng phụ:
  * Ví dụ '14/09/2026 09:15' -> '14/09 09:15', '2026-09-14 09:15' -> '14/09 09:15'.
  */
@@ -219,4 +313,60 @@ export function formatNguonGocChuyen(
     parts.push(`Lý do: ${chuyen.ly_do.trim()}`);
   }
   return parts.join(' · ');
+}
+
+export const DOI_TUONG_NHAT_KY_NHAN: Record<string, string> = {
+  ho_so: 'Hồ sơ',
+  buoi_kham: 'Buổi khám',
+  user: 'Người dùng',
+  auth: 'Đăng nhập',
+  import: 'Nạp dữ liệu',
+  de_nghi_chuyen: 'Đề nghị chuyển',
+  export: 'Xuất dữ liệu',
+};
+
+export function getDoiTuongNhan(doiTuong: string | null | undefined): string {
+  if (!doiTuong) return '—';
+  return DOI_TUONG_NHAT_KY_NHAN[doiTuong] ?? doiTuong;
+}
+
+const MA_BUOI_REGEX = /\b((?:TN|LK|VK)-\d{8})\b/;
+
+export function getLinkDoiTuongNhatKy(row: {
+  doi_tuong: string;
+  doi_tuong_id: string | null;
+  mo_ta_doi_tuong: string;
+  gia_tri_cu?: string | null;
+  gia_tri_moi?: string | null;
+  ghi_chu?: string | null;
+}): string | null {
+  const candidates = [
+    row.mo_ta_doi_tuong,
+    row.gia_tri_moi ?? '',
+    row.gia_tri_cu ?? '',
+    row.ghi_chu ?? '',
+  ];
+  let maBuoi: string | null = null;
+  for (const text of candidates) {
+    const m = MA_BUOI_REGEX.exec(text);
+    if (m) {
+      maBuoi = m[1];
+      break;
+    }
+  }
+  if (!maBuoi) return null;
+
+  if (row.doi_tuong === 'buoi_kham') {
+    return `/ra-soat/${encodeURIComponent(maBuoi)}`;
+  }
+
+  if (row.doi_tuong === 'ho_so') {
+    const idTrimmed = row.doi_tuong_id?.trim();
+    if (idTrimmed && /^\d+$/.test(idTrimmed)) {
+      return `/ra-soat/${encodeURIComponent(maBuoi)}?chon=${encodeURIComponent(idTrimmed)}`;
+    }
+    return `/ra-soat/${encodeURIComponent(maBuoi)}`;
+  }
+
+  return null;
 }

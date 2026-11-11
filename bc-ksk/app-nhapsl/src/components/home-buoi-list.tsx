@@ -3,21 +3,42 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { BuoiTomTat, TrangThaiBuoi, UserQuanLy } from '@/lib/api-types';
+import type {
+  BuoiTomTat,
+  KetQuaTimKiem,
+  TheTongHop,
+  TrangThaiBuoi,
+  UserQuanLy,
+} from '@/lib/api-types';
 import { DON_VI, NHAN } from '@/lib/cls';
 import { khongDau } from '@/lib/text';
-import { apiRequest } from '@/lib/client/api';
+import { apiRequest, downloadFile } from '@/lib/client/api';
 import {
+  formatChenhLech,
   formatDate,
   formatNumber,
   formatPercent,
   TRANG_THAI_BUOI_NHAN,
 } from '@/lib/client/format';
 import type { ShellUser } from './app-shell';
+import {
+  DuaVaoKhoChungTuKhoModal,
+  KhoTable,
+  NhanVeBuoiModal,
+} from './kho-view';
+import { useToast } from './toast';
+
+export type DashboardToiData = {
+  the: TheTongHop;
+  buoi: BuoiTomTat[];
+  kho_ca_nhan: KetQuaTimKiem[];
+  de_nghi_cho_toi: number;
+};
 
 type HomeBuoiListProps = {
   user: ShellUser;
   initialBuoi?: BuoiTomTat[] | null;
+  initialDashboard?: DashboardToiData | null;
 };
 
 export type BoLocBuoi = {
@@ -75,6 +96,48 @@ export function locDanhSachBuoi(
   });
 }
 
+export function tinhTheTongHopTuBuoi(
+  list: BuoiTomTat[],
+  khoCaNhanCount = 0,
+): TheTongHop {
+  let soDoan = 0;
+  let hienCo = 0;
+  let daXacNhan = 0;
+  let thua = 0;
+  let thieu = 0;
+  let boSung = 0;
+  let soBuoiDaXacNhan = 0;
+
+  for (const b of list) {
+    soDoan += b.so_doan_tong;
+    hienCo += b.hien_co;
+    daXacNhan += b.da_xac_nhan;
+    thua += b.thua;
+    thieu += b.thieu;
+    boSung += b.bo_sung;
+    if (b.trang_thai === 'da_xac_nhan') {
+      soBuoiDaXacNhan += 1;
+    }
+  }
+
+  const tienDo = hienCo > 0 ? Math.round((daXacNhan / hienCo) * 1000) / 10 : 0;
+  return {
+    so_buoi: list.length,
+    so_buoi_da_xac_nhan: soBuoiDaXacNhan,
+    so_buoi_chua_xac_nhan: list.length - soBuoiDaXacNhan,
+    so_doan: soDoan,
+    hien_co: hienCo,
+    da_xac_nhan: daXacNhan,
+    chua_xac_nhan: Math.max(0, hienCo - daXacNhan),
+    thua,
+    thieu,
+    chenh_lech: hienCo - soDoan,
+    bo_sung: boSung,
+    kho_ca_nhan: khoCaNhanCount,
+    tien_do: tienDo,
+  };
+}
+
 function renderTrangThaiBadge(trangThai: TrangThaiBuoi) {
   const label = TRANG_THAI_BUOI_NHAN[trangThai] ?? trangThai;
   if (trangThai === 'da_xac_nhan') {
@@ -86,12 +149,30 @@ function renderTrangThaiBadge(trangThai: TrangThaiBuoi) {
   return <span className="badge badge-neutral">○ {label}</span>;
 }
 
-export function HomeBuoiList({ user, initialBuoi = null }: HomeBuoiListProps) {
+export function HomeBuoiList({
+  user,
+  initialBuoi = null,
+  initialDashboard = null,
+}: HomeBuoiListProps) {
   const router = useRouter();
+  const { showToast } = useToast();
   const isAdmin = user.role === 'admin';
 
-  const [buoiList, setBuoiList] = useState<BuoiTomTat[]>(initialBuoi ?? []);
-  const [loading, setLoading] = useState<boolean>(initialBuoi === null);
+  const [buoiList, setBuoiList] = useState<BuoiTomTat[]>(
+    initialDashboard?.buoi ?? initialBuoi ?? [],
+  );
+  const [theData, setTheData] = useState<TheTongHop | null>(
+    initialDashboard?.the ?? null,
+  );
+  const [khoCaNhan, setKhoCaNhan] = useState<KetQuaTimKiem[]>(
+    initialDashboard?.kho_ca_nhan ?? [],
+  );
+  const [deNghiChoToi, setDeNghiChoToi] = useState<number>(
+    initialDashboard?.de_nghi_cho_toi ?? 0,
+  );
+  const [loading, setLoading] = useState<boolean>(
+    initialDashboard === null && initialBuoi === null,
+  );
   const [error, setError] = useState<string>('');
 
   const [donViFilter, setDonViFilter] = useState<string>('');
@@ -104,39 +185,67 @@ export function HomeBuoiList({ user, initialBuoi = null }: HomeBuoiListProps) {
   const [hoSoJumpQuery, setHoSoJumpQuery] = useState<string>('');
   const [users, setUsers] = useState<UserQuanLy[]>([]);
 
+  // Xuất báo cáo Excel (nhân viên)
+  const [chiDaXacNhan, setChiDaXacNhan] = useState<'1' | '0'>('1');
+  const [exportingExcel, setExportingExcel] = useState<boolean>(false);
+  const [exportError, setExportError] = useState<string>('');
+
+  // Hộp thoại thao tác nhanh kho của tôi
+  const [nhanVeTarget, setNhanVeTarget] = useState<KetQuaTimKiem | null>(null);
+  const [moveToChungTarget, setMoveToChungTarget] =
+    useState<KetQuaTimKiem | null>(null);
+
   const reloadBuoi = useCallback(async () => {
     setLoading(true);
     setError('');
-    const res = await apiRequest<{ buoi: BuoiTomTat[] }>('/api/buoi');
+    const res = await apiRequest<DashboardToiData>('/api/dashboard/toi');
     if (!res.ok) {
       setError(res.error);
       setLoading(false);
       return;
     }
     setBuoiList(res.data.buoi ?? []);
+    setTheData(res.data.the ?? null);
+    setKhoCaNhan(res.data.kho_ca_nhan ?? []);
+    setDeNghiChoToi(res.data.de_nghi_cho_toi ?? 0);
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    if (initialBuoi !== null) {
+    if (initialDashboard !== null) {
       return;
     }
     let cancelled = false;
-    apiRequest<{ buoi: BuoiTomTat[] }>('/api/buoi').then((res) => {
+    apiRequest<DashboardToiData>('/api/dashboard/toi').then((res) => {
       if (cancelled) return;
       if (!res.ok) {
-        setError(res.error);
+        if (initialBuoi === null) {
+          setError(res.error);
+        }
         setLoading(false);
         return;
       }
       setError('');
       setBuoiList(res.data.buoi ?? []);
+      setTheData(res.data.the ?? null);
+      setKhoCaNhan(res.data.kho_ca_nhan ?? []);
+      setDeNghiChoToi(res.data.de_nghi_cho_toi ?? 0);
       setLoading(false);
     });
     return () => {
       cancelled = true;
     };
-  }, [initialBuoi]);
+  }, [initialBuoi, initialDashboard]);
+
+  useEffect(() => {
+    const handlePoolChanged = () => {
+      void reloadBuoi();
+    };
+    window.addEventListener('nhapsl:pool-changed', handlePoolChanged);
+    return () => {
+      window.removeEventListener('nhapsl:pool-changed', handlePoolChanged);
+    };
+  }, [reloadBuoi]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -172,38 +281,6 @@ export function HomeBuoiList({ user, initialBuoi = null }: HomeBuoiListProps) {
     ],
   );
 
-  const summary = useMemo(() => {
-    let soDoan = 0;
-    let hienCo = 0;
-    let daXacNhan = 0;
-    let thua = 0;
-    let thieu = 0;
-    let soBuoiDaXacNhan = 0;
-
-    for (const b of filteredBuoi) {
-      soDoan += b.so_doan_tong;
-      hienCo += b.hien_co;
-      daXacNhan += b.da_xac_nhan;
-      thua += b.thua;
-      thieu += b.thieu;
-      if (b.trang_thai === 'da_xac_nhan') {
-        soBuoiDaXacNhan += 1;
-      }
-    }
-
-    const tienDo = hienCo > 0 ? (daXacNhan / hienCo) * 100 : 0;
-    return {
-      soBuoi: filteredBuoi.length,
-      soBuoiDaXacNhan,
-      soDoan,
-      hienCo,
-      daXacNhan,
-      thua,
-      thieu,
-      tienDo,
-    };
-  }, [filteredBuoi]);
-
   const hasActiveFilter = Boolean(
     donViFilter ||
       trangThaiFilter ||
@@ -212,6 +289,17 @@ export function HomeBuoiList({ user, initialBuoi = null }: HomeBuoiListProps) {
       denNgayFilter ||
       timNhanhFilter.trim(),
   );
+
+  const effectiveThe = useMemo<TheTongHop>(() => {
+    if (hasActiveFilter) {
+      return tinhTheTongHopTuBuoi(
+        filteredBuoi,
+        theData?.kho_ca_nhan ?? khoCaNhan.length,
+      );
+    }
+    if (theData) return theData;
+    return tinhTheTongHopTuBuoi(buoiList, khoCaNhan.length);
+  }, [buoiList, filteredBuoi, hasActiveFilter, khoCaNhan.length, theData]);
 
   function handleResetFilters() {
     setDonViFilter('');
@@ -232,18 +320,49 @@ export function HomeBuoiList({ user, initialBuoi = null }: HomeBuoiListProps) {
     }
   }
 
+  async function handleExportExcelMine() {
+    setExportError('');
+    setExportingExcel(true);
+    const res = await downloadFile(
+      `/api/export/bao-cao.xlsx?chi_da_xac_nhan=${chiDaXacNhan}`,
+      'bao-cao-ksk-phan-cua-toi.xlsx',
+    );
+    setExportingExcel(false);
+    if (!res.ok) {
+      setExportError(res.error);
+      showToast(`Lỗi xuất báo cáo Excel: ${res.error}`, 'error');
+      return;
+    }
+    showToast(`Đã tải xuống báo cáo ${res.filename}`, 'success');
+  }
+
+  const progressWidth = Math.min(100, Math.max(0, effectiveThe.tien_do));
+
   return (
     <div className="page-container">
       <div className="page-header-row">
         <div>
           <h1 className="page-title">
-            {isAdmin ? 'Danh sách buổi khám toàn hệ thống' : 'Danh sách buổi khám của tôi'}
+            {isAdmin
+              ? 'Danh sách buổi khám toàn hệ thống'
+              : 'Bảng theo dõi tiến độ & Danh sách buổi khám của tôi'}
           </h1>
           <p className="page-subtitle">
-            Bấm vào một dòng buổi khám để mở màn hình rà soát hồ sơ giấy.
+            {isAdmin
+              ? 'Bấm vào một dòng buổi khám để mở màn hình rà soát hồ sơ giấy.'
+              : 'Theo dõi tiến độ rà soát, xử lý kho cá nhân và bấm vào dòng buổi khám để kiểm hồ sơ giấy.'}
           </p>
         </div>
         <div className="page-header-actions">
+          <Link
+            href="/kho"
+            className={`badge ${deNghiChoToi > 0 ? 'badge-warning' : 'badge-neutral'}`}
+            title="Xem danh sách đề nghị chuyển hồ sơ trong Kho chờ"
+          >
+            <span className="num">{formatNumber(deNghiChoToi)}</span>&nbsp;đề
+            nghị chuyển đang chờ bạn →
+          </Link>
+
           <form onSubmit={handleJumpTimHoSo} className="home-jump-search-form">
             <label htmlFor="home-jump-tim-ho-so" className="sr-only">
               Tìm hồ sơ nhanh
@@ -260,6 +379,7 @@ export function HomeBuoiList({ user, initialBuoi = null }: HomeBuoiListProps) {
               Tìm hồ sơ
             </button>
           </form>
+
           <button
             type="button"
             className="btn btn-secondary btn-sm"
@@ -268,51 +388,212 @@ export function HomeBuoiList({ user, initialBuoi = null }: HomeBuoiListProps) {
           >
             {loading ? 'Đang tải…' : 'Tải lại'}
           </button>
-          <Link href="/ra-soat" className="btn btn-primary btn-sm">
+
+          {isAdmin && (
+            <Link href="/admin" className="btn btn-primary btn-sm">
+              Xem tổng quan
+            </Link>
+          )}
+
+          <Link
+            href="/ra-soat"
+            className={`btn btn-sm ${isAdmin ? 'btn-secondary' : 'btn-primary'}`}
+          >
             Chọn nhanh Đơn vị / Ngày →
           </Link>
         </div>
       </div>
 
-      <section className="summary-strip" aria-label="Tổng hợp các buổi đang lọc">
+      {/* Thẻ tổng hợp tiến độ */}
+      <section
+        className="summary-strip summary-strip-dashboard"
+        aria-label="Chỉ số tổng hợp"
+      >
         <div className="summary-card">
           <span className="summary-label">
-            Số buổi khám{hasActiveFilter ? ' (đang lọc)' : ''}
+            {isAdmin ? 'Số buổi khám' : 'Số buổi phụ trách'}
+            {hasActiveFilter ? ' (đang lọc)' : ''}
           </span>
-          <strong className="summary-value num">{formatNumber(summary.soBuoi)}</strong>
-          <span className="summary-sub">
-            Đã khóa: {formatNumber(summary.soBuoiDaXacNhan)} / Tổng: {formatNumber(buoiList.length)} buổi
-          </span>
-        </div>
-        <div className="summary-card">
-          <span className="summary-label">Tổng {NHAN.SO_DOAN}</span>
-          <strong className="summary-value num">{formatNumber(summary.soDoan)}</strong>
-          <span className="summary-sub">Người theo {NHAN.SO_DOAN}</span>
-        </div>
-        <div className="summary-card">
-          <span className="summary-label">Tổng hồ sơ trong DS</span>
-          <strong className="summary-value num">{formatNumber(summary.hienCo)}</strong>
-          <span className="summary-sub">
-            Thừa: {formatNumber(summary.thua)} · Thiếu: {formatNumber(summary.thieu)}
-          </span>
-        </div>
-        <div className="summary-card">
-          <span className="summary-label">Đã xác nhận có giấy</span>
-          <strong className="summary-value num text-success">
-            {formatNumber(summary.daXacNhan)}
+          <strong className="summary-value num">
+            {formatNumber(effectiveThe.so_buoi)}
           </strong>
           <span className="summary-sub">
-            Chưa xác nhận: {formatNumber(Math.max(0, summary.hienCo - summary.daXacNhan))}
+            {NHAN.SO_DOAN}:{' '}
+            <strong className="num">{formatNumber(effectiveThe.so_doan)}</strong>
           </span>
         </div>
+
         <div className="summary-card">
-          <span className="summary-label">Tiến độ rà soát</span>
-          <strong className="summary-value num">{formatPercent(summary.tienDo)}</strong>
+          <span className="summary-label">Buổi đã xác nhận / chưa</span>
+          <strong className="summary-value num">
+            {formatNumber(effectiveThe.so_buoi_da_xac_nhan)} /{' '}
+            {formatNumber(effectiveThe.so_buoi_chua_xac_nhan)}
+          </strong>
           <span className="summary-sub">
-            {formatNumber(summary.daXacNhan)} / {formatNumber(summary.hienCo)} hồ sơ
+            Đã xác nhận: {formatNumber(effectiveThe.so_buoi_da_xac_nhan)} · Chưa:{' '}
+            {formatNumber(effectiveThe.so_buoi_chua_xac_nhan)}
           </span>
+        </div>
+
+        <div className="summary-card">
+          <span className="summary-label">Tổng hồ sơ trong DS</span>
+          <strong className="summary-value num">
+            {formatNumber(effectiveThe.hien_co)}
+          </strong>
+          <span className="summary-sub">
+            {NHAN.SO_DOAN}: {formatNumber(effectiveThe.so_doan)} người
+          </span>
+        </div>
+
+        <div className="summary-card">
+          <span className="summary-label">Đã xác nhận</span>
+          <strong className="summary-value num text-success">
+            {formatNumber(effectiveThe.da_xac_nhan)}
+          </strong>
+          <span className="summary-sub">Đã kiểm – có hồ sơ giấy</span>
+        </div>
+
+        <div className="summary-card">
+          <span className="summary-label">Chưa rà soát</span>
+          <strong className="summary-value num">
+            {formatNumber(effectiveThe.chua_xac_nhan)}
+          </strong>
+          <span className="summary-sub">Chưa xác nhận trong DS</span>
+        </div>
+
+        <div className="summary-card">
+          <span className="summary-label">Thừa / Thiếu (cộng theo buổi)</span>
+          <strong className="summary-value num">
+            +{formatNumber(effectiveThe.thua)} / -{formatNumber(effectiveThe.thieu)}
+          </strong>
+          <span className="summary-sub">
+            Thừa: {formatNumber(effectiveThe.thua)} · Thiếu:{' '}
+            {formatNumber(effectiveThe.thieu)} · Lệch ròng:{' '}
+            <span className="num">
+              {formatChenhLech(effectiveThe.chenh_lech)}
+            </span>
+          </span>
+        </div>
+
+        <div className="summary-card">
+          <span className="summary-label">Bổ sung</span>
+          <strong className="summary-value num">
+            {formatNumber(effectiveThe.bo_sung)}
+          </strong>
+          <span className="summary-sub">Thêm tay + nhận từ kho chung</span>
+        </div>
+
+        <div className="summary-card">
+          <span className="summary-label">Trong kho của tôi</span>
+          <strong className="summary-value num">
+            {formatNumber(effectiveThe.kho_ca_nhan)}
+          </strong>
+          <span className="summary-sub">
+            <Link href="/kho">Mở trang Kho chờ →</Link>
+          </span>
+        </div>
+
+        <div className="summary-card summary-card-progress">
+          <span className="summary-label">Tiến độ %</span>
+          <div className="progress-card-row">
+            <strong className="summary-value num">
+              {formatPercent(effectiveThe.tien_do)}
+            </strong>
+            <span className="summary-sub num">
+              ({formatNumber(effectiveThe.da_xac_nhan)}/
+              {formatNumber(effectiveThe.hien_co)})
+            </span>
+          </div>
+          <div
+            className="progress-track"
+            role="progressbar"
+            aria-valuenow={Math.round(effectiveThe.tien_do)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={`Tiến độ rà soát ${formatPercent(effectiveThe.tien_do)}`}
+          >
+            <div
+              className="progress-fill"
+              style={{ width: `${progressWidth}%` }}
+            />
+          </div>
         </div>
       </section>
+
+      {/* Thanh xuất báo cáo Excel cho nhân viên */}
+      {!isAdmin && (
+        <section
+          className="export-inline-bar"
+          aria-label="Xuất báo cáo Excel phần của tôi"
+        >
+          <div className="export-inline-left">
+            <strong>Báo cáo kết quả rà soát của bạn:</strong>
+            <span className="text-muted">
+              Xuất file Excel thống kê và danh sách chi tiết các buổi khám bạn
+              phụ trách.
+            </span>
+          </div>
+          <div className="export-inline-right">
+            <label htmlFor="staff-export-scope" className="filter-label">
+              Phạm vi hồ sơ:
+            </label>
+            <select
+              id="staff-export-scope"
+              className="form-select filter-select-sm"
+              value={chiDaXacNhan}
+              onChange={(e) => setChiDaXacNhan(e.target.value as '1' | '0')}
+              disabled={exportingExcel}
+            >
+              <option value="1">Chỉ hồ sơ đã xác nhận (mặc định)</option>
+              <option value="0">Tất cả hồ sơ trong danh sách</option>
+            </select>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={() => void handleExportExcelMine()}
+              disabled={exportingExcel}
+            >
+              {exportingExcel
+                ? 'Đang tạo file…'
+                : 'Xuất báo cáo Excel (phần của tôi)'}
+            </button>
+          </div>
+          {exportError && (
+            <div className="alert alert-error w-full mb-0" role="alert">
+              Lỗi xuất báo cáo: {exportError}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Khối Hồ sơ trong kho của tôi (nếu có) */}
+      {!isAdmin && khoCaNhan.length > 0 && (
+        <section
+          className="panel-card mb-3"
+          aria-label="Hồ sơ trong kho của tôi"
+        >
+          <div className="panel-header-inline">
+            <div>
+              <h2 className="panel-title">
+                Hồ sơ trong kho của tôi ({formatNumber(khoCaNhan.length)})
+              </h2>
+              <p className="text-muted text-xs">
+                Các hồ sơ bạn đang tạm gác để kiểm tra lại. Có thể nhận về buổi
+                khám của bạn hoặc đưa sang kho chờ chung.
+              </p>
+            </div>
+            <Link href="/kho" className="btn btn-secondary btn-xs">
+              Mở trang Kho chờ →
+            </Link>
+          </div>
+          <KhoTable
+            items={khoCaNhan}
+            showMoveToKhoChung={true}
+            onSelectNhanVe={(h) => setNhanVeTarget(h)}
+            onSelectMoveToKhoChung={(h) => setMoveToChungTarget(h)}
+          />
+        </section>
+      )}
 
       <div className="filter-bar">
         <div className="filter-group">
@@ -451,7 +732,8 @@ export function HomeBuoiList({ user, initialBuoi = null }: HomeBuoiListProps) {
                 Không có buổi khám nào khớp với bộ lọc đang chọn.
               </p>
               <p className="state-desc">
-                Đang hiển thị 0 / {formatNumber(buoiList.length)} buổi khám. Hãy nới điều kiện lọc hoặc bấm Xóa lọc.
+                Đang hiển thị 0 / {formatNumber(buoiList.length)} buổi khám. Hãy
+                nới điều kiện lọc hoặc bấm Xóa lọc.
               </p>
               <button
                 type="button"
@@ -468,7 +750,8 @@ export function HomeBuoiList({ user, initialBuoi = null }: HomeBuoiListProps) {
               </p>
               {isAdmin && (
                 <p className="state-desc">
-                  Vào mục <Link href="/admin/phan-cong">Phân công</Link> để gán buổi khám cho nhân viên.
+                  Vào mục <Link href="/admin/phan-cong">Phân công</Link> để gán
+                  buổi khám cho nhân viên.
                 </p>
               )}
             </>
@@ -488,8 +771,10 @@ export function HomeBuoiList({ user, initialBuoi = null }: HomeBuoiListProps) {
                 <th className="num-col">{NHAN.SO_DOAN}</th>
                 <th className="num-col">Trong DS</th>
                 <th className="num-col">Đã xác nhận</th>
+                <th className="num-col">Chưa xác nhận</th>
                 <th className="num-col">Thừa</th>
                 <th className="num-col">Thiếu</th>
+                <th className="num-col">Bổ sung</th>
                 <th>Trạng thái</th>
                 <th className="num-col">Tiến độ %</th>
               </tr>
@@ -510,7 +795,9 @@ export function HomeBuoiList({ user, initialBuoi = null }: HomeBuoiListProps) {
                 >
                   <td>
                     <span className="font-semibold">{b.ten_don_vi}</span>
-                    <span className="text-muted text-xs ml-1">({b.don_vi})</span>
+                    <span className="text-muted text-xs ml-1">
+                      ({b.don_vi})
+                    </span>
                   </td>
                   <td className="nowrap">
                     <Link
@@ -532,10 +819,14 @@ export function HomeBuoiList({ user, initialBuoi = null }: HomeBuoiListProps) {
                       {b.phu_trach ? (
                         <span>
                           {b.phu_trach.ho_ten}{' '}
-                          <span className="text-muted">({b.phu_trach.username})</span>
+                          <span className="text-muted">
+                            ({b.phu_trach.username})
+                          </span>
                         </span>
                       ) : (
-                        <span className="badge badge-warning">Chưa phân công</span>
+                        <span className="badge badge-warning">
+                          Chưa phân công
+                        </span>
                       )}
                     </td>
                   )}
@@ -543,6 +834,15 @@ export function HomeBuoiList({ user, initialBuoi = null }: HomeBuoiListProps) {
                   <td className="num-col">{formatNumber(b.hien_co)}</td>
                   <td className="num-col font-semibold text-success">
                     {formatNumber(b.da_xac_nhan)}
+                  </td>
+                  <td className="num-col">
+                    {b.chua_xac_nhan > 0 ? (
+                      <span className="font-semibold">
+                        {formatNumber(b.chua_xac_nhan)}
+                      </span>
+                    ) : (
+                      <span className="text-muted">0</span>
+                    )}
                   </td>
                   <td className="num-col">
                     {b.thua > 0 ? (
@@ -562,13 +862,61 @@ export function HomeBuoiList({ user, initialBuoi = null }: HomeBuoiListProps) {
                       <span className="text-muted">0</span>
                     )}
                   </td>
+                  <td className="num-col">
+                    {b.bo_sung > 0 ? (
+                      <span className="font-semibold">
+                        {formatNumber(b.bo_sung)}
+                      </span>
+                    ) : (
+                      <span className="text-muted">0</span>
+                    )}
+                  </td>
                   <td className="nowrap">{renderTrangThaiBadge(b.trang_thai)}</td>
-                  <td className="num-col font-semibold">{formatPercent(b.tien_do)}</td>
+                  <td className="num-col">
+                    <div className="table-progress-cell">
+                      <div
+                        className="progress-track progress-track-sm"
+                        aria-hidden="true"
+                      >
+                        <div
+                          className="progress-fill"
+                          style={{
+                            width: `${Math.min(100, Math.max(0, b.tien_do))}%`,
+                          }}
+                        />
+                      </div>
+                      <span className="font-semibold num">
+                        {formatPercent(b.tien_do)}
+                      </span>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      )}
+
+      {nhanVeTarget && (
+        <NhanVeBuoiModal
+          hoSo={nhanVeTarget}
+          onClose={() => setNhanVeTarget(null)}
+          onSuccess={() => {
+            setNhanVeTarget(null);
+            void reloadBuoi();
+          }}
+        />
+      )}
+
+      {moveToChungTarget && (
+        <DuaVaoKhoChungTuKhoModal
+          hoSo={moveToChungTarget}
+          onClose={() => setMoveToChungTarget(null)}
+          onSuccess={() => {
+            setMoveToChungTarget(null);
+            void reloadBuoi();
+          }}
+        />
       )}
     </div>
   );

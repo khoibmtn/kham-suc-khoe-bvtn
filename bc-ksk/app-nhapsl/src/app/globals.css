@@ -321,12 +321,12 @@ textarea {
 .app-topbar-left {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
 .app-brand {
-  font-size: 1rem;
+  font-size: 0.9375rem;
   font-weight: 700;
   color: var(--primary);
   text-decoration: none;
@@ -341,7 +341,7 @@ textarea {
 .app-nav {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   flex-wrap: wrap;
 }
 
@@ -349,13 +349,14 @@ textarea {
   display: inline-flex;
   align-items: center;
   min-height: 34px;
-  padding: 4px 12px;
+  padding: 4px 9px;
   font-size: 0.875rem; /* 14px */
   font-weight: 600;
   color: var(--text);
   border-radius: 4px;
   text-decoration: none;
   border: 1px solid transparent;
+  white-space: nowrap;
 }
 
 .app-nav-link:hover {
@@ -1929,17 +1930,17 @@ textarea {
   background-color: #f1f5f9;
 }
 
-/* ---- Phase 4: Fixed Footer Bar on Ra Soat Screen (12-13px, single line) ---- */
+/* ---- Phase 4 & 5: Fixed Footer Bar on Ra Soat Screen (never clipped at 1366px) ---- */
 .rasoat-page {
-  padding-bottom: 42px;
+  padding-bottom: 64px;
 }
 
 .rasoat-table-pane {
-  padding-bottom: 44px;
+  padding-bottom: 64px;
 }
 
 .rasoat-table-scroll {
-  padding-bottom: 36px;
+  padding-bottom: 56px;
 }
 
 .rasoat-footer-bar {
@@ -1954,10 +1955,12 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  white-space: nowrap;
-  overflow-x: auto;
-  font-size: 0.78125rem; /* 12.5px (12–13px per spec) */
+  flex-wrap: wrap;
+  row-gap: 3px;
+  column-gap: 12px;
+  white-space: normal;
+  overflow-x: visible;
+  font-size: 0.875rem; /* 14px */
   line-height: 1.35;
   color: var(--text-muted);
 }
@@ -1966,14 +1969,15 @@ textarea {
 .rasoat-footer-legend {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .rasoat-footer-bar kbd {
   display: inline-block;
   padding: 0 4px;
-  font-size: 0.75rem; /* 12px */
+  font-size: 0.875rem; /* 14px */
   font-family: inherit;
   font-weight: 600;
   color: var(--text);
@@ -1983,7 +1987,7 @@ textarea {
 }
 
 .toast-region {
-  bottom: 40px;
+  bottom: 58px;
 }
 
 /* ---- Phase 4: Quick Filter Chips on Ra Soat Screen ---- */
@@ -2440,4 +2444,171 @@ textarea {
   font-weight: 700;
   margin-bottom: 2px;
 }
+
+/* ---- Phase 5 & 6: Dashboards, Progress Bars, Export & Audit Log ---- */
+.font-bold {
+  font-weight: 700;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.summary-strip-dashboard {
+  grid-template-columns: repeat(auto-fit, minmax(195px, 1fr));
+}
+
+.summary-card-progress {
+  justify-content: space-between;
+}
+
+.progress-card-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.progress-track {
+  width: 100%;
+  height: 8px;
+  background-color: #e2e8f0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.progress-track-sm {
+  width: 58px;
+  height: 7px;
+  margin-top: 0;
+  flex-shrink: 0;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: var(--success);
+  transition: width 150ms ease;
+}
+
+.table-progress-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.export-inline-bar {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.export-inline-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.875rem; /* 14px */
+}
+
+.export-inline-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.export-admin-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 960px) {
+  .export-admin-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.export-admin-box {
+  background-color: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 12px 14px;
+}
+
+.export-box-title {
+  font-size: 0.9375rem; /* 15px */
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.export-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.row-total {
+  background-color: #f1f5f9;
+  font-weight: 700;
+}
+
+.row-total td {
+  border-top: 2px solid var(--border-strong);
+  font-weight: 700;
+}
+
+.table-footnote {
+  margin-top: 8px;
+  font-size: 0.875rem; /* 14px */
+  color: var(--text-muted);
+}
+
+.pagination-bar {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 0.875rem; /* 14px */
+}
+
+.pagination-info {
+  color: var(--text);
+}
+
+.pagination-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pagination-page-label {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.nhatky-doituong-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 

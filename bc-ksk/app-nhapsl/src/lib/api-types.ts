@@ -238,7 +238,61 @@ export const HANH_DONG_NHAN: Record<string, string> = {
   mo_khoa_buoi: 'Mở khóa danh sách',
   de_nghi_chuyen: 'Đề nghị chuyển',
   xu_ly_de_nghi: 'Xử lý đề nghị chuyển',
+  xuat_bao_cao: 'Xuất báo cáo Excel',
+  xuat_cowork: 'Xuất dữ liệu cho Cowork',
   dang_nhap: 'Đăng nhập',
   dang_xuat: 'Đăng xuất',
   doi_mat_khau: 'Đổi mật khẩu',
 };
+
+// ---- Phase 5: dashboards (PLAN5.md) ----
+// Metrics follow docs/03 mục 5. thua/thieu summed PER SESSION (no netting); chenh_lech = Σ hien_co − Σ so_doan.
+export type TheTongHop = {
+  so_buoi: number;
+  so_buoi_da_xac_nhan: number;
+  so_buoi_chua_xac_nhan: number;
+  so_doan: number;              // Σ so_doan_tong ("DS google sheet")
+  hien_co: number;
+  da_xac_nhan: number;
+  chua_xac_nhan: number;
+  thua: number;
+  thieu: number;
+  chenh_lech: number;
+  bo_sung: number;
+  kho_ca_nhan: number;          // records in personal pool(s)
+  tien_do: number;              // da_xac_nhan / hien_co * 100 (1 decimal)
+};
+// GET /api/dashboard/toi → { the: TheTongHop, buoi: BuoiTomTat[], kho_ca_nhan: KetQuaTimKiem[], de_nghi_cho_toi: number }
+//   staff: own sessions + own pool; admin: same shape over ALL sessions and all personal pools.
+
+export type DongTheoUser = TheTongHop & { user: UserNgan; active: boolean; last_seen_at: string | null; lan_hoat_dong_cuoi: string | null };
+export type ClsDem = Record<ClsKey, number>;
+export type DongTheoDonVi = {
+  don_vi: 'TN' | 'LK' | 'VK' | 'TONG';
+  ten: string;                  // 'Phường Thủy Nguyên' … 'Cộng'
+  so_buoi: number;
+  so_doan: number;
+  hien_co: number;
+  da_xac_nhan: number;
+  thua: number;
+  thieu: number;
+  chenh_lech: number;
+  co_tt_ksk: number;            // confirmed records with co_tt_ksk=1 ("DS đẩy cổng")
+  cls: ClsDem;                  // confirmed records with flag=1 (current values)
+};
+// GET /api/dashboard/admin (admin) →
+//   { theo_user: DongTheoUser[] (nhan_vien first by ho_ten, then admin; users with 0 sessions included),
+//     theo_don_vi: DongTheoDonVi[] (TN, LK, VK, TONG), kho_chung: number, de_nghi_cho: number, the: TheTongHop }
+//   lan_hoat_dong_cuoi = max(nhat_ky.at) of that user (any action).
+
+// GET /api/nhat-ky?user=<id>&hanh_dong=&tu=yyyy-mm-dd&den=yyyy-mm-dd&doi_tuong=&trang=1 (admin)
+//   → { dong: NhatKyAdmin[], tong: number, trang: number, kich_thuoc: 100 }  ORDER BY at DESC, id DESC
+export type NhatKyAdmin = NhatKyDong & { id: number; doi_tuong: string; doi_tuong_id: string | null; mo_ta_doi_tuong: string };
+//   mo_ta_doi_tuong: human label, e.g. 'TN-20260907' for buoi_kham, 'Hồ sơ #7148 (H2600128319)' for ho_so, username for user.
+
+// ---- Phase 6: exports (PLAN5.md) ----
+// GET /api/export/bao-cao.xlsx?chi_da_xac_nhan=1|0&don_vi=TN|LK|VK
+//   staff: only their own sessions; admin: all. Default chi_da_xac_nhan=1. Content-Disposition attachment
+//   filename 'bao-cao-ksk-<yyyymmdd-HHMM>.xlsx'. Audit 'xuat_bao_cao'.
+// GET /api/export/cowork.zip (admin) → zip with manifest.json, ho_so.csv, buoi_kham.csv, nhat_ky.csv, bao_cao.xlsx
+//   (docs/02 mục 7). Audit 'xuat_cowork'.

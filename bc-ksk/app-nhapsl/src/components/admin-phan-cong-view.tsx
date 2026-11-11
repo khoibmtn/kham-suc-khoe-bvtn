@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import type { BuoiTomTat, UserQuanLy } from '@/lib/api-types';
 import { DON_VI, NHAN, type DonVi } from '@/lib/cls';
 import { khongDau } from '@/lib/text';
@@ -59,6 +60,8 @@ export function sapXepDanhSachBuoi(
 
 export function AdminPhanCongView() {
   const { showToast } = useToast();
+  const searchParams = useSearchParams();
+  const phuTrachQuery = searchParams.get('phu_trach') ?? '';
 
   const [buoiList, setBuoiList] = useState<BuoiTomTat[]>([]);
   const [users, setUsers] = useState<UserQuanLy[]>([]);
@@ -66,7 +69,7 @@ export function AdminPhanCongView() {
   const [error, setError] = useState('');
 
   const [donViFilter, setDonViFilter] = useState<string>('');
-  const [phuTrachFilter, setPhuTrachFilter] = useState<string>('');
+  const [phuTrachFilter, setPhuTrachFilter] = useState<string>(() => phuTrachQuery);
   const [trangThaiFilter, setTrangThaiFilter] = useState<string>('');
   const [tuNgayFilter, setTuNgayFilter] = useState<string>('');
   const [denNgayFilter, setDenNgayFilter] = useState<string>('');

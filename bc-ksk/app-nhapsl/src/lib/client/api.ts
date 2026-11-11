@@ -84,3 +84,96 @@ export async function apiRequest<T>(
     };
   }
 }
+
+export function parseContentDispositionFilename(
+  header: string | null | undefined,
+  fallback: string,
+): string {
+  if (!header) return fallback;
+  const utf8Match = /filename\*=UTF-8''([^;\s]+)/i.exec(header);
+  if (utf8Match && utf8Match[1]) {
+    try {
+      return decodeURIComponent(utf8Match[1].replace(/^["']|["']$/g, ''));
+    } catch {
+      return utf8Match[1];
+    }
+  }
+  const quotedMatch = /filename="([^"]+)"/i.exec(header);
+  if (quotedMatch && quotedMatch[1]?.trim()) {
+    return quotedMatch[1].trim();
+  }
+  const plainMatch = /filename=([^;\s]+)/i.exec(header);
+  if (plainMatch && plainMatch[1]?.trim()) {
+    return plainMatch[1].trim().replace(/^["']|["']$/g, '');
+  }
+  return fallback;
+}
+
+export type DownloadFileResult =
+  | { ok: true; filename: string }
+  | { ok: false; status: number; error: string };
+
+export async function downloadFile(
+  url: string,
+  fallbackFilename: string,
+): Promise<DownloadFileResult> {
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      cache: 'no-store',
+    });
+
+    if (response.status === 401 && typeof window !== 'undefined') {
+      const currentPath = `${window.location.pathname}${window.location.search}`;
+      window.location.replace(`/dang-nhap?next=${encodeURIComponent(currentPath)}`);
+      return {
+        ok: false,
+        status: 401,
+        error: 'Chưa đăng nhập hoặc phiên làm việc đã hết hạn',
+      };
+    }
+
+    if (!response.ok) {
+      const body = (await response.json().catch(() => ({}))) as Record<
+        string,
+        unknown
+      >;
+      const errorMsg =
+        typeof body.error === 'string' && body.error.trim()
+          ? body.error
+          : `Không tạo được file (mã lỗi ${response.status})`;
+      return {
+        ok: false,
+        status: response.status,
+        error: errorMsg,
+      };
+    }
+
+    const filename = parseContentDispositionFilename(
+      response.headers.get('Content-Disposition'),
+      fallbackFilename,
+    );
+    const blob = await response.blob();
+    if (typeof window !== 'undefined') {
+      const blobUrl = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = blobUrl;
+      anchor.download = filename;
+      anchor.style.display = 'none';
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      window.setTimeout(() => {
+        window.URL.revokeObjectURL(blobUrl);
+      }, 2000);
+    }
+
+    return { ok: true, filename };
+  } catch {
+    return {
+      ok: false,
+      status: 0,
+      error: 'Không tải được file, vui lòng kiểm tra kết nối mạng',
+    };
+  }
+}

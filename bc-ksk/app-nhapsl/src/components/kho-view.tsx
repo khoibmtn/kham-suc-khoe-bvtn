@@ -37,13 +37,13 @@ type KhoViewProps = {
   currentUser: AuthUser;
 };
 
-type NhanVeBuoiModalProps = {
+export type NhanVeBuoiModalProps = {
   hoSo: KetQuaTimKiem;
   onClose: () => void;
   onSuccess: (buoiDichMa: string) => void;
 };
 
-function NhanVeBuoiModal({ hoSo, onClose, onSuccess }: NhanVeBuoiModalProps) {
+export function NhanVeBuoiModal({ hoSo, onClose, onSuccess }: NhanVeBuoiModalProps) {
   const { showToast } = useToast();
   const [buoiList, setBuoiList] = useState<BuoiTomTat[]>([]);
   const [loadingBuoi, setLoadingBuoi] = useState(true);
@@ -201,13 +201,13 @@ function NhanVeBuoiModal({ hoSo, onClose, onSuccess }: NhanVeBuoiModalProps) {
   );
 }
 
-type DuaVaoKhoChungTuKhoModalProps = {
+export type DuaVaoKhoChungTuKhoModalProps = {
   hoSo: KetQuaTimKiem;
   onClose: () => void;
   onSuccess: () => void;
 };
 
-function DuaVaoKhoChungTuKhoModal({
+export function DuaVaoKhoChungTuKhoModal({
   hoSo,
   onClose,
   onSuccess,
@@ -450,14 +450,14 @@ function XuLyDeNghiModal({
   );
 }
 
-type KhoTableProps = {
+export type KhoTableProps = {
   items: KetQuaTimKiem[];
   showMoveToKhoChung: boolean;
   onSelectNhanVe: (h: KetQuaTimKiem) => void;
   onSelectMoveToKhoChung?: (h: KetQuaTimKiem) => void;
 };
 
-function KhoTable({
+export function KhoTable({
   items,
   showMoveToKhoChung,
   onSelectNhanVe,

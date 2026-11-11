@@ -111,12 +111,14 @@ export function AppShell({ user: propUser, children, fullWidth = false }: AppShe
   const isAdmin = currentUser?.role === 'admin';
   const vaiTroNhan = isAdmin ? 'Quản trị' : 'Nhân viên';
 
+  const isAdminOverviewActive = pathname === '/admin';
   const isHomeActive = pathname === '/';
   const isRaSoatActive = pathname === '/ra-soat' || pathname.startsWith('/ra-soat/');
   const isKhoActive = pathname === '/kho' || pathname.startsWith('/kho/');
   const isTimKiemActive = pathname === '/tim-kiem' || pathname.startsWith('/tim-kiem/');
   const isPhanCongActive = pathname.startsWith('/admin/phan-cong');
   const isNguoiDungActive = pathname.startsWith('/admin/nguoi-dung');
+  const isNhatKyActive = pathname.startsWith('/admin/nhat-ky');
   const isDoiMatKhauActive = pathname.startsWith('/doi-mat-khau');
 
   return (
@@ -125,16 +127,25 @@ export function AppShell({ user: propUser, children, fullWidth = false }: AppShe
         <header className="app-topbar">
           <div className="app-topbar-inner">
             <div className="app-topbar-left">
-              <Link href="/" className="app-brand">
+              <Link href={isAdmin ? '/admin' : '/'} className="app-brand">
                 Rà soát hồ sơ KSK 2026
               </Link>
               <nav className="app-nav" aria-label="Điều hướng chính">
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    className={`app-nav-link ${isAdminOverviewActive ? 'active' : ''}`}
+                    aria-current={isAdminOverviewActive ? 'page' : undefined}
+                  >
+                    Tổng quan
+                  </Link>
+                )}
                 <Link
                   href="/"
                   className={`app-nav-link ${isHomeActive ? 'active' : ''}`}
                   aria-current={isHomeActive ? 'page' : undefined}
                 >
-                  Danh sách của tôi
+                  {isAdmin ? 'Danh sách' : 'Danh sách của tôi'}
                 </Link>
                 <Link
                   href="/ra-soat"
@@ -188,6 +199,13 @@ export function AppShell({ user: propUser, children, fullWidth = false }: AppShe
                       aria-current={isNguoiDungActive ? 'page' : undefined}
                     >
                       Người dùng
+                    </Link>
+                    <Link
+                      href="/admin/nhat-ky"
+                      className={`app-nav-link ${isNhatKyActive ? 'active' : ''}`}
+                      aria-current={isNhatKyActive ? 'page' : undefined}
+                    >
+                      Nhật ký
                     </Link>
                   </>
                 )}

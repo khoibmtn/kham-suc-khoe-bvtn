@@ -1,18 +1,29 @@
 import { describe, expect, it } from 'vitest';
 import { NHAN } from '@/lib/cls';
+import { parseContentDispositionFilename } from '@/lib/client/api';
 import {
+  formatChenhLech,
   formatDate,
   formatDateTime,
+  formatDateTimeSeconds,
   formatHisTimestamp,
   formatMaViTri,
   formatNguonGocChuyen,
   formatNumber,
   formatPercent,
+  formatShortDateTime,
   getCanhBaoTooltip,
+  getDoiTuongNhan,
+  getLinkDoiTuongNhatKy,
   getTenDonVi,
   getTruongNhan,
   TRANG_THAI_BUOI_NHAN,
 } from '@/lib/client/format';
+import { tinhTheTongHopTuBuoi } from '@/components/home-buoi-list';
+import {
+  TOAST_ACTION_DURATION_MS,
+  TOAST_DURATION_MS,
+} from '@/components/toast';
 
 describe('UI client format helpers', () => {
   it('formats Vietnamese numbers with dot thousands separator', () => {
@@ -66,5 +77,88 @@ describe('UI client format helpers', () => {
         'TN',
       ),
     ).toContain('Từ: Buổi TN-20260914 · Người chuyển: Ngân');
+  });
+
+  it('formats phase 5-6 timestamps, net difference, audit log links, and toast durations', () => {
+    expect(formatDateTimeSeconds('2026-11-11 08:05:09')).toBe(
+      '11/11/2026 08:05:09',
+    );
+    expect(formatShortDateTime(null)).toBe('chưa đăng nhập');
+    expect(formatShortDateTime('')).toBe('chưa đăng nhập');
+    expect(formatShortDateTime('2026-11-11 14:30:00')).toBe('11/11 14:30');
+
+    expect(formatChenhLech(68)).toBe('+68');
+    expect(formatChenhLech(-12)).toBe('-12');
+    expect(formatChenhLech(0)).toBe('0');
+
+    expect(getDoiTuongNhan('ho_so')).toBe('Hồ sơ');
+    expect(getDoiTuongNhan('buoi_kham')).toBe('Buổi khám');
+    expect(getDoiTuongNhan('auth')).toBe('Đăng nhập');
+
+    expect(
+      getLinkDoiTuongNhatKy({
+        doi_tuong: 'buoi_kham',
+        doi_tuong_id: '1',
+        mo_ta_doi_tuong: 'TN-20260907',
+      }),
+    ).toBe('/ra-soat/TN-20260907');
+
+    expect(
+      getLinkDoiTuongNhatKy({
+        doi_tuong: 'ho_so',
+        doi_tuong_id: '7148',
+        mo_ta_doi_tuong: 'Hồ sơ #7148 (H2600128319)',
+        gia_tri_moi: 'TN-20260907',
+      }),
+    ).toBe('/ra-soat/TN-20260907?chon=7148');
+
+    expect(
+      parseContentDispositionFilename(
+        'attachment; filename="bao-cao-ksk-20261111-1530.xlsx"',
+        'fallback.xlsx',
+      ),
+    ).toBe('bao-cao-ksk-20261111-1530.xlsx');
+
+    expect(TOAST_DURATION_MS).toBe(4000);
+    expect(TOAST_ACTION_DURATION_MS).toBeGreaterThanOrEqual(10000);
+
+    const the = tinhTheTongHopTuBuoi(
+      [
+        {
+          id: 1,
+          ma_buoi: 'TN-20260907',
+          don_vi: 'TN',
+          ten_don_vi: 'Phường Thủy Nguyên',
+          ngay_kham: '2026-09-07',
+          diem_kham: '',
+          doan_kham: '',
+          nv_goi_y: 'ngan',
+          so_doan_tong: 81,
+          phu_trach: null,
+          trang_thai: 'chua_ra_soat',
+          xac_nhan_by: null,
+          xac_nhan_at: null,
+          giai_trinh: null,
+          hien_co: 78,
+          da_xac_nhan: 10,
+          chua_xac_nhan: 68,
+          thua: 0,
+          thieu: 3,
+          bo_sung: 2,
+          tien_do: 12.8,
+          co_quyen_sua: true,
+        },
+      ],
+      4,
+    );
+    expect(the.so_buoi).toBe(1);
+    expect(the.so_doan).toBe(81);
+    expect(the.hien_co).toBe(78);
+    expect(the.da_xac_nhan).toBe(10);
+    expect(the.chua_xac_nhan).toBe(68);
+    expect(the.thieu).toBe(3);
+    expect(the.chenh_lech).toBe(-3);
+    expect(the.bo_sung).toBe(2);
+    expect(the.kho_ca_nhan).toBe(4);
   });
 });

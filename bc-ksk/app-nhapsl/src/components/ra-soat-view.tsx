@@ -2018,18 +2018,18 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
       <footer className="rasoat-footer-bar" aria-label="Phím tắt và chú thích">
         <span className="rasoat-footer-shortcuts">
           <strong>Phím tắt:</strong> <kbd>/</kbd> tìm · <kbd>↑</kbd>/<kbd>↓</kbd> chọn ·{' '}
-          <kbd>Space</kbd> xác nhận · <kbd>1</kbd>–<kbd>8</kbd> CLS theo số ở tiêu đề cột ·{' '}
-          <kbd>K</kbd> kho của tôi · <kbd>C</kbd> kho chung ·{' '}
+          <kbd>Space</kbd> xác nhận · <kbd>1</kbd>–<kbd>8</kbd> bật/tắt CLS ·{' '}
+          <kbd>K</kbd> kho cá nhân · <kbd>C</kbd> kho chung ·{' '}
           <kbd>Enter</kbd>/nhấp đúp: mở chi tiết
         </span>
         <span className="rasoat-footer-legend">
           <span>
-            <span className="legend-box legend-diff" /> Viền cam: đã sửa khác gốc
+            <span className="legend-box legend-diff" /> Viền cam: khác gốc
           </span>
           <span>
             <span className="legend-box legend-confirmed" /> Nền xanh: đã xác nhận
           </span>
-          <span>· Rê chuột vào nhãn cảnh báo để xem giải thích</span>
+          <span>· Rê chuột vào cảnh báo để xem mô tả</span>
         </span>
       </footer>
 
