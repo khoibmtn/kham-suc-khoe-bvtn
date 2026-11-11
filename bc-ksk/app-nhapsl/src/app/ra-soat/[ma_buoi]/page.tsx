@@ -21,7 +21,11 @@ async function RaSoatMaBuoiContent({
 
   return (
     <AppShell user={user} fullWidth>
-      <RaSoatView maBuoi={ma_buoi} />
+      <RaSoatView
+        key={ma_buoi}
+        maBuoi={ma_buoi}
+        isAdmin={user.role === 'admin'}
+      />
     </AppShell>
   );
 }

@@ -105,7 +105,7 @@ export async function layBuoiCoQuyen(sql: Sql, user: AuthUser, key: string): Pro
 export async function danhSachBuoi(
   sql: Sql,
   user: AuthUser,
-  q: { don_vi?: string | null; phu_trach?: string | null; trang_thai?: string | null },
+  q: { don_vi?: string | null; phu_trach?: string | null; trang_thai?: string | null; tat_ca?: boolean },
 ): Promise<BuoiTomTat[]> {
   const loc: LocBuoi = {};
   if (q.don_vi) {
@@ -116,7 +116,7 @@ export async function danhSachBuoi(
     if (!['chua_ra_soat', 'dang_ra_soat', 'da_xac_nhan'].includes(q.trang_thai)) throw new LoiNghiepVu(400, 'Trạng thái không hợp lệ');
     loc.trangThai = q.trang_thai;
   }
-  if (!laAdmin(user)) {
+  if (!laAdmin(user) && !q.tat_ca) {
     loc.chiCuaUserId = user.id;
   } else if (q.phu_trach) {
     if (q.phu_trach === 'none') loc.phuTrach = 'none';
@@ -124,4 +124,12 @@ export async function danhSachBuoi(
     else throw new LoiNghiepVu(400, 'Người phụ trách không hợp lệ');
   }
   return truyVanBuoi(sql, user, loc);
+}
+
+/** Đồng bộ trạng thái tự động của buổi chưa chốt: có hồ sơ đã xác nhận → đang rà soát, ngược lại chưa. */
+export async function dongBoTrangThaiBuoi(sql: Sql, buoiId: number): Promise<void> {
+  await sql`UPDATE buoi_kham b SET trang_thai = CASE WHEN EXISTS (
+        SELECT 1 FROM ho_so x WHERE x.buoi_id = b.id AND x.vi_tri = 'buoi' AND x.da_xac_nhan)
+      THEN 'dang_ra_soat' ELSE 'chua_ra_soat' END
+    WHERE b.id = ${buoiId} AND b.trang_thai <> 'da_xac_nhan'`;
 }

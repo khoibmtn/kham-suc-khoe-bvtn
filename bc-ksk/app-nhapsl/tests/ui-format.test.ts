@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
+import { NHAN } from '@/lib/cls';
 import {
   formatDate,
   formatDateTime,
   formatHisTimestamp,
+  formatMaViTri,
+  formatNguonGocChuyen,
   formatNumber,
   formatPercent,
+  getCanhBaoTooltip,
   getTenDonVi,
   getTruongNhan,
   TRANG_THAI_BUOI_NHAN,
@@ -35,12 +39,32 @@ describe('UI client format helpers', () => {
     expect(formatHisTimestamp('14/09/2026 09:15')).toBe('14/09 09:15');
   });
 
-  it('maps status, unit, and field labels accurately', () => {
+  it('maps status, unit, and field labels accurately including NHAN constants', () => {
     expect(TRANG_THAI_BUOI_NHAN.chua_ra_soat).toBe('Chưa rà soát');
     expect(TRANG_THAI_BUOI_NHAN.dang_ra_soat).toBe('Đang rà soát');
     expect(TRANG_THAI_BUOI_NHAN.da_xac_nhan).toBe('Đã xác nhận');
     expect(getTenDonVi('TN')).toBe('Phường Thủy Nguyên');
     expect(getTruongNhan('sieu_am')).toBe('Siêu âm ổ bụng');
     expect(getTruongNhan('ho_ten')).toBe('Họ tên');
+    expect(getTruongNhan('so_doan_tong')).toBe(NHAN.SO_DOAN);
+    expect(getTruongNhan('co_tt_ksk')).toBe(NHAN.TT_KSK);
+  });
+
+  it('formats warning tooltips with cls_ghi_chu for CLS_LECH_NGUON and formats transfer origin', () => {
+    expect(getCanhBaoTooltip('CLS_LECH_NGUON', 'Thiếu SA ở bảng TH')).toContain(
+      '(Thiếu SA ở bảng TH)',
+    );
+    expect(formatMaViTri('TN-20260914')).toBe('Buổi TN-20260914');
+    expect(
+      formatNguonGocChuyen(
+        {
+          tu: 'TN-20260914',
+          boi: { id: 2, username: 'ngan', ho_ten: 'Ngân' },
+          luc: '2026-11-11T09:30:00Z',
+          ly_do: 'Nhầm ngày',
+        },
+        'TN',
+      ),
+    ).toContain('Từ: Buổi TN-20260914 · Người chuyển: Ngân');
   });
 });

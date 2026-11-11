@@ -1,5 +1,5 @@
-import type { TrangThaiBuoi } from '@/lib/api-types';
-import { CLS, DON_VI } from '@/lib/cls';
+import type { ThongTinChuyen, TrangThaiBuoi } from '@/lib/api-types';
+import { CANH_BAO_MO_TA, CANH_BAO_NHAN, CLS, DON_VI, NHAN } from '@/lib/cls';
 
 /**
  * Định dạng số nguyên có dấu chấm ngăn nghìn theo chuẩn vi-VN (ví dụ: 12.003).
@@ -146,7 +146,11 @@ export const TRUONG_NHAN: Record<string, string> = {
   phu_trach_user_id: 'Người phụ trách',
   diem_kham: 'Điểm khám',
   doan_kham: 'Đoàn khám',
-  so_doan_tong: 'Sổ đoàn',
+  so_doan_tong: NHAN.SO_DOAN,
+  co_tt_ksk: NHAN.TT_KSK,
+  vi_tri: 'Vị trí',
+  giai_trinh: 'Giải trình',
+  ho_so_id: 'Hồ sơ',
   role: 'Vai trò',
   active: 'Trạng thái tài khoản',
   trang_thai: 'Trạng thái buổi',
@@ -162,4 +166,57 @@ export function getTenDonVi(donVi: string): string {
     return DON_VI[donVi as keyof typeof DON_VI];
   }
   return donVi;
+}
+
+/**
+ * Tooltip/mô tả đầy đủ cho mã cảnh báo.
+ * Riêng CLS_LECH_NGUON nối thêm cls_ghi_chu của hồ sơ nếu có.
+ */
+export function getCanhBaoTooltip(
+  code: string,
+  clsGhiChu?: string | null,
+): string {
+  const moTa = CANH_BAO_MO_TA[code] ?? CANH_BAO_NHAN[code] ?? code;
+  if (code === 'CLS_LECH_NGUON' && clsGhiChu && clsGhiChu.trim()) {
+    return `${moTa} (${clsGhiChu.trim()})`;
+  }
+  return moTa;
+}
+
+export function formatMaViTri(raw: string | null | undefined): string {
+  if (!raw) return '—';
+  const trimmed = raw.trim();
+  if (!trimmed) return '—';
+  if (trimmed === 'kho_chung') return 'Kho chờ chung';
+  if (trimmed.startsWith('kho_ca_nhan:')) {
+    const u = trimmed.slice('kho_ca_nhan:'.length);
+    return u ? `Kho cá nhân (${u})` : 'Kho cá nhân';
+  }
+  if (trimmed === 'kho_ca_nhan') return 'Kho cá nhân';
+  return `Buổi ${trimmed}`;
+}
+
+export function formatNguonGocChuyen(
+  chuyen: ThongTinChuyen | undefined,
+  donViGoiY?: string,
+): string {
+  if (!chuyen || (!chuyen.tu && !chuyen.boi && !chuyen.luc && !chuyen.ly_do)) {
+    return donViGoiY
+      ? `Gói dữ liệu gốc (gợi ý: ${donViGoiY})`
+      : 'Gói dữ liệu gốc';
+  }
+  const parts: string[] = [];
+  if (chuyen.tu) {
+    parts.push(`Từ: ${formatMaViTri(chuyen.tu)}`);
+  }
+  if (chuyen.boi) {
+    parts.push(`Người chuyển: ${chuyen.boi.ho_ten}`);
+  }
+  if (chuyen.luc) {
+    parts.push(`Lúc: ${formatDateTime(chuyen.luc)}`);
+  }
+  if (chuyen.ly_do && chuyen.ly_do.trim()) {
+    parts.push(`Lý do: ${chuyen.ly_do.trim()}`);
+  }
+  return parts.join(' · ');
 }

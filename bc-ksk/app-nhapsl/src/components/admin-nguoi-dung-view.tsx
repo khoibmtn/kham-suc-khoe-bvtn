@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import type { UserQuanLy } from '@/lib/api-types';
+import { khongDau } from '@/lib/text';
 import { apiRequest } from '@/lib/client/api';
 import { formatDateTime, formatNumber } from '@/lib/client/format';
 import { ConfirmDialog } from './confirm-dialog';
@@ -17,6 +18,11 @@ export function AdminNguoiDungView({ currentUserId }: AdminNguoiDungViewProps) {
   const [users, setUsers] = useState<UserQuanLy[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Bộ lọc người dùng
+  const [searchUser, setSearchUser] = useState('');
+  const [roleFilter, setRoleFilter] = useState<'' | 'nhan_vien' | 'admin'>('');
+  const [statusFilter, setStatusFilter] = useState<'' | 'active' | 'locked'>('');
 
   // Form Tạo người dùng mới
   const [newUsername, setNewUsername] = useState('');
@@ -205,6 +211,24 @@ export function AdminNguoiDungView({ currentUserId }: AdminNguoiDungViewProps) {
     setResetTarget(null);
   }
 
+  const filteredUsers = useMemo(() => {
+    const qRaw = searchUser.trim().toLowerCase();
+    const qKd = khongDau(searchUser);
+    return users.filter((u) => {
+      if (roleFilter && u.role !== roleFilter) return false;
+      if (statusFilter === 'active' && !u.active) return false;
+      if (statusFilter === 'locked' && u.active) return false;
+      if (qRaw) {
+        const matchUser = u.username.toLowerCase().includes(qRaw);
+        const matchTen = qKd.length > 0 && khongDau(u.ho_ten).includes(qKd);
+        if (!matchUser && !matchTen) return false;
+      }
+      return true;
+    });
+  }, [users, searchUser, roleFilter, statusFilter]);
+
+  const hasUserFilter = Boolean(searchUser.trim() || roleFilter || statusFilter);
+
   return (
     <div className="page-container">
       <div className="page-header-row">
@@ -307,6 +331,77 @@ export function AdminNguoiDungView({ currentUserId }: AdminNguoiDungViewProps) {
         </form>
       </section>
 
+      <div className="filter-bar">
+        <div className="filter-group">
+          <label htmlFor="filter-user-q" className="filter-label">
+            Tìm người dùng:
+          </label>
+          <input
+            id="filter-user-q"
+            type="search"
+            className="form-input form-input-sm input-quick-buoi"
+            placeholder="Họ tên hoặc tên đăng nhập…"
+            value={searchUser}
+            onChange={(e) => setSearchUser(e.target.value)}
+          />
+        </div>
+
+        <div className="filter-group">
+          <label htmlFor="filter-user-role" className="filter-label">
+            Vai trò:
+          </label>
+          <select
+            id="filter-user-role"
+            className="form-select"
+            value={roleFilter}
+            onChange={(e) =>
+              setRoleFilter(e.target.value as '' | 'nhan_vien' | 'admin')
+            }
+          >
+            <option value="">Tất cả vai trò</option>
+            <option value="nhan_vien">Nhân viên</option>
+            <option value="admin">Quản trị</option>
+          </select>
+        </div>
+
+        <div className="filter-group">
+          <label htmlFor="filter-user-status" className="filter-label">
+            Trạng thái:
+          </label>
+          <select
+            id="filter-user-status"
+            className="form-select"
+            value={statusFilter}
+            onChange={(e) =>
+              setStatusFilter(e.target.value as '' | 'active' | 'locked')
+            }
+          >
+            <option value="">Tất cả trạng thái</option>
+            <option value="active">Đang hoạt động</option>
+            <option value="locked">Đã khóa</option>
+          </select>
+        </div>
+
+        <span className="selected-counter">
+          Hiển thị <strong className="num">{formatNumber(filteredUsers.length)}</strong> /{' '}
+          <strong className="num">{formatNumber(users.length)}</strong> tài khoản
+        </span>
+
+        {hasUserFilter && (
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => {
+              setSearchUser('');
+              setRoleFilter('');
+              setStatusFilter('');
+            }}
+          >
+            Xóa lọc
+          </button>
+        )}
+      </div>
+
       {error && (
         <div className="state-box state-error" role="alert">
           <p className="state-title">Không tải được danh sách người dùng: {error}</p>
@@ -326,7 +421,26 @@ export function AdminNguoiDungView({ currentUserId }: AdminNguoiDungViewProps) {
         </div>
       )}
 
-      {!error && !loading && users.length > 0 && (
+      {!error && !loading && filteredUsers.length === 0 && (
+        <div className="state-box" role="status">
+          <p className="state-title">Không có người dùng nào khớp với bộ lọc</p>
+          {hasUserFilter && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => {
+                setSearchUser('');
+                setRoleFilter('');
+                setStatusFilter('');
+              }}
+            >
+              Xóa lọc
+            </button>
+          )}
+        </div>
+      )}
+
+      {!error && !loading && filteredUsers.length > 0 && (
         <div className="table-wrap">
           <table className="data-table">
             <thead>
@@ -341,7 +455,7 @@ export function AdminNguoiDungView({ currentUserId }: AdminNguoiDungViewProps) {
               </tr>
             </thead>
             <tbody>
-              {users.map((u) => {
+              {filteredUsers.map((u) => {
                 const isSelf = u.id === currentUserId;
                 const isEditing = editingId === u.id;
                 const isSaving = savingId === u.id;

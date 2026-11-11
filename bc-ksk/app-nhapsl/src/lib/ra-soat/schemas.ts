@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CLS_KEYS } from '@/lib/cls';
+import { CLS_KEYS, type ClsKey } from '@/lib/cls';
 
 const cls01 = z.union([z.literal(0), z.literal(1)], { error: 'Giá trị cận lâm sàng phải là 0 hoặc 1' });
 const version = z.number().int().min(1, 'Phiên bản hồ sơ không hợp lệ');
@@ -54,4 +54,50 @@ export const themBuoiSchema = z.strictObject({
   diem_kham: z.string().trim().max(200, 'Điểm khám quá dài').optional(),
   doan_kham: z.string().trim().max(200, 'Đoàn khám quá dài').optional(),
   so_doan_tong: soKhongAm,
+});
+
+// ---- Giai đoạn 4 ----
+const lyDo = z.string().trim().max(1000, 'Lý do quá dài');
+const buoiRef = z.union([z.number().int().min(1, 'Buổi khám không hợp lệ'), z.string().trim().min(1, 'Buổi khám không hợp lệ').max(40)]);
+
+export const chuyenSchema = z.strictObject({
+  version,
+  den: z.enum(['kho_ca_nhan', 'kho_chung', 'buoi'], { error: 'Nơi đến phải là kho cá nhân, kho chung hoặc buổi khám' }),
+  buoi: buoiRef.optional(),
+  ly_do: lyDo.optional(),
+});
+
+export const nhanVeSchema = z.strictObject({ version, buoi: buoiRef });
+
+export const kiemTrungSchema = z.strictObject({
+  ma_kcb: z.string().trim().max(50).optional(),
+  cccd: z.string().trim().max(20).optional(),
+  ho_ten: z.string().trim().max(200).optional(),
+  nam_sinh: z.number().int().min(1900).max(2026).optional(),
+});
+
+export const themHoSoSchema = z.strictObject({
+  ma_kcb: z.string().trim().max(50, 'Mã KCB quá dài').optional(),
+  ho_ten: z.string().trim().min(1, 'Họ tên không được để trống').max(200, 'Họ tên quá dài'),
+  gioi_tinh: z.enum(['Nam', 'Nữ'], { error: 'Giới tính phải là Nam hoặc Nữ' }),
+  nam_sinh: z.number().int('Năm sinh không hợp lệ').min(1900, 'Năm sinh phải từ 1900 đến 2026').max(2026, 'Năm sinh phải từ 1900 đến 2026'),
+  cccd: z.string().trim().regex(/^(\d{9}|\d{12})?$/, 'CCCD phải để trống hoặc gồm 9 hoặc 12 chữ số').optional(),
+  dia_chi_chi_tiet: z.string().trim().max(500, 'Địa chỉ quá dài').optional(),
+  cls: z.strictObject(Object.fromEntries(CLS_KEYS.map((k) => [k, cls01])) as Record<ClsKey, typeof cls01>),
+  ghi_chu: z.string().trim().max(2000, 'Ghi chú quá dài').optional(),
+  ly_do_tao_moi: lyDo.optional(),
+});
+
+export const xacNhanBuoiSchema = z.strictObject({ giai_trinh: z.string().trim().max(2000, 'Giải trình quá dài').optional() });
+export const moKhoaSchema = z.strictObject({ ly_do: lyDo.optional() });
+
+export const deNghiSchema = z.strictObject({
+  ho_so_id: z.number().int().min(1, 'Hồ sơ không hợp lệ'),
+  den_buoi: buoiRef,
+  ly_do: lyDo.optional(),
+});
+
+export const xuLyDeNghiSchema = z.strictObject({
+  dong_y: z.boolean({ error: 'Thiếu quyết định đồng ý hoặc từ chối' }),
+  ghi_chu: z.string().trim().max(1000, 'Ghi chú quá dài').optional(),
 });

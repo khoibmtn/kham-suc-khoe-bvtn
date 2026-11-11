@@ -10,7 +10,7 @@ export async function GET(req: Request): Promise<Response> {
   if (auth instanceof Response) return auth;
   try {
     const p = new URL(req.url).searchParams;
-    const buoi = await danhSachBuoi(getSql(), auth, { don_vi: p.get('don_vi'), phu_trach: p.get('phu_trach'), trang_thai: p.get('trang_thai') });
+    const buoi = await danhSachBuoi(getSql(), auth, { don_vi: p.get('don_vi'), phu_trach: p.get('phu_trach'), trang_thai: p.get('trang_thai'), tat_ca: p.get('tat_ca') === '1' });
     return Response.json({ buoi });
   } catch (e) {
     return xuLyLoi(e);

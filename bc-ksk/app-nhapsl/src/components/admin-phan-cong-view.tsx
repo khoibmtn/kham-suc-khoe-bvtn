@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import type { BuoiTomTat, UserQuanLy } from '@/lib/api-types';
-import { DON_VI, type DonVi } from '@/lib/cls';
+import { DON_VI, NHAN, type DonVi } from '@/lib/cls';
+import { khongDau } from '@/lib/text';
 import { apiRequest } from '@/lib/client/api';
 import {
   formatDate,
@@ -11,7 +12,50 @@ import {
   TRANG_THAI_BUOI_NHAN,
 } from '@/lib/client/format';
 import { ConfirmDialog } from './confirm-dialog';
+import { locDanhSachBuoi } from './home-buoi-list';
 import { useToast } from './toast';
+
+export type CotSapXepBuoi = 'don_vi' | 'ngay_kham' | 'phu_trach';
+export type ChieuSapXep = 'asc' | 'desc';
+
+const THU_TU_DON_VI: Record<string, number> = { TN: 1, LK: 2, VK: 3 };
+
+export function sapXepDanhSachBuoi(
+  list: BuoiTomTat[],
+  col: CotSapXepBuoi,
+  dir: ChieuSapXep,
+): BuoiTomTat[] {
+  const factor = dir === 'asc' ? 1 : -1;
+  return [...list].sort((a, b) => {
+    if (col === 'ngay_kham') {
+      const cmp = a.ngay_kham.localeCompare(b.ngay_kham);
+      if (cmp !== 0) return cmp * factor;
+      const dv = (THU_TU_DON_VI[a.don_vi] ?? 9) - (THU_TU_DON_VI[b.don_vi] ?? 9);
+      if (dv !== 0) return dv;
+      return a.id - b.id;
+    }
+
+    if (col === 'phu_trach') {
+      const aEmpty = a.phu_trach === null;
+      const bEmpty = b.phu_trach === null;
+      if (aEmpty !== bEmpty) {
+        return (aEmpty ? 1 : -1) * factor;
+      }
+      const aTen = a.phu_trach?.ho_ten ?? '';
+      const bTen = b.phu_trach?.ho_ten ?? '';
+      const cmp = aTen.localeCompare(bTen, 'vi');
+      if (cmp !== 0) return cmp * factor;
+      return a.ngay_kham.localeCompare(b.ngay_kham);
+    }
+
+    // Default: don_vi
+    const dv = (THU_TU_DON_VI[a.don_vi] ?? 9) - (THU_TU_DON_VI[b.don_vi] ?? 9);
+    if (dv !== 0) return dv * factor;
+    const cmpNgay = a.ngay_kham.localeCompare(b.ngay_kham);
+    if (cmpNgay !== 0) return cmpNgay * factor;
+    return (a.id - b.id) * factor;
+  });
+}
 
 export function AdminPhanCongView() {
   const { showToast } = useToast();
@@ -22,11 +66,20 @@ export function AdminPhanCongView() {
   const [error, setError] = useState('');
 
   const [donViFilter, setDonViFilter] = useState<string>('');
+  const [phuTrachFilter, setPhuTrachFilter] = useState<string>('');
+  const [trangThaiFilter, setTrangThaiFilter] = useState<string>('');
+  const [tuNgayFilter, setTuNgayFilter] = useState<string>('');
+  const [denNgayFilter, setDenNgayFilter] = useState<string>('');
+  const [timNhanhFilter, setTimNhanhFilter] = useState<string>('');
+
+  const [sortCol, setSortCol] = useState<CotSapXepBuoi>('don_vi');
+  const [sortDir, setSortDir] = useState<ChieuSapXep>('asc');
+
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [targetUserId, setTargetUserId] = useState<string>('');
   const [assigning, setAssigning] = useState(false);
 
-  // Hộp xác nhận Phân công theo sổ đoàn
+  // Hộp xác nhận Phân công theo gợi ý (NHAN.SO_DOAN)
   const [openGoiYModal, setOpenGoiYModal] = useState(false);
   const [ghiDeGoiY, setGhiDeGoiY] = useState(false);
   const [runningGoiY, setRunningGoiY] = useState(false);
@@ -101,9 +154,63 @@ export function AdminPhanCongView() {
   }, []);
 
   const filteredBuoi = useMemo(() => {
-    if (!donViFilter) return buoiList;
-    return buoiList.filter((b) => b.don_vi === donViFilter);
-  }, [buoiList, donViFilter]);
+    const base = locDanhSachBuoi(buoiList, {
+      donVi: donViFilter,
+      trangThai: trangThaiFilter,
+      phuTrach: phuTrachFilter,
+      tuNgay: tuNgayFilter,
+      denNgay: denNgayFilter,
+      timNhanh: '',
+    });
+
+    const qRaw = timNhanhFilter.trim().toLowerCase();
+    const qKd = khongDau(timNhanhFilter);
+    const matched = !qRaw
+      ? base
+      : base.filter((b) => {
+          const ngayStr = formatDate(b.ngay_kham).toLowerCase();
+          const maStr = b.ma_buoi.toLowerCase();
+          const diemKd = khongDau(b.diem_kham ?? '');
+          const doanKd = khongDau(b.doan_kham ?? '');
+          const goiYKd = khongDau(b.nv_goi_y ?? '');
+          return (
+            ngayStr.includes(qRaw) ||
+            b.ngay_kham.includes(qRaw) ||
+            maStr.includes(qRaw) ||
+            (qKd.length > 0 &&
+              (diemKd.includes(qKd) ||
+                doanKd.includes(qKd) ||
+                goiYKd.includes(qKd)))
+          );
+        });
+
+    return sapXepDanhSachBuoi(matched, sortCol, sortDir);
+  }, [
+    buoiList,
+    donViFilter,
+    trangThaiFilter,
+    phuTrachFilter,
+    tuNgayFilter,
+    denNgayFilter,
+    timNhanhFilter,
+    sortCol,
+    sortDir,
+  ]);
+
+  const filteredIdSet = useMemo(
+    () => new Set(filteredBuoi.map((b) => b.id)),
+    [filteredBuoi],
+  );
+
+  const effectiveSelectedIds = useMemo(() => {
+    const next = new Set<number>();
+    for (const id of selectedIds) {
+      if (filteredIdSet.has(id)) {
+        next.add(id);
+      }
+    }
+    return next;
+  }, [selectedIds, filteredIdSet]);
 
   const activeUsers = useMemo(
     () => users.filter((u) => u.active),
@@ -112,12 +219,47 @@ export function AdminPhanCongView() {
 
   const allFilteredSelected = useMemo(() => {
     if (filteredBuoi.length === 0) return false;
-    return filteredBuoi.every((b) => selectedIds.has(b.id));
-  }, [filteredBuoi, selectedIds]);
+    return filteredBuoi.every((b) => effectiveSelectedIds.has(b.id));
+  }, [filteredBuoi, effectiveSelectedIds]);
+
+  const hasActiveFilter = Boolean(
+    donViFilter ||
+      phuTrachFilter ||
+      trangThaiFilter ||
+      tuNgayFilter ||
+      denNgayFilter ||
+      timNhanhFilter.trim(),
+  );
+
+  function handleResetFilters() {
+    setDonViFilter('');
+    setPhuTrachFilter('');
+    setTrangThaiFilter('');
+    setTuNgayFilter('');
+    setDenNgayFilter('');
+    setTimNhanhFilter('');
+  }
+
+  function handleSort(col: CotSapXepBuoi) {
+    if (sortCol === col) {
+      setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortCol(col);
+      setSortDir('asc');
+    }
+  }
+
+  function renderSortMark(col: CotSapXepBuoi): string {
+    if (sortCol !== col) return '↕';
+    return sortDir === 'asc' ? '↑' : '↓';
+  }
 
   function toggleSelectRow(id: number) {
     setSelectedIds((prev) => {
-      const next = new Set(prev);
+      const next = new Set<number>();
+      for (const item of prev) {
+        if (filteredIdSet.has(item)) next.add(item);
+      }
       if (next.has(id)) {
         next.delete(id);
       } else {
@@ -128,21 +270,15 @@ export function AdminPhanCongView() {
   }
 
   function handleSelectAllFiltered(checked: boolean) {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      for (const b of filteredBuoi) {
-        if (checked) {
-          next.add(b.id);
-        } else {
-          next.delete(b.id);
-        }
-      }
-      return next;
-    });
+    if (checked) {
+      setSelectedIds(new Set(filteredBuoi.map((b) => b.id)));
+    } else {
+      setSelectedIds(new Set());
+    }
   }
 
   async function handleBulkAssign(userId: number | null) {
-    const ids = Array.from(selectedIds);
+    const ids = Array.from(effectiveSelectedIds);
     if (ids.length === 0) {
       showToast('Vui lòng chọn ít nhất 1 buổi khám trong bảng', 'warning');
       return;
@@ -192,7 +328,7 @@ export function AdminPhanCongView() {
 
     setKetQuaGoiY(res.data);
     showToast(
-      `Phân công theo sổ đoàn: Đã gán ${formatNumber(res.data.da_gan)} buổi`,
+      `Phân công theo ${NHAN.SO_DOAN}: Đã gán ${formatNumber(res.data.da_gan)} buổi`,
       'success',
     );
     await reloadData();
@@ -212,7 +348,7 @@ export function AdminPhanCongView() {
   async function handleSaveRow(b: BuoiTomTat) {
     const parsedSoDoan = Number(editSoDoan);
     if (!Number.isInteger(parsedSoDoan) || parsedSoDoan < 0) {
-      showToast('Số sổ đoàn phải là số nguyên không âm', 'error');
+      showToast(`Số ${NHAN.SO_DOAN} phải là số nguyên không âm`, 'error');
       return;
     }
 
@@ -253,7 +389,7 @@ export function AdminPhanCongView() {
 
     const parsedSoDoan = Number(newSoDoan);
     if (!Number.isInteger(parsedSoDoan) || parsedSoDoan < 0) {
-      setAddError('Số sổ đoàn phải là số nguyên không âm.');
+      setAddError(`Số ${NHAN.SO_DOAN} phải là số nguyên không âm.`);
       return;
     }
 
@@ -290,7 +426,7 @@ export function AdminPhanCongView() {
         <div>
           <h1 className="page-title">Quản lý phân công &amp; buổi khám</h1>
           <p className="page-subtitle">
-            Gán người phụ trách cho từng buổi khám, phân công tự động theo sổ đoàn, hoặc sửa thông tin buổi khám.
+            Gán người phụ trách cho từng buổi khám, phân công tự động theo {NHAN.SO_DOAN}, hoặc sửa thông tin buổi khám.
           </p>
         </div>
         <div className="page-header-actions">
@@ -309,7 +445,7 @@ export function AdminPhanCongView() {
               setOpenGoiYModal(true);
             }}
           >
-            Phân công theo sổ đoàn
+            Phân công theo {NHAN.SO_DOAN}
           </button>
         </div>
       </div>
@@ -318,7 +454,7 @@ export function AdminPhanCongView() {
         <div className="alert alert-success" role="status">
           <div className="flex-between">
             <div>
-              <strong>Kết quả phân công theo sổ đoàn:</strong> Đã gán{' '}
+              <strong>Kết quả phân công theo {NHAN.SO_DOAN}:</strong> Đã gán{' '}
               <strong className="num">{formatNumber(ketQuaGoiY.da_gan)}</strong> buổi khám.
               {ketQuaGoiY.bo_qua && ketQuaGoiY.bo_qua.length > 0 && (
                 <span>
@@ -414,7 +550,7 @@ export function AdminPhanCongView() {
 
             <div className="form-field">
               <label htmlFor="new-so-doan" className="form-label">
-                Sổ đoàn tổng *
+                {NHAN.SO_DOAN} tổng *
               </label>
               <input
                 id="new-so-doan"
@@ -449,30 +585,116 @@ export function AdminPhanCongView() {
         </section>
       )}
 
+      <div className="filter-bar">
+        <div className="filter-group">
+          <label htmlFor="pc-don-vi" className="filter-label">
+            Đơn vị:
+          </label>
+          <select
+            id="pc-don-vi"
+            className="form-select"
+            value={donViFilter}
+            onChange={(e) => setDonViFilter(e.target.value)}
+          >
+            <option value="">Tất cả ({formatNumber(buoiList.length)} buổi)</option>
+            {(Object.keys(DON_VI) as DonVi[]).map((code) => {
+              const count = buoiList.filter((b) => b.don_vi === code).length;
+              return (
+                <option key={code} value={code}>
+                  {DON_VI[code]} ({formatNumber(count)})
+                </option>
+              );
+            })}
+          </select>
+        </div>
+
+        <div className="filter-group">
+          <label htmlFor="pc-phu-trach" className="filter-label">
+            Người phụ trách:
+          </label>
+          <select
+            id="pc-phu-trach"
+            className="form-select"
+            value={phuTrachFilter}
+            onChange={(e) => setPhuTrachFilter(e.target.value)}
+          >
+            <option value="">Tất cả người phụ trách</option>
+            <option value="none">Chưa phân công</option>
+            {users.map((u) => (
+              <option key={u.id} value={String(u.id)}>
+                {u.ho_ten} ({u.username})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="filter-group">
+          <label htmlFor="pc-trang-thai" className="filter-label">
+            Trạng thái:
+          </label>
+          <select
+            id="pc-trang-thai"
+            className="form-select"
+            value={trangThaiFilter}
+            onChange={(e) => setTrangThaiFilter(e.target.value)}
+          >
+            <option value="">Tất cả trạng thái</option>
+            <option value="chua_ra_soat">Chưa rà soát</option>
+            <option value="dang_ra_soat">Đang rà soát</option>
+            <option value="da_xac_nhan">Đã xác nhận</option>
+          </select>
+        </div>
+
+        <div className="filter-group">
+          <label htmlFor="pc-tu-ngay" className="filter-label">
+            Từ ngày:
+          </label>
+          <input
+            id="pc-tu-ngay"
+            type="date"
+            className="form-input form-input-sm input-date-compact"
+            value={tuNgayFilter}
+            onChange={(e) => setTuNgayFilter(e.target.value)}
+          />
+          <label htmlFor="pc-den-ngay" className="filter-label">
+            Đến:
+          </label>
+          <input
+            id="pc-den-ngay"
+            type="date"
+            className="form-input form-input-sm input-date-compact"
+            value={denNgayFilter}
+            onChange={(e) => setDenNgayFilter(e.target.value)}
+          />
+        </div>
+
+        <div className="filter-group">
+          <label htmlFor="pc-tim-nhanh" className="filter-label">
+            Tìm điểm khám/đoàn:
+          </label>
+          <input
+            id="pc-tim-nhanh"
+            type="search"
+            className="form-input form-input-sm input-quick-buoi"
+            placeholder="Điểm khám, đoàn khám, ngày…"
+            value={timNhanhFilter}
+            onChange={(e) => setTimNhanhFilter(e.target.value)}
+          />
+        </div>
+
+        {hasActiveFilter && (
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={handleResetFilters}
+          >
+            Xóa lọc
+          </button>
+        )}
+      </div>
+
       <div className="bulk-action-bar">
         <div className="bulk-left">
-          <div className="filter-group">
-            <label htmlFor="pc-don-vi" className="filter-label">
-              Lọc đơn vị:
-            </label>
-            <select
-              id="pc-don-vi"
-              className="form-select"
-              value={donViFilter}
-              onChange={(e) => setDonViFilter(e.target.value)}
-            >
-              <option value="">Tất cả ({formatNumber(buoiList.length)} buổi)</option>
-              {(Object.keys(DON_VI) as DonVi[]).map((code) => {
-                const count = buoiList.filter((b) => b.don_vi === code).length;
-                return (
-                  <option key={code} value={code}>
-                    {DON_VI[code]} ({formatNumber(count)})
-                  </option>
-                );
-              })}
-            </select>
-          </div>
-
           <label className="checkbox-inline-label">
             <input
               type="checkbox"
@@ -484,7 +706,8 @@ export function AdminPhanCongView() {
           </label>
 
           <span className="selected-counter">
-            Đang chọn: <strong className="num">{formatNumber(selectedIds.size)}</strong> buổi
+            Đang chọn: <strong className="num">{formatNumber(effectiveSelectedIds.size)}</strong> /{' '}
+            <strong className="num">{formatNumber(filteredBuoi.length)}</strong> buổi đang hiển thị
           </span>
         </div>
 
@@ -510,7 +733,7 @@ export function AdminPhanCongView() {
           <button
             type="button"
             className="btn btn-primary btn-sm"
-            disabled={assigning || selectedIds.size === 0 || !targetUserId}
+            disabled={assigning || effectiveSelectedIds.size === 0 || !targetUserId}
             onClick={() => void handleBulkAssign(Number(targetUserId))}
           >
             {assigning ? 'Đang xử lý…' : 'Gán'}
@@ -519,7 +742,7 @@ export function AdminPhanCongView() {
           <button
             type="button"
             className="btn btn-danger-outline btn-sm"
-            disabled={assigning || selectedIds.size === 0}
+            disabled={assigning || effectiveSelectedIds.size === 0}
             onClick={() => void handleBulkAssign(null)}
           >
             Bỏ phân công
@@ -546,6 +769,24 @@ export function AdminPhanCongView() {
         </div>
       )}
 
+      {!error && !loading && filteredBuoi.length === 0 && (
+        <div className="state-box" role="status">
+          <p className="state-title">Không có buổi khám nào khớp với bộ lọc</p>
+          <p className="state-desc">
+            Đang hiển thị 0 / {formatNumber(buoiList.length)} buổi khám. Hãy nới điều kiện lọc hoặc bấm Xóa lọc.
+          </p>
+          {hasActiveFilter && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={handleResetFilters}
+            >
+              Xóa lọc
+            </button>
+          )}
+        </div>
+      )}
+
       {!error && !loading && filteredBuoi.length > 0 && (
         <div className="table-wrap">
           <table className="data-table">
@@ -560,22 +801,73 @@ export function AdminPhanCongView() {
                   />
                 </th>
                 <th>Mã buổi</th>
-                <th>Đơn vị</th>
-                <th>Ngày</th>
+                <th
+                  aria-sort={
+                    sortCol === 'don_vi'
+                      ? sortDir === 'asc'
+                        ? 'ascending'
+                        : 'descending'
+                      : 'none'
+                  }
+                >
+                  <button
+                    type="button"
+                    className="th-sort-btn"
+                    onClick={() => handleSort('don_vi')}
+                  >
+                    <span>Đơn vị</span>
+                    <span className="sort-mark">{renderSortMark('don_vi')}</span>
+                  </button>
+                </th>
+                <th
+                  aria-sort={
+                    sortCol === 'ngay_kham'
+                      ? sortDir === 'asc'
+                        ? 'ascending'
+                        : 'descending'
+                      : 'none'
+                  }
+                >
+                  <button
+                    type="button"
+                    className="th-sort-btn"
+                    onClick={() => handleSort('ngay_kham')}
+                  >
+                    <span>Ngày</span>
+                    <span className="sort-mark">{renderSortMark('ngay_kham')}</span>
+                  </button>
+                </th>
                 <th>Điểm khám</th>
                 <th>Đoàn khám</th>
-                <th className="num-col">Sổ đoàn</th>
+                <th className="num-col">{NHAN.SO_DOAN}</th>
                 <th className="num-col">Trong DS</th>
                 <th className="num-col">Đã xác nhận</th>
-                <th>Gợi ý sổ đoàn</th>
-                <th>Người phụ trách</th>
+                <th>Gợi ý {NHAN.SO_DOAN}</th>
+                <th
+                  aria-sort={
+                    sortCol === 'phu_trach'
+                      ? sortDir === 'asc'
+                        ? 'ascending'
+                        : 'descending'
+                      : 'none'
+                  }
+                >
+                  <button
+                    type="button"
+                    className="th-sort-btn"
+                    onClick={() => handleSort('phu_trach')}
+                  >
+                    <span>Người phụ trách</span>
+                    <span className="sort-mark">{renderSortMark('phu_trach')}</span>
+                  </button>
+                </th>
                 <th>Trạng thái</th>
                 <th>Thao tác</th>
               </tr>
             </thead>
             <tbody>
               {filteredBuoi.map((b) => {
-                const isChecked = selectedIds.has(b.id);
+                const isChecked = effectiveSelectedIds.has(b.id);
                 const isEditing = editingBuoiId === b.id;
                 const isSaving = savingBuoiId === b.id;
 
@@ -639,7 +931,7 @@ export function AdminPhanCongView() {
                           value={editSoDoan}
                           onChange={(e) => setEditSoDoan(e.target.value)}
                           disabled={isSaving}
-                          aria-label="Sổ đoàn tổng"
+                          aria-label={`${NHAN.SO_DOAN} tổng`}
                         />
                       ) : (
                         formatNumber(b.so_doan_tong)
@@ -718,15 +1010,15 @@ export function AdminPhanCongView() {
 
       <ConfirmDialog
         open={openGoiYModal}
-        title="Xác nhận phân công tự động theo sổ đoàn"
-        confirmLabel="Thực hiện phân công theo sổ đoàn"
+        title={`Xác nhận phân công tự động theo ${NHAN.SO_DOAN}`}
+        confirmLabel={`Thực hiện phân công theo ${NHAN.SO_DOAN}`}
         cancelLabel="Hủy bỏ"
         loading={runningGoiY}
         onConfirm={() => void handleConfirmPhanCongGoiY()}
         onCancel={() => setOpenGoiYModal(false)}
       >
         <p className="modal-text">
-          Hệ thống sẽ tự động gán người phụ trách cho các buổi khám dựa theo cột nhân viên gợi ý (<code>nv_goi_y</code>) trong dữ liệu sổ đoàn. Các buổi không có tên gợi ý sẽ được giữ nguyên để phân công tay.
+          Hệ thống sẽ tự động gán người phụ trách cho các buổi khám dựa theo cột nhân viên gợi ý (<code>nv_goi_y</code>) trong dữ liệu {NHAN.SO_DOAN}. Các buổi không có tên gợi ý sẽ được giữ nguyên để phân công tay.
         </p>
 
         <div className="radio-group-box">
@@ -753,9 +1045,9 @@ export function AdminPhanCongView() {
               onChange={() => setGhiDeGoiY(true)}
             />
             <div>
-              <strong>Ghi đè toàn bộ theo sổ đoàn</strong>
+              <strong>Ghi đè toàn bộ theo {NHAN.SO_DOAN}</strong>
               <div className="text-muted text-xs">
-                Thay thế cả người phụ trách hiện tại nếu buổi khám có gợi ý trong sổ đoàn.
+                Thay thế cả người phụ trách hiện tại nếu buổi khám có gợi ý trong {NHAN.SO_DOAN}.
               </div>
             </div>
           </label>

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { BuoiTomTat } from '@/lib/api-types';
-import { DON_VI } from '@/lib/cls';
+import { DON_VI, NHAN } from '@/lib/cls';
 import { apiRequest } from '@/lib/client/api';
 import {
   formatDate,
@@ -193,7 +193,7 @@ export function RaSoatChonBuoi() {
               >
                 {buoiTheoDonVi.map((b) => (
                   <option key={b.ma_buoi} value={b.ma_buoi}>
-                    {formatDate(b.ngay_kham)} · {b.diem_kham || 'Chưa rõ điểm khám'} · Sổ đoàn: {formatNumber(b.so_doan_tong)}
+                    {formatDate(b.ngay_kham)} · {b.diem_kham || 'Chưa rõ điểm khám'} · {NHAN.SO_DOAN}: {formatNumber(b.so_doan_tong)}
                   </option>
                 ))}
               </select>
@@ -222,7 +222,7 @@ export function RaSoatChonBuoi() {
               </div>
               <div className="selector-preview-metrics">
                 <span>Điểm khám: <strong>{activeBuoi.diem_kham || '—'}</strong></span>
-                <span>Sổ đoàn: <strong className="num">{formatNumber(activeBuoi.so_doan_tong)}</strong></span>
+                <span>{NHAN.SO_DOAN}: <strong className="num">{formatNumber(activeBuoi.so_doan_tong)}</strong></span>
                 <span>Trong danh sách: <strong className="num">{formatNumber(activeBuoi.hien_co)}</strong></span>
                 <span>
                   Đã xác nhận:{' '}

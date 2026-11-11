@@ -11,13 +11,13 @@ import { truyVanBuoi } from './buoi';
 
 type Sql = postgres.Sql;
 
-const COT_HO_SO = `h.id, h.version, h.ma_ho_so, h.nguon, h.ma_kcb, h.ho_ten, h.gioi_tinh, h.nam_sinh, h.cccd,
+export const COT_HO_SO = `h.id, h.version, h.ma_ho_so, h.nguon, h.ma_kcb, h.ho_ten, h.gioi_tinh, h.nam_sinh, h.cccd,
   h.dia_chi_chi_tiet, h.ctm, h.glucose, h.ure, h.creatinin, h.got, h.gpt, h.tpt_nuoc_tieu, h.sieu_am, h.src,
   h.dia_chi_the, h.ngay_gio_dang_ky_his, h.cls_ghi_chu, h.co_tt_ksk, h.canh_bao, h.ghi_chu, h.ghi_chu_cowork,
   h.sua_nhan_than, h.sua_cls, h.nhan_tu_kho_chung, h.da_xac_nhan, h.xac_nhan_at, h.updated_at,
   h.xac_nhan_by, xn.username AS xn_username, xn.ho_ten AS xn_ho_ten`;
 
-type Row = Record<string, unknown> & {
+export type Row = Record<string, unknown> & {
   id: number; version: number; ma_ho_so: string | null; nguon: 'cowork' | 'them_tay'; ma_kcb: string; ho_ten: string;
   gioi_tinh: 'Nam' | 'Nữ' | ''; nam_sinh: number; cccd: string; dia_chi_chi_tiet: string; src: HoSoSrc | null;
   dia_chi_the: string; ngay_gio_dang_ky_his: string; cls_ghi_chu: string; co_tt_ksk: 0 | 1; canh_bao: string[];
@@ -51,7 +51,7 @@ export async function hoSoCuaBuoi(sql: Sql, buoiId: number): Promise<HoSoDong[]>
   return rows.map(mapHoSo);
 }
 
-async function layHoSoDong(sql: Sql, id: number): Promise<HoSoDong> {
+export async function layHoSoDong(sql: Sql, id: number): Promise<HoSoDong> {
   const rows = await sql.unsafe<Row[]>(
     `SELECT ${COT_HO_SO} FROM ho_so h LEFT JOIN users xn ON xn.id = h.xac_nhan_by WHERE h.id = $1`,
     [id],

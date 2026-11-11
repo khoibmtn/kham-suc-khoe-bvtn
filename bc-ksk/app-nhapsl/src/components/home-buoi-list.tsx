@@ -1,10 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { BuoiTomTat, TrangThaiBuoi, UserQuanLy } from '@/lib/api-types';
-import { DON_VI } from '@/lib/cls';
+import { DON_VI, NHAN } from '@/lib/cls';
+import { khongDau } from '@/lib/text';
 import { apiRequest } from '@/lib/client/api';
 import {
   formatDate,
@@ -19,12 +20,59 @@ type HomeBuoiListProps = {
   initialBuoi?: BuoiTomTat[] | null;
 };
 
-function buildBuoiUrl(donVi: string, phuTrach: string): string {
-  const params = new URLSearchParams();
-  if (donVi) params.set('don_vi', donVi);
-  if (phuTrach) params.set('phu_trach', phuTrach);
-  const qs = params.toString();
-  return qs ? `/api/buoi?${qs}` : '/api/buoi';
+export type BoLocBuoi = {
+  donVi: string;
+  trangThai: string;
+  phuTrach: string;
+  tuNgay: string;
+  denNgay: string;
+  timNhanh: string;
+};
+
+export function locDanhSachBuoi(
+  list: BuoiTomTat[],
+  filter: BoLocBuoi,
+): BuoiTomTat[] {
+  const qRaw = filter.timNhanh.trim().toLowerCase();
+  const qKd = khongDau(filter.timNhanh);
+
+  return list.filter((b) => {
+    if (filter.donVi && b.don_vi !== filter.donVi) return false;
+    if (filter.trangThai && b.trang_thai !== filter.trangThai) return false;
+    if (filter.phuTrach) {
+      if (filter.phuTrach === 'none') {
+        if (b.phu_trach !== null) return false;
+      } else if (String(b.phu_trach?.id ?? '') !== filter.phuTrach) {
+        return false;
+      }
+    }
+    if (filter.tuNgay && b.ngay_kham < filter.tuNgay) return false;
+    if (filter.denNgay && b.ngay_kham > filter.denNgay) return false;
+
+    if (qRaw) {
+      const ngayStr = formatDate(b.ngay_kham).toLowerCase();
+      const maBuoiStr = b.ma_buoi.toLowerCase();
+      const diemKd = khongDau(b.diem_kham ?? '');
+      const doanKd = khongDau(b.doan_kham ?? '');
+      const tenDonViKd = khongDau(b.ten_don_vi ?? '');
+      const phuTrachKd = khongDau(b.phu_trach?.ho_ten ?? '');
+
+      const matchRaw =
+        ngayStr.includes(qRaw) ||
+        b.ngay_kham.includes(qRaw) ||
+        maBuoiStr.includes(qRaw);
+      const matchKd =
+        qKd.length > 0 &&
+        (diemKd.includes(qKd) ||
+          doanKd.includes(qKd) ||
+          tenDonViKd.includes(qKd) ||
+          phuTrachKd.includes(qKd));
+
+      if (!matchRaw && !matchKd) return false;
+    }
+
+    return true;
+  });
 }
 
 function renderTrangThaiBadge(trangThai: TrangThaiBuoi) {
@@ -47,13 +95,19 @@ export function HomeBuoiList({ user, initialBuoi = null }: HomeBuoiListProps) {
   const [error, setError] = useState<string>('');
 
   const [donViFilter, setDonViFilter] = useState<string>('');
+  const [trangThaiFilter, setTrangThaiFilter] = useState<string>('');
   const [phuTrachFilter, setPhuTrachFilter] = useState<string>('');
+  const [tuNgayFilter, setTuNgayFilter] = useState<string>('');
+  const [denNgayFilter, setDenNgayFilter] = useState<string>('');
+  const [timNhanhFilter, setTimNhanhFilter] = useState<string>('');
+
+  const [hoSoJumpQuery, setHoSoJumpQuery] = useState<string>('');
   const [users, setUsers] = useState<UserQuanLy[]>([]);
 
-  const reloadBuoi = useCallback(async (donVi: string, phuTrach: string) => {
+  const reloadBuoi = useCallback(async () => {
     setLoading(true);
     setError('');
-    const res = await apiRequest<{ buoi: BuoiTomTat[] }>(buildBuoiUrl(donVi, phuTrach));
+    const res = await apiRequest<{ buoi: BuoiTomTat[] }>('/api/buoi');
     if (!res.ok) {
       setError(res.error);
       setLoading(false);
@@ -64,27 +118,25 @@ export function HomeBuoiList({ user, initialBuoi = null }: HomeBuoiListProps) {
   }, []);
 
   useEffect(() => {
-    if (initialBuoi !== null && !donViFilter && !phuTrachFilter) {
+    if (initialBuoi !== null) {
       return;
     }
     let cancelled = false;
-    apiRequest<{ buoi: BuoiTomTat[] }>(buildBuoiUrl(donViFilter, phuTrachFilter)).then(
-      (res) => {
-        if (cancelled) return;
-        if (!res.ok) {
-          setError(res.error);
-          setLoading(false);
-          return;
-        }
-        setError('');
-        setBuoiList(res.data.buoi ?? []);
+    apiRequest<{ buoi: BuoiTomTat[] }>('/api/buoi').then((res) => {
+      if (cancelled) return;
+      if (!res.ok) {
+        setError(res.error);
         setLoading(false);
-      },
-    );
+        return;
+      }
+      setError('');
+      setBuoiList(res.data.buoi ?? []);
+      setLoading(false);
+    });
     return () => {
       cancelled = true;
     };
-  }, [donViFilter, phuTrachFilter, initialBuoi]);
+  }, [initialBuoi]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -99,6 +151,27 @@ export function HomeBuoiList({ user, initialBuoi = null }: HomeBuoiListProps) {
     };
   }, [isAdmin]);
 
+  const filteredBuoi = useMemo(
+    () =>
+      locDanhSachBuoi(buoiList, {
+        donVi: donViFilter,
+        trangThai: trangThaiFilter,
+        phuTrach: phuTrachFilter,
+        tuNgay: tuNgayFilter,
+        denNgay: denNgayFilter,
+        timNhanh: timNhanhFilter,
+      }),
+    [
+      buoiList,
+      donViFilter,
+      trangThaiFilter,
+      phuTrachFilter,
+      tuNgayFilter,
+      denNgayFilter,
+      timNhanhFilter,
+    ],
+  );
+
   const summary = useMemo(() => {
     let soDoan = 0;
     let hienCo = 0;
@@ -107,7 +180,7 @@ export function HomeBuoiList({ user, initialBuoi = null }: HomeBuoiListProps) {
     let thieu = 0;
     let soBuoiDaXacNhan = 0;
 
-    for (const b of buoiList) {
+    for (const b of filteredBuoi) {
       soDoan += b.so_doan_tong;
       hienCo += b.hien_co;
       daXacNhan += b.da_xac_nhan;
@@ -120,7 +193,7 @@ export function HomeBuoiList({ user, initialBuoi = null }: HomeBuoiListProps) {
 
     const tienDo = hienCo > 0 ? (daXacNhan / hienCo) * 100 : 0;
     return {
-      soBuoi: buoiList.length,
+      soBuoi: filteredBuoi.length,
       soBuoiDaXacNhan,
       soDoan,
       hienCo,
@@ -129,9 +202,35 @@ export function HomeBuoiList({ user, initialBuoi = null }: HomeBuoiListProps) {
       thieu,
       tienDo,
     };
-  }, [buoiList]);
+  }, [filteredBuoi]);
 
-  const hasActiveFilter = Boolean(donViFilter || phuTrachFilter);
+  const hasActiveFilter = Boolean(
+    donViFilter ||
+      trangThaiFilter ||
+      phuTrachFilter ||
+      tuNgayFilter ||
+      denNgayFilter ||
+      timNhanhFilter.trim(),
+  );
+
+  function handleResetFilters() {
+    setDonViFilter('');
+    setTrangThaiFilter('');
+    setPhuTrachFilter('');
+    setTuNgayFilter('');
+    setDenNgayFilter('');
+    setTimNhanhFilter('');
+  }
+
+  function handleJumpTimHoSo(e: FormEvent) {
+    e.preventDefault();
+    const q = hoSoJumpQuery.trim();
+    if (q) {
+      router.push(`/tim-kiem?q=${encodeURIComponent(q)}`);
+    } else {
+      router.push('/tim-kiem');
+    }
+  }
 
   return (
     <div className="page-container">
@@ -145,10 +244,26 @@ export function HomeBuoiList({ user, initialBuoi = null }: HomeBuoiListProps) {
           </p>
         </div>
         <div className="page-header-actions">
+          <form onSubmit={handleJumpTimHoSo} className="home-jump-search-form">
+            <label htmlFor="home-jump-tim-ho-so" className="sr-only">
+              Tìm hồ sơ nhanh
+            </label>
+            <input
+              id="home-jump-tim-ho-so"
+              type="search"
+              className="form-input form-input-sm home-jump-search-input"
+              placeholder="Tìm hồ sơ… (họ tên, năm sinh, CCCD)"
+              value={hoSoJumpQuery}
+              onChange={(e) => setHoSoJumpQuery(e.target.value)}
+            />
+            <button type="submit" className="btn btn-secondary btn-sm">
+              Tìm hồ sơ
+            </button>
+          </form>
           <button
             type="button"
             className="btn btn-secondary btn-sm"
-            onClick={() => void reloadBuoi(donViFilter, phuTrachFilter)}
+            onClick={() => void reloadBuoi()}
             disabled={loading}
           >
             {loading ? 'Đang tải…' : 'Tải lại'}
@@ -159,18 +274,20 @@ export function HomeBuoiList({ user, initialBuoi = null }: HomeBuoiListProps) {
         </div>
       </div>
 
-      <section className="summary-strip" aria-label="Tổng hợp các buổi đang hiển thị">
+      <section className="summary-strip" aria-label="Tổng hợp các buổi đang lọc">
         <div className="summary-card">
-          <span className="summary-label">Số buổi khám</span>
+          <span className="summary-label">
+            Số buổi khám{hasActiveFilter ? ' (đang lọc)' : ''}
+          </span>
           <strong className="summary-value num">{formatNumber(summary.soBuoi)}</strong>
           <span className="summary-sub">
-            Đã khóa: {formatNumber(summary.soBuoiDaXacNhan)} buổi
+            Đã khóa: {formatNumber(summary.soBuoiDaXacNhan)} / Tổng: {formatNumber(buoiList.length)} buổi
           </span>
         </div>
         <div className="summary-card">
-          <span className="summary-label">Tổng sổ đoàn</span>
+          <span className="summary-label">Tổng {NHAN.SO_DOAN}</span>
           <strong className="summary-value num">{formatNumber(summary.soDoan)}</strong>
-          <span className="summary-sub">Người theo sổ khám</span>
+          <span className="summary-sub">Người theo {NHAN.SO_DOAN}</span>
         </div>
         <div className="summary-card">
           <span className="summary-label">Tổng hồ sơ trong DS</span>
@@ -197,42 +314,53 @@ export function HomeBuoiList({ user, initialBuoi = null }: HomeBuoiListProps) {
         </div>
       </section>
 
-      {isAdmin && (
-        <div className="filter-bar">
-          <div className="filter-group">
-            <label htmlFor="filter-don-vi" className="filter-label">
-              Đơn vị:
-            </label>
-            <select
-              id="filter-don-vi"
-              className="form-select"
-              value={donViFilter}
-              onChange={(e) => {
-                setLoading(true);
-                setDonViFilter(e.target.value);
-              }}
-            >
-              <option value="">Tất cả đơn vị</option>
-              {(Object.keys(DON_VI) as Array<keyof typeof DON_VI>).map((code) => (
-                <option key={code} value={code}>
-                  {DON_VI[code]} ({code})
-                </option>
-              ))}
-            </select>
-          </div>
+      <div className="filter-bar">
+        <div className="filter-group">
+          <label htmlFor="filter-don-vi" className="filter-label">
+            Đơn vị:
+          </label>
+          <select
+            id="filter-don-vi"
+            className="form-select"
+            value={donViFilter}
+            onChange={(e) => setDonViFilter(e.target.value)}
+          >
+            <option value="">Tất cả đơn vị</option>
+            {(Object.keys(DON_VI) as Array<keyof typeof DON_VI>).map((code) => (
+              <option key={code} value={code}>
+                {DON_VI[code]} ({code})
+              </option>
+            ))}
+          </select>
+        </div>
 
+        <div className="filter-group">
+          <label htmlFor="filter-trang-thai" className="filter-label">
+            Trạng thái:
+          </label>
+          <select
+            id="filter-trang-thai"
+            className="form-select"
+            value={trangThaiFilter}
+            onChange={(e) => setTrangThaiFilter(e.target.value)}
+          >
+            <option value="">Tất cả trạng thái</option>
+            <option value="chua_ra_soat">Chưa rà soát</option>
+            <option value="dang_ra_soat">Đang rà soát</option>
+            <option value="da_xac_nhan">Đã xác nhận</option>
+          </select>
+        </div>
+
+        {isAdmin && (
           <div className="filter-group">
             <label htmlFor="filter-phu-trach" className="filter-label">
-              Người phụ trách:
+              Phụ trách:
             </label>
             <select
               id="filter-phu-trach"
               className="form-select"
               value={phuTrachFilter}
-              onChange={(e) => {
-                setLoading(true);
-                setPhuTrachFilter(e.target.value);
-              }}
+              onChange={(e) => setPhuTrachFilter(e.target.value)}
             >
               <option value="">Tất cả người phụ trách</option>
               <option value="none">Chưa phân công</option>
@@ -243,23 +371,55 @@ export function HomeBuoiList({ user, initialBuoi = null }: HomeBuoiListProps) {
               ))}
             </select>
           </div>
+        )}
 
-          {hasActiveFilter && (
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => {
-                setLoading(true);
-                setDonViFilter('');
-                setPhuTrachFilter('');
-                void reloadBuoi('', '');
-              }}
-            >
-              Xóa bộ lọc
-            </button>
-          )}
+        <div className="filter-group">
+          <label htmlFor="filter-tu-ngay" className="filter-label">
+            Từ ngày:
+          </label>
+          <input
+            id="filter-tu-ngay"
+            type="date"
+            className="form-input form-input-sm input-date-compact"
+            value={tuNgayFilter}
+            onChange={(e) => setTuNgayFilter(e.target.value)}
+          />
+          <label htmlFor="filter-den-ngay" className="filter-label">
+            Đến:
+          </label>
+          <input
+            id="filter-den-ngay"
+            type="date"
+            className="form-input form-input-sm input-date-compact"
+            value={denNgayFilter}
+            onChange={(e) => setDenNgayFilter(e.target.value)}
+          />
         </div>
-      )}
+
+        <div className="filter-group">
+          <label htmlFor="filter-tim-nhanh-buoi" className="filter-label">
+            Tìm nhanh:
+          </label>
+          <input
+            id="filter-tim-nhanh-buoi"
+            type="search"
+            className="form-input form-input-sm input-quick-buoi"
+            placeholder="Ngày (14/09), điểm khám, đoàn…"
+            value={timNhanhFilter}
+            onChange={(e) => setTimNhanhFilter(e.target.value)}
+          />
+        </div>
+
+        {hasActiveFilter && (
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={handleResetFilters}
+          >
+            Xóa lọc
+          </button>
+        )}
+      </div>
 
       {error && (
         <div className="state-box state-error" role="alert">
@@ -270,7 +430,7 @@ export function HomeBuoiList({ user, initialBuoi = null }: HomeBuoiListProps) {
           <button
             type="button"
             className="btn btn-primary btn-sm"
-            onClick={() => void reloadBuoi(donViFilter, phuTrachFilter)}
+            onClick={() => void reloadBuoi()}
           >
             Thử tải lại
           </button>
@@ -283,7 +443,7 @@ export function HomeBuoiList({ user, initialBuoi = null }: HomeBuoiListProps) {
         </div>
       )}
 
-      {!error && !loading && buoiList.length === 0 && (
+      {!error && !loading && filteredBuoi.length === 0 && (
         <div className="state-box">
           {hasActiveFilter ? (
             <>
@@ -291,18 +451,14 @@ export function HomeBuoiList({ user, initialBuoi = null }: HomeBuoiListProps) {
                 Không có buổi khám nào khớp với bộ lọc đang chọn.
               </p>
               <p className="state-desc">
-                Hãy chọn lại Đơn vị hoặc Người phụ trách để xem toàn bộ danh sách.
+                Đang hiển thị 0 / {formatNumber(buoiList.length)} buổi khám. Hãy nới điều kiện lọc hoặc bấm Xóa lọc.
               </p>
               <button
                 type="button"
                 className="btn btn-secondary btn-sm"
-                onClick={() => {
-                  setDonViFilter('');
-                  setPhuTrachFilter('');
-                  void reloadBuoi('', '');
-                }}
+                onClick={handleResetFilters}
               >
-                Hiển thị tất cả buổi khám
+                Xóa lọc
               </button>
             </>
           ) : (
@@ -320,7 +476,7 @@ export function HomeBuoiList({ user, initialBuoi = null }: HomeBuoiListProps) {
         </div>
       )}
 
-      {buoiList.length > 0 && (
+      {filteredBuoi.length > 0 && (
         <div className="table-wrap">
           <table className="data-table">
             <thead>
@@ -329,7 +485,7 @@ export function HomeBuoiList({ user, initialBuoi = null }: HomeBuoiListProps) {
                 <th>Ngày</th>
                 <th>Điểm khám</th>
                 {isAdmin && <th>Người phụ trách</th>}
-                <th className="num-col">Sổ đoàn</th>
+                <th className="num-col">{NHAN.SO_DOAN}</th>
                 <th className="num-col">Trong DS</th>
                 <th className="num-col">Đã xác nhận</th>
                 <th className="num-col">Thừa</th>
@@ -339,7 +495,7 @@ export function HomeBuoiList({ user, initialBuoi = null }: HomeBuoiListProps) {
               </tr>
             </thead>
             <tbody>
-              {buoiList.map((b) => (
+              {filteredBuoi.map((b) => (
                 <tr
                   key={b.id}
                   className="clickable-row"

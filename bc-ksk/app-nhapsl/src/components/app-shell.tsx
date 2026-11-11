@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useState,
@@ -10,6 +11,8 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LogoutButton } from '@/app/logout-button';
+import type { DeNghiChuyen, KetQuaTimKiem } from '@/lib/api-types';
+import { formatNumber } from '@/lib/client/format';
 
 export type ShellUser = {
   id: number;
@@ -17,6 +20,12 @@ export type ShellUser = {
   ho_ten: string;
   role: 'admin' | 'nhan_vien';
 };
+
+export function notifyPoolChanged(): void {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('nhapsl:pool-changed'));
+  }
+}
 
 const AppShellActiveContext = createContext<boolean>(false);
 
@@ -30,6 +39,8 @@ export function AppShell({ user: propUser, children, fullWidth = false }: AppShe
   const pathname = usePathname();
   const isInsideShell = useContext(AppShellActiveContext);
   const [fetchedUser, setFetchedUser] = useState<ShellUser | null>(null);
+  const [khoCaNhanCount, setKhoCaNhanCount] = useState<number>(0);
+  const [deNghiChoCount, setDeNghiChoCount] = useState<number>(0);
 
   const isLoginPage = pathname === '/dang-nhap' || pathname.startsWith('/dang-nhap/');
   const currentUser = propUser ?? fetchedUser;
@@ -54,6 +65,41 @@ export function AppShell({ user: propUser, children, fullWidth = false }: AppShe
     };
   }, [isLoginPage, propUser, pathname]);
 
+  const loadNavCounts = useCallback(() => {
+    if (isLoginPage || isInsideShell) return;
+
+    fetch('/api/kho-ca-nhan', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { ho_so?: KetQuaTimKiem[] } | null) => {
+        if (data && Array.isArray(data.ho_so)) {
+          setKhoCaNhanCount(data.ho_so.length);
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/de-nghi-chuyen?trang_thai=cho_xu_ly', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { de_nghi?: DeNghiChuyen[] } | null) => {
+        if (data && Array.isArray(data.de_nghi)) {
+          setDeNghiChoCount(data.de_nghi.length);
+        }
+      })
+      .catch(() => {});
+  }, [isInsideShell, isLoginPage]);
+
+  useEffect(() => {
+    if (isLoginPage || isInsideShell) return;
+    loadNavCounts();
+
+    const handlePoolChanged = () => {
+      loadNavCounts();
+    };
+    window.addEventListener('nhapsl:pool-changed', handlePoolChanged);
+    return () => {
+      window.removeEventListener('nhapsl:pool-changed', handlePoolChanged);
+    };
+  }, [isInsideShell, isLoginPage, loadNavCounts, pathname]);
+
   if (isLoginPage) {
     return <>{children}</>;
   }
@@ -67,6 +113,8 @@ export function AppShell({ user: propUser, children, fullWidth = false }: AppShe
 
   const isHomeActive = pathname === '/';
   const isRaSoatActive = pathname === '/ra-soat' || pathname.startsWith('/ra-soat/');
+  const isKhoActive = pathname === '/kho' || pathname.startsWith('/kho/');
+  const isTimKiemActive = pathname === '/tim-kiem' || pathname.startsWith('/tim-kiem/');
   const isPhanCongActive = pathname.startsWith('/admin/phan-cong');
   const isNguoiDungActive = pathname.startsWith('/admin/nguoi-dung');
   const isDoiMatKhauActive = pathname.startsWith('/doi-mat-khau');
@@ -94,6 +142,36 @@ export function AppShell({ user: propUser, children, fullWidth = false }: AppShe
                   aria-current={isRaSoatActive ? 'page' : undefined}
                 >
                   Rà soát
+                </Link>
+                <Link
+                  href="/kho"
+                  className={`app-nav-link ${isKhoActive ? 'active' : ''}`}
+                  aria-current={isKhoActive ? 'page' : undefined}
+                >
+                  <span>Kho chờ</span>
+                  <span
+                    className={`nav-badge num ${khoCaNhanCount > 0 ? 'nav-badge-primary' : 'nav-badge-neutral'}`}
+                    title={`Kho của tôi: ${formatNumber(khoCaNhanCount)} hồ sơ`}
+                    aria-label={`Kho của tôi: ${formatNumber(khoCaNhanCount)} hồ sơ`}
+                  >
+                    {formatNumber(khoCaNhanCount)}
+                  </span>
+                  {deNghiChoCount > 0 && (
+                    <span
+                      className="nav-badge nav-badge-warning num"
+                      title={`Đề nghị chuyển chờ xử lý: ${formatNumber(deNghiChoCount)}`}
+                      aria-label={`Đề nghị chuyển chờ xử lý: ${formatNumber(deNghiChoCount)}`}
+                    >
+                      Đề nghị: {formatNumber(deNghiChoCount)}
+                    </span>
+                  )}
+                </Link>
+                <Link
+                  href="/tim-kiem"
+                  className={`app-nav-link ${isTimKiemActive ? 'active' : ''}`}
+                  aria-current={isTimKiemActive ? 'page' : undefined}
+                >
+                  Tìm kiếm
                 </Link>
                 {isAdmin && (
                   <>

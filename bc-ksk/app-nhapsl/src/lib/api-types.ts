@@ -74,6 +74,7 @@ export type HoSoDong = {
 // ---- Requests / responses ----
 // GET  /api/buoi?don_vi=TN&phu_trach=<user_id|'none'>&trang_thai=…   → { buoi: BuoiTomTat[] }
 //      staff: only sessions assigned to them; admin: all (filters optional). Sorted by don_vi (TN,LK,VK), ngay_kham.
+//      ?tat_ca=1 (phase 4): ALL sessions for any user (target picker for 'chuyển sang buổi khác'); co_quyen_sua as usual.
 // GET  /api/buoi/:key            (key = numeric id or ma_buoi)        → { buoi: BuoiTomTat }   staff not assignee → 403
 // GET  /api/buoi/:key/ho-so                                            → { buoi: BuoiTomTat, ho_so: HoSoDong[] } (ORDER BY id)
 // PATCH /api/ho-so/:id   body HoSoSuaBody                              → { ho_so: HoSoDong }
@@ -92,6 +93,97 @@ export type HoSoDong = {
 //      ghi_de=false (default): only sessions without assignee. Unknown nv_goi_y → listed in bo_qua.
 // PATCH /api/buoi/:key     body { diem_kham?, doan_kham?, so_doan_tong? } → { buoi: BuoiTomTat }
 // POST /api/buoi           body { don_vi, ngay_kham, diem_kham?, doan_kham?, so_doan_tong } → { buoi: BuoiTomTat }
+
+// ---- Phase 3: search (PLAN3.md) ----
+// GET /api/tim-kiem?q=<text>&pham_vi=buoi|cua_toi|kho_chung|tat_ca[&buoi=<id|ma_buoi>]
+//   q: free text, split on whitespace, every token must match (AND). Vietnamese-insensitive.
+//   pham_vi=buoi requires `buoi` (staff: must be assignee → else 403). cua_toi = sessions assigned to me
+//   (admin: all sessions). kho_chung = shared pool. tat_ca = whole app (staff may search; results are read-only).
+//   q shorter than 2 chars after trim → 400. ORDER BY don_vi (TN,LK,VK), ngay_kham, id.
+//   Limit: pham_vi=buoi → no limit (whole session); other scopes → 200.
+//   → { ket_qua: KetQuaTimKiem[], tong: number, gioi_han: number | null }   (tong = total matches before the limit)
+// Token matching (after khongDau + lowercase; tokens AND-ed):
+//   letters only      → a word of ho_ten_kd starts with the token ("ng van an", "thuy" matches Thủy/Thuỷ)
+//   exactly 4 digits  → nam_sinh = token OR cccd/ma_kcb/so_dt/so_the_bhyt contains token
+//   ≥ 5 digits        → cccd/ma_kcb/so_dt/so_the_bhyt contains token
+//   1–3 digits        → ignored (too broad)
+//   letters + digits  → so_the_bhyt or ma_kcb contains token (case-insensitive)
+export type KetQuaTimKiem = HoSoDong & {
+  vi_tri: 'buoi' | 'kho_ca_nhan' | 'kho_chung' | 'an';
+  buoi: { id: number; ma_buoi: string; don_vi: 'TN' | 'LK' | 'VK'; ngay_kham: string; phu_trach: UserNgan | null } | null;
+  kho_cua: UserNgan | null;     // owner when vi_tri = 'kho_ca_nhan'
+  don_vi_goi_y: string;
+  co_quyen_sua: boolean;        // same rule as BuoiTomTat.co_quyen_sua for the record's location
+  chuyen?: ThongTinChuyen;      // phase 4: last move info (present on pool endpoints)
+};
+
+// ---- Phase 4: move / pools / add / list confirmation (PLAN4.md) ----
+// Where a record was moved from (set on every move; shown in pools).
+export type ThongTinChuyen = { tu: string; boi: UserNgan | null; luc: string | null; ly_do: string } | null;
+//   KetQuaTimKiem gains: chuyen: ThongTinChuyen
+//
+// POST /api/ho-so/:id/chuyen   body ChuyenBody → { ho_so: KetQuaTimKiem, buoi_cu: BuoiTomTat | null, buoi_moi: BuoiTomTat | null }
+//   Source must be writable by user (own session / own personal pool / admin). Confirmed record → 400
+//   'Bỏ xác nhận trước khi chuyển'. Source or target session locked → 423. den='buoi' requires ly_do (400) and any
+//   session (may belong to someone else). den='kho_ca_nhan' = the CURRENT user's pool. Sets da_di_chuyen=true,
+//   chuyen_* fields; audit 'chuyen' truong='vi_tri' cũ→mới (e.g. 'TN-20260907' → 'kho_chung'), ghi_chu=ly_do.
+// POST /api/ho-so/:id/nhan-ve  body { version, buoi } → same response shape
+//   From kho_chung (any user) or own kho_ca_nhan (admin: any) into a session the user is in charge of (admin: any),
+//   not locked. From kho_chung → nhan_tu_kho_chung=true. Audit 'nhan_ve'.
+// GET  /api/kho-ca-nhan[?user=<id> admin only]          → { ho_so: KetQuaTimKiem[] }
+// GET  /api/kho-chung?don_vi=&q=                         → { ho_so: KetQuaTimKiem[], tong: number }
+//   q optional (same token rules as /api/tim-kiem); don_vi filters on don_vi_goi_y. No limit (pool ≈ 400).
+// POST /api/ho-so/kiem-trung   body { ma_kcb?, cccd?, ho_ten?, nam_sinh? } → { trung: KetQuaTimKiem[] }
+//   Duplicate if same non-empty cccd, OR same non-empty ma_kcb, OR same khongDau(ho_ten) + nam_sinh. Excludes vi_tri='an'.
+// POST /api/buoi/:key/ho-so    body ThemHoSoBody → { ho_so: HoSoDong, buoi: BuoiTomTat }
+//   Needs write access to the session (not locked). If duplicates exist and !ly_do_tao_moi → 409
+//   { error: 'Có hồ sơ trùng', trung: KetQuaTimKiem[] }. Creates nguon='them_tay', ma_ho_so NULL, src NULL,
+//   da_xac_nhan=true (by user, now), audit 'them_ho_so' (ghi_chu = ly_do_tao_moi when given).
+// POST /api/buoi/:key/xac-nhan body { giai_trinh? } → { buoi: BuoiTomTat }
+//   Assignee or admin. Every vi_tri='buoi' record confirmed, else 400 'Còn N hồ sơ chưa xác nhận'. hien_co ≠
+//   so_doan_tong → giai_trinh required (400). Sets trang_thai='da_xac_nhan', xac_nhan_by/at, giai_trinh. Audit.
+// POST /api/buoi/:key/mo-khoa  body { ly_do } (admin) → { buoi } ; ly_do required; trang_thai recomputed. Audit.
+// POST /api/de-nghi-chuyen     body { ho_so_id, den_buoi, ly_do } → { de_nghi: DeNghiChuyen }
+//   Any user, for a record they can NOT write (in someone else's session); den_buoi must be the requester's
+//   session (admin: any). Duplicate pending request for the same record → 400.
+// GET  /api/de-nghi-chuyen?trang_thai=cho_xu_ly          → { de_nghi: DeNghiChuyen[] }
+//   Returns requests I made + requests about records currently in sessions I'm in charge of; admin: all.
+// POST /api/de-nghi-chuyen/:id/xu-ly body { dong_y: boolean, ghi_chu? } → { de_nghi: DeNghiChuyen }
+//   Current holder (assignee of the record's session) or admin. dong_y → performs the move (same rules as chuyen,
+//   reason = request ly_do); record confirmed or sessions locked → 400/423 and request stays pending.
+
+export type ChuyenBody = {
+  version: number;
+  den: 'kho_ca_nhan' | 'kho_chung' | 'buoi';
+  buoi?: number | string;       // id or ma_buoi when den='buoi'
+  ly_do?: string;
+};
+
+export type ThemHoSoBody = {
+  ma_kcb?: string;
+  ho_ten: string;
+  gioi_tinh: 'Nam' | 'Nữ';
+  nam_sinh: number;
+  cccd?: string;                // '' or 9/12 digits
+  dia_chi_chi_tiet?: string;
+  cls: ClsMap;
+  ghi_chu?: string;
+  ly_do_tao_moi?: string;       // required when duplicates exist
+};
+
+export type DeNghiChuyen = {
+  id: number;
+  ho_so: { id: number; ho_ten: string; nam_sinh: number; cccd: string; ma_kcb: string };
+  tu_buoi: { ma_buoi: string; phu_trach: UserNgan | null } | null;   // where the record is now
+  den_buoi: { id: number; ma_buoi: string };
+  nguoi_de_nghi: UserNgan;
+  ly_do: string;
+  trang_thai: 'cho_xu_ly' | 'dong_y' | 'tu_choi';
+  created_at: string;
+  xu_ly_by: UserNgan | null;
+  xu_ly_at: string | null;
+  xu_ly_ghi_chu: string;
+};
 
 export type HoSoSuaBody = {
   version: number;
@@ -139,6 +231,13 @@ export const HANH_DONG_NHAN: Record<string, string> = {
   sua_user: 'Sửa tài khoản',
   dat_lai_mat_khau: 'Đặt lại mật khẩu',
   cap_mat_khau: 'Cấp mật khẩu',
+  chuyen: 'Chuyển hồ sơ',
+  nhan_ve: 'Nhận hồ sơ về',
+  them_ho_so: 'Thêm hồ sơ',
+  xac_nhan_buoi: 'Xác nhận rà soát xong danh sách',
+  mo_khoa_buoi: 'Mở khóa danh sách',
+  de_nghi_chuyen: 'Đề nghị chuyển',
+  xu_ly_de_nghi: 'Xử lý đề nghị chuyển',
   dang_nhap: 'Đăng nhập',
   dang_xuat: 'Đăng xuất',
   doi_mat_khau: 'Đổi mật khẩu',

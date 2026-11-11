@@ -11,14 +11,24 @@ import {
 
 export type ToastKind = 'info' | 'success' | 'warning' | 'error';
 
+export type ToastAction = {
+  label: string;
+  onClick: () => void;
+};
+
 export type ToastItem = {
   id: number;
   kind: ToastKind;
   message: string;
+  action?: ToastAction;
 };
 
 type ToastContextValue = {
-  showToast: (message: string, kind?: ToastKind) => void;
+  showToast: (
+    message: string,
+    kind?: ToastKind,
+    action?: ToastAction,
+  ) => void;
 };
 
 const ToastContext = createContext<ToastContextValue>({
@@ -42,12 +52,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const showToast = useCallback(
-    (message: string, kind: ToastKind = 'info') => {
+    (message: string, kind: ToastKind = 'info', action?: ToastAction) => {
       const id = nextToastId++;
-      setToasts((prev) => [...prev.slice(-4), { id, kind, message }]);
+      setToasts((prev) => [...prev.slice(-4), { id, kind, message, action }]);
       window.setTimeout(() => {
         removeToast(id);
-      }, 4500);
+      }, action ? 8000 : 4500);
     },
     [removeToast],
   );
@@ -68,6 +78,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               <div className="toast-content">
                 <strong className="toast-prefix">{KIND_PREFIX[item.kind]}:</strong>{' '}
                 <span>{item.message}</span>
+                {item.action && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-xs toast-action-btn"
+                    onClick={() => {
+                      removeToast(item.id);
+                      item.action?.onClick();
+                    }}
+                  >
+                    {item.action.label}
+                  </button>
+                )}
               </div>
               <button
                 type="button"
