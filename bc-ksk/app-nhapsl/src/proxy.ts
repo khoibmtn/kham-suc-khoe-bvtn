@@ -19,6 +19,7 @@ function isPublicPath(pathname: string): boolean {
   if (
     pathname === '/dang-nhap' ||
     pathname === '/api/auth/login' ||
+    pathname === '/api/auth/ds-dang-nhap' ||
     pathname === '/robots.txt' ||
     pathname === '/favicon.ico' ||
     pathname.startsWith('/_next/')

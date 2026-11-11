@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, type FormEvent } from 'react';
+import { Suspense, useEffect, useState, type FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { sanitizeNextPath } from '@/lib/auth/session';
 
@@ -11,6 +11,14 @@ function LoginForm() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [dsTaiKhoan, setDsTaiKhoan] = useState<{ username: string; ho_ten: string }[] | null>(null);
+
+  useEffect(() => {
+    fetch('/api/auth/ds-dang-nhap')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((ds: { username: string; ho_ten: string }[]) => setDsTaiKhoan(ds))
+      .catch(() => setDsTaiKhoan([]));
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -59,18 +67,38 @@ function LoginForm() {
           <label htmlFor="username" className="form-label">
             Tên đăng nhập
           </label>
-          <input
-            id="username"
-            name="username"
-            type="text"
-            className="form-input"
-            autoComplete="username"
-            autoFocus
-            required
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            disabled={submitting}
-          />
+          {dsTaiKhoan && dsTaiKhoan.length > 0 ? (
+            <select
+              id="username"
+              name="username"
+              className="form-input"
+              autoFocus
+              required
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              disabled={submitting}
+            >
+              <option value="">— Chọn tên của bạn —</option>
+              {dsTaiKhoan.map((u) => (
+                <option key={u.username} value={u.username}>
+                  {u.ho_ten} ({u.username})
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              id="username"
+              name="username"
+              type="text"
+              className="form-input"
+              autoComplete="username"
+              autoFocus
+              required
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              disabled={submitting}
+            />
+          )}
         </div>
 
         <div className="form-field">

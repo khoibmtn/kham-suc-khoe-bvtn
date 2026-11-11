@@ -1,50 +1,57 @@
 import { Suspense } from 'react';
-import Link from 'next/link';
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth/guard';
-import { LogoutButton } from './logout-button';
+import type { BuoiTomTat } from '@/lib/api-types';
+import { AppShell } from '@/components/app-shell';
+import { HomeBuoiList } from '@/components/home-buoi-list';
 
-async function HomeUserCard() {
+async function fetchInitialBuoi(): Promise<BuoiTomTat[] | null> {
+  try {
+    const h = await headers();
+    const host = h.get('host');
+    if (!host) return null;
+    const proto = h.get('x-forwarded-proto') ?? 'http';
+    const cookie = h.get('cookie') ?? '';
+    const res = await fetch(`${proto}://${host}/api/buoi`, {
+      headers: { cookie },
+      cache: 'no-store',
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { buoi?: BuoiTomTat[] };
+    return Array.isArray(data.buoi) ? data.buoi : null;
+  } catch {
+    return null;
+  }
+}
+
+async function HomeContent() {
   const user = await getCurrentUser();
   if (!user) {
     redirect('/dang-nhap');
   }
 
-  const vaiTroNhan = user.role === 'admin' ? 'Quản trị' : 'Nhân viên';
+  const initialBuoi = await fetchInitialBuoi();
 
   return (
-    <div className="auth-card">
-      <div className="auth-header">
-        <h1 className="auth-title">Xin chào, {user.ho_ten}</h1>
-        <p className="auth-subtitle">Rà soát hồ sơ khám sức khỏe toàn dân 2026</p>
-      </div>
-
-      <p className="auth-meta">
-        Tài khoản: <strong>{user.username}</strong> · Vai trò: <strong>{vaiTroNhan}</strong>
-      </p>
-
-      <div className="auth-actions-row">
-        <Link href="/doi-mat-khau" className="btn btn-secondary">
-          Đổi mật khẩu
-        </Link>
-        <LogoutButton />
-      </div>
-    </div>
+    <AppShell user={user}>
+      <HomeBuoiList user={user} initialBuoi={initialBuoi} />
+    </AppShell>
   );
 }
 
 export default function HomePage() {
   return (
-    <main className="auth-shell">
-      <Suspense
-        fallback={
-          <div className="auth-card">
-            <p className="auth-subtitle">Đang tải thông tin tài khoản…</p>
+    <Suspense
+      fallback={
+        <div className="page-container">
+          <div className="state-box">
+            <p className="state-title">Đang tải danh sách buổi khám…</p>
           </div>
-        }
-      >
-        <HomeUserCard />
-      </Suspense>
-    </main>
+        </div>
+      }
+    >
+      <HomeContent />
+    </Suspense>
   );
 }

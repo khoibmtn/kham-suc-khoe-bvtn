@@ -39,9 +39,9 @@ export async function POST(request: Request): Promise<Response> {
   if (!mat_khau_cu) {
     return Response.json({ error: 'Vui lòng nhập mật khẩu hiện tại' }, { status: 400 });
   }
-  if (!mat_khau_moi || mat_khau_moi.length < 8) {
+  if (!mat_khau_moi || mat_khau_moi.length < 6) {
     return Response.json(
-      { error: 'Mật khẩu mới phải có ít nhất 8 ký tự' },
+      { error: 'Mật khẩu mới phải có ít nhất 6 ký tự' },
       { status: 400 },
     );
   }

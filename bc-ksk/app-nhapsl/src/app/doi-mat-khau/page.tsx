@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { AppShell } from '@/components/app-shell';
 
 export default function DoiMatKhauPage() {
   const router = useRouter();
@@ -18,8 +19,8 @@ export default function DoiMatKhauPage() {
     setError('');
     setSuccess('');
 
-    if (matKhauMoi.length < 8) {
-      setError('Mật khẩu mới phải có ít nhất 8 ký tự');
+    if (matKhauMoi.length < 6) {
+      setError('Mật khẩu mới phải có ít nhất 6 ký tự');
       return;
     }
 
@@ -63,88 +64,90 @@ export default function DoiMatKhauPage() {
   }
 
   return (
-    <main className="auth-shell">
-      <div className="auth-card">
-        <div className="auth-header">
-          <h1 className="auth-title">Đổi mật khẩu</h1>
-          <p className="auth-subtitle">Mật khẩu mới cần ít nhất 8 ký tự</p>
-        </div>
+    <AppShell>
+      <div className="centered-page-box">
+        <div className="auth-card">
+          <div className="auth-header">
+            <h1 className="auth-title">Đổi mật khẩu</h1>
+            <p className="auth-subtitle">Mật khẩu mới cần ít nhất 6 ký tự</p>
+          </div>
 
-        <form onSubmit={handleSubmit} className="form-stack">
-          {error && (
-            <div className="alert alert-error" role="alert">
-              {error}
+          <form onSubmit={handleSubmit} className="form-stack">
+            {error && (
+              <div className="alert alert-error" role="alert">
+                {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="alert alert-success" role="status">
+                {success}
+              </div>
+            )}
+
+            <div className="form-field">
+              <label htmlFor="mat_khau_cu" className="form-label">
+                Mật khẩu hiện tại
+              </label>
+              <input
+                id="mat_khau_cu"
+                name="mat_khau_cu"
+                type="password"
+                className="form-input"
+                autoComplete="current-password"
+                required
+                value={matKhauCu}
+                onChange={(e) => setMatKhauCu(e.target.value)}
+                disabled={submitting}
+              />
             </div>
-          )}
 
-          {success && (
-            <div className="alert alert-success" role="status">
-              {success}
+            <div className="form-field">
+              <label htmlFor="mat_khau_moi" className="form-label">
+                Mật khẩu mới
+              </label>
+              <input
+                id="mat_khau_moi"
+                name="mat_khau_moi"
+                type="password"
+                className="form-input"
+                autoComplete="new-password"
+                minLength={6}
+                required
+                value={matKhauMoi}
+                onChange={(e) => setMatKhauMoi(e.target.value)}
+                disabled={submitting}
+              />
             </div>
-          )}
 
-          <div className="form-field">
-            <label htmlFor="mat_khau_cu" className="form-label">
-              Mật khẩu hiện tại
-            </label>
-            <input
-              id="mat_khau_cu"
-              name="mat_khau_cu"
-              type="password"
-              className="form-input"
-              autoComplete="current-password"
-              required
-              value={matKhauCu}
-              onChange={(e) => setMatKhauCu(e.target.value)}
-              disabled={submitting}
-            />
+            <div className="form-field">
+              <label htmlFor="nhap_lai_mat_khau" className="form-label">
+                Nhập lại mật khẩu mới
+              </label>
+              <input
+                id="nhap_lai_mat_khau"
+                name="nhap_lai_mat_khau"
+                type="password"
+                className="form-input"
+                autoComplete="new-password"
+                minLength={6}
+                required
+                value={nhapLaiMatKhau}
+                onChange={(e) => setNhapLaiMatKhau(e.target.value)}
+                disabled={submitting}
+              />
+            </div>
+
+            <button type="submit" className="btn btn-primary btn-block" disabled={submitting}>
+              {submitting ? 'Đang cập nhật…' : 'Cập nhật mật khẩu'}
+            </button>
+          </form>
+
+          <div className="auth-footer-link">
+            <Link href="/">← Quay lại trang chủ</Link>
           </div>
-
-          <div className="form-field">
-            <label htmlFor="mat_khau_moi" className="form-label">
-              Mật khẩu mới
-            </label>
-            <input
-              id="mat_khau_moi"
-              name="mat_khau_moi"
-              type="password"
-              className="form-input"
-              autoComplete="new-password"
-              minLength={8}
-              required
-              value={matKhauMoi}
-              onChange={(e) => setMatKhauMoi(e.target.value)}
-              disabled={submitting}
-            />
-          </div>
-
-          <div className="form-field">
-            <label htmlFor="nhap_lai_mat_khau" className="form-label">
-              Nhập lại mật khẩu mới
-            </label>
-            <input
-              id="nhap_lai_mat_khau"
-              name="nhap_lai_mat_khau"
-              type="password"
-              className="form-input"
-              autoComplete="new-password"
-              minLength={8}
-              required
-              value={nhapLaiMatKhau}
-              onChange={(e) => setNhapLaiMatKhau(e.target.value)}
-              disabled={submitting}
-            />
-          </div>
-
-          <button type="submit" className="btn btn-primary btn-block" disabled={submitting}>
-            {submitting ? 'Đang cập nhật…' : 'Cập nhật mật khẩu'}
-          </button>
-        </form>
-
-        <div className="auth-footer-link">
-          <Link href="/">← Quay lại trang chủ</Link>
         </div>
       </div>
-    </main>
+    </AppShell>
   );
 }

@@ -28,6 +28,14 @@ type OutputRow = {
   status: 'tao_moi' | 'cap_mat_khau' | 'giu_nguyen';
 };
 
+// Mật khẩu mặc định do anh Khôi chốt 11/11/2026 (app dùng 2 ngày, nhân viên tự đổi nếu muốn).
+// --ngau-nhien: sinh mật khẩu ngẫu nhiên thay vì mặc định.
+// --dat-lai: đặt lại mật khẩu cả user đã có mật khẩu (vô hiệu phiên cũ).
+const MAT_KHAU_MAC_DINH = '123456';
+let NGAU_NHIEN = false;
+let DAT_LAI = false;
+const taoMatKhau = () => (NGAU_NHIEN ? generateReadablePassword(10) : MAT_KHAU_MAC_DINH);
+
 function parseArgs(argv: string[]): { pkgDir: string; outFile: string | null } {
   let pkgDir = '';
   let outFile: string | null = null;
@@ -46,6 +54,10 @@ function parseArgs(argv: string[]): { pkgDir: string; outFile: string | null } {
       if (!outFile) {
         throw new Error('Thiếu đường dẫn file sau cờ --out=');
       }
+    } else if (arg === '--ngau-nhien') {
+      NGAU_NHIEN = true;
+    } else if (arg === '--dat-lai') {
+      DAT_LAI = true;
     } else if (arg.startsWith('--')) {
       throw new Error(`Cờ không hợp lệ: ${arg}`);
     } else if (!pkgDir) {
@@ -56,7 +68,7 @@ function parseArgs(argv: string[]): { pkgDir: string; outFile: string | null } {
   }
 
   if (!pkgDir) {
-    throw new Error('Cách dùng: npm run users:create -- <thư_mục_gói> [--out <file>]');
+    throw new Error('Cách dùng: npm run users:create -- <thư_mục_gói> [--out <file>] [--ngau-nhien] [--dat-lai]');
   }
 
   return { pkgDir, outFile };
@@ -161,7 +173,7 @@ async function main(): Promise<void> {
     const existing = existingRows[0];
 
     if (!existing) {
-      const plainPassword = generateReadablePassword(10);
+      const plainPassword = taoMatKhau();
       const passwordHash = await hashPassword(plainPassword);
 
       await sql.begin(async (tx) => {
@@ -189,8 +201,8 @@ async function main(): Promise<void> {
         matKhau: plainPassword,
         status: 'tao_moi',
       });
-    } else if (existing.password_hash === null) {
-      const plainPassword = generateReadablePassword(10);
+    } else if (existing.password_hash === null || DAT_LAI) {
+      const plainPassword = taoMatKhau();
       const passwordHash = await hashPassword(plainPassword);
 
       await sql.begin(async (tx) => {
