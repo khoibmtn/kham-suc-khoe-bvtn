@@ -1,0 +1,354 @@
+// Nội dung hướng dẫn sử dụng nhanh — một nguồn duy nhất cho trang /huong-dan và docs/HUONG-DAN-NHANH.md
+// (sinh bằng `npx tsx scripts/demo/tao-huong-dan-md.ts`). Cú pháp chữ: **đậm**, `phím/nút`.
+// Ảnh chụp trên CSDL demo (dữ liệu giả) — xem scripts/demo/chup-huong-dan.ts.
+
+export type Buoc = { n?: number; t: string };
+export type Anh = { file: string; alt: string };
+export type Khoi = { tieuDe?: string; anh?: Anh; buoc?: Buoc[]; ds?: string[] };
+export type Muc = {
+  id: string;
+  tieuDe: string;
+  khiNao: string;
+  khoi: Khoi[];
+  luuY?: string[];
+  danhChoAdmin?: boolean;
+};
+
+export const NAM_BUOC: { so: number; ten: string; mo: string }[] = [
+  { so: 1, ten: 'Tìm', mo: 'Lấy hồ sơ giấy, gõ tên không dấu vào ô tìm.' },
+  { so: 2, ten: 'Đối chiếu', mo: 'So họ tên, năm sinh, CCCD và 8 cận lâm sàng với giấy.' },
+  { so: 3, ten: 'Sửa nếu khác giấy', mo: 'Bấm ô cận lâm sàng hoặc mở chi tiết để sửa theo giấy.' },
+  { so: 4, ten: 'Xác nhận', mo: 'Khớp giấy thì tích “Đã kiểm – có hồ sơ giấy”.' },
+  { so: 5, ten: 'Chốt danh sách', mo: 'Hết hồ sơ thì bấm “Xác nhận rà soát xong danh sách”.' },
+];
+
+export const PHIM_TAT: { phim: string; viec: string }[] = [
+  { phim: '/', viec: 'Đưa con trỏ vào ô tìm kiếm' },
+  { phim: '↑ / ↓', viec: 'Chọn dòng trên / dòng dưới' },
+  { phim: 'Space', viec: 'Xác nhận hoặc bỏ xác nhận hồ sơ đang chọn' },
+  { phim: '1 – 8', viec: 'Đổi ô cận lâm sàng thứ 1–8 (CTM, GLU, URE, CRE, GOT, GPT, NT, SA)' },
+  { phim: 'Enter', viec: 'Mở khung chi tiết (nhấp đúp vào dòng cũng được)' },
+  { phim: 'K', viec: 'Đưa hồ sơ vào kho của tôi' },
+  { phim: 'C', viec: 'Đưa hồ sơ vào kho chờ chung' },
+];
+
+export const MUC: Muc[] = [
+  {
+    id: 'dang-nhap',
+    tieuDe: 'Đăng nhập',
+    khiNao: 'Mỗi lần bắt đầu làm việc. Dùng Chrome hoặc Edge trên máy tính.',
+    khoi: [
+      {
+        anh: { file: '01-dang-nhap.png', alt: 'Trang đăng nhập với ô chọn tên, ô mật khẩu và nút Đăng nhập' },
+        buoc: [
+          { n: 1, t: 'Bấm ô **Tên đăng nhập** và chọn **tên của mình** trong danh sách.' },
+          { n: 2, t: 'Gõ **mật khẩu** do admin phát (ban đầu là `123456`).' },
+          { n: 3, t: 'Bấm **Đăng nhập**.' },
+        ],
+      },
+    ],
+    luuY: [
+      'Muốn đổi mật khẩu: bấm **Đổi mật khẩu** ở góc trên bên phải sau khi đăng nhập.',
+      'Gõ sai mật khẩu nhiều lần, app khóa tạm 15 phút. Quên mật khẩu thì nhờ admin đặt lại.',
+    ],
+  },
+  {
+    id: 'dashboard',
+    tieuDe: 'Theo dõi tiến độ trên trang Danh sách của tôi',
+    khiNao: 'Sau khi đăng nhập: xem mình phụ trách buổi nào, đã làm được bao nhiêu.',
+    khoi: [
+      {
+        anh: { file: '02-dashboard-nhan-vien.png', alt: 'Trang Danh sách của tôi: các thẻ thống kê, ô tìm hồ sơ và bảng các buổi khám' },
+        buoc: [
+          { n: 1, t: 'Xem thẻ **Tiến độ %**: số hồ sơ đã xác nhận trên tổng số hồ sơ trong danh sách của bạn.' },
+          { n: 2, t: 'Xem thẻ **Thừa / Thiếu**: danh sách trên máy nhiều hơn hay ít hơn so với **DS google sheet** (sổ đoàn).' },
+          { n: 3, t: 'Bấm vào **ngày khám** (chữ xanh) của một buổi trong bảng để mở danh sách rà soát của buổi đó.' },
+          { n: 4, t: 'Gõ tên, năm sinh hoặc CCCD vào ô **Tìm hồ sơ**, bấm **Tìm hồ sơ**: app mở trang **Tìm kiếm** với kết quả.' },
+        ],
+      },
+    ],
+    luuY: ['Buổi có nhãn **Đã xác nhận** là buổi đã chốt xong, không cần làm tiếp.'],
+  },
+  {
+    id: 'mo-danh-sach',
+    tieuDe: 'Mở danh sách rà soát',
+    khiNao: 'Khi bắt đầu rà soát một buổi khám. Đây là màn hình bạn làm việc nhiều nhất.',
+    khoi: [
+      {
+        anh: { file: '03-man-ra-soat-tong-the.png', alt: 'Màn rà soát: thanh chỉ số, ô tìm, lọc nhanh và bảng hồ sơ' },
+        buoc: [
+          { n: 1, t: 'Đọc **thanh chỉ số**: DS google sheet, Trong danh sách, **Đã xác nhận** (x/y), Thừa, Thiếu.' },
+          { n: 2, t: 'Dùng **ô tìm** để tìm nhanh một hồ sơ (phím `/`).' },
+          { n: 3, t: 'Dùng **Lọc nhanh** để chỉ xem nhóm hồ sơ cần chú ý (chưa xác nhận, có cảnh báo…).' },
+          { n: 4, t: 'Làm việc trên **bảng hồ sơ**: mỗi dòng một người, 8 ô cận lâm sàng ở bên phải, ô xác nhận ở cuối dòng.' },
+        ],
+      },
+    ],
+    luuY: ['Dòng **nền xanh** là hồ sơ đã xác nhận. Ô có **viền cam** là ô đã sửa so với dữ liệu gốc.'],
+  },
+  {
+    id: 'tim-kiem',
+    tieuDe: 'Tìm hồ sơ trong danh sách',
+    khiNao: 'Khi cầm một hồ sơ giấy và cần tìm đúng dòng của người đó.',
+    khoi: [
+      {
+        anh: { file: '04-tim-kiem-trong-danh-sach.png', alt: 'Gõ “hung” vào ô tìm, bảng chỉ còn 3 hồ sơ khớp' },
+        buoc: [
+          { n: 1, t: 'Bấm vào **ô tìm** (hoặc nhấn `/`) rồi gõ **tên không dấu**, năm sinh hoặc 4 số cuối CCCD.' },
+          { n: 2, t: 'Nhìn dòng **Đang hiển thị 3 / 38 hồ sơ**: bảng chỉ còn những người khớp từ khóa.' },
+        ],
+      },
+    ],
+    luuY: [
+      'Tìm không phân biệt dấu và chữ hoa/thường: gõ “thuy” vẫn ra “Thủy”, “Thuỷ”.',
+      'Xóa tìm kiếm: bấm dấu **×** trong ô hoặc nhấn `Esc`.',
+    ],
+  },
+  {
+    id: 'sua-cls',
+    tieuDe: 'Kiểm tra và sửa cận lâm sàng',
+    khiNao: 'Khi so 8 cận lâm sàng trên máy với phiếu giấy.',
+    khoi: [
+      {
+        anh: { file: '05-kiem-tra-sua-cls.png', alt: 'Một dòng được chọn, 8 ô cận lâm sàng, ô URE viền cam và nhãn cảnh báo' },
+        buoc: [
+          { n: 1, t: 'Nhìn **8 ô cận lâm sàng**: CTM, GLU, URE, CRE, GOT, GPT, NT, SA. Ô **xanh** là có làm, ô **xám** là không làm. So từng ô với phiếu giấy.' },
+          { n: 2, t: 'Ô nào **khác giấy** thì bấm vào ô đó (hoặc nhấn phím `1`–`8`) để đổi. Ô đã sửa có **viền cam**; bấm lần nữa để trả lại như cũ.' },
+          { n: 3, t: 'Gặp **nhãn cảnh báo** (vàng cam): rê chuột vào nhãn để đọc giải thích, rồi xem kỹ phiếu giấy.' },
+        ],
+      },
+    ],
+    luuY: ['Chỉ có 8 cận lâm sàng này; kỹ thuật khác không nhập vào app.'],
+  },
+  {
+    id: 'sua-hanh-chinh',
+    tieuDe: 'Sửa thông tin hành chính và lưu',
+    khiNao: 'Khi họ tên, giới tính, năm sinh, CCCD hoặc địa chỉ trên máy khác phiếu giấy.',
+    khoi: [
+      {
+        anh: { file: '06-sua-thong-tin-hanh-chinh.png', alt: 'Khung chi tiết hồ sơ với các ô nhập, dòng “Gốc”, nút Lưu thay đổi và tab Lịch sử' },
+        buoc: [
+          { n: 1, t: '**Nhấp đúp** vào dòng (hoặc chọn dòng rồi nhấn `Enter`) để mở khung chi tiết bên phải. Sửa các ô khác giấy: họ tên, giới tính, năm sinh, CCCD, địa chỉ.' },
+          { n: 2, t: 'Dòng **Gốc: …** màu cam cho biết giá trị ban đầu, để bạn biết mình đã sửa gì.' },
+          { n: 3, t: 'Bấm **Lưu thay đổi**. Chưa bấm thì chưa được lưu.' },
+          { n: 4, t: 'Bấm tab **Lịch sử** để xem ai đã sửa gì, lúc nào.' },
+        ],
+      },
+    ],
+    luuY: ['CCCD để trống hoặc đủ 9 hoặc 12 số. Họ tên và năm sinh không được để trống.'],
+  },
+  {
+    id: 'xac-nhan',
+    tieuDe: 'Xác nhận hồ sơ',
+    khiNao: 'Khi hồ sơ trên máy đã khớp với hồ sơ giấy (sau khi đã sửa nếu có khác).',
+    khoi: [
+      {
+        anh: { file: '07-xac-nhan-ho-so.png', alt: 'Dòng nền xanh đã tích Đã kiểm, số Đã xác nhận tăng lên 13/38' },
+        buoc: [
+          { n: 1, t: 'Tích ô **Đã kiểm – có hồ sơ giấy** ở cuối dòng (hoặc chọn dòng rồi nhấn `Space`). Dòng chuyển **nền xanh**.' },
+          { n: 2, t: 'Nhìn số **Đã xác nhận** trên thanh chỉ số tăng thêm 1.' },
+        ],
+      },
+    ],
+    luuY: ['Tích nhầm thì bấm lần nữa để bỏ xác nhận.'],
+  },
+  {
+    id: 'loc',
+    tieuDe: 'Lọc hồ sơ chưa xác nhận và lọc nhanh',
+    khiNao: 'Khi muốn biết còn những hồ sơ nào phải làm, hoặc chỉ xem một nhóm hồ sơ.',
+    khoi: [
+      {
+        anh: { file: '08-loc-chua-xac-nhan.png', alt: 'Chip Chưa xác nhận được bật, số hiển thị 25/38 và bộ lọc chi tiết theo 8 cận lâm sàng' },
+        buoc: [
+          { n: 1, t: 'Bấm nút **Chưa xác nhận (25)** trong mục **Lọc nhanh**: bảng chỉ còn hồ sơ chưa làm.' },
+          { n: 2, t: 'Xem dòng **Đang hiển thị 25 / 38 hồ sơ** để biết còn bao nhiêu.' },
+          { n: 3, t: 'Bấm **Bộ lọc chi tiết** để lọc theo từng cận lâm sàng: bấm một ô để xoay vòng **Tất cả → Có → Không**.' },
+        ],
+      },
+    ],
+    luuY: ['Bấm **Xóa bộ lọc** để trở lại xem toàn bộ danh sách.'],
+  },
+  {
+    id: 'loai-khoi',
+    tieuDe: 'Loại hồ sơ khỏi danh sách',
+    khiNao: 'Khi hồ sơ có trên máy nhưng không có giấy, hoặc không thuộc buổi này.',
+    khoi: [
+      {
+        anh: { file: '09-loai-khoi-danh-sach.png', alt: 'Khung chi tiết với ba nút trong mục Chuyển hồ sơ' },
+        buoc: [
+          { n: 1, t: '**Đưa vào kho của tôi** (phím `K`): không thấy giấy, nghi khám ngày khác. Hồ sơ nằm chờ để bạn xem lại sau.' },
+          { n: 2, t: '**Đưa vào kho chờ chung** (phím `C`): không phải người của buổi mình, để người phụ trách khác nhận. App hỏi lý do.' },
+          { n: 3, t: '**Chuyển sang buổi khác…**: biết chắc người này khám buổi nào.' },
+        ],
+      },
+      {
+        tieuDe: 'Chuyển sang buổi khác',
+        anh: { file: '09b-chuyen-sang-buoi-khac.png', alt: 'Hộp thoại chuyển hồ sơ sang buổi khám khác' },
+        buoc: [
+          { n: 1, t: 'Chọn **đơn vị** và **ngày khám đích**.' },
+          { n: 2, t: 'Gõ **lý do** (bắt buộc), ví dụ “Hồ sơ giấy ghi ngày khám 14/09”.' },
+          { n: 3, t: 'Bấm **Chuyển sang buổi đã chọn**.' },
+        ],
+      },
+    ],
+    luuY: [
+      'Hồ sơ **đã xác nhận** phải **bỏ xác nhận** trước (bấm lại ô Đã kiểm) thì mới chuyển được.',
+      'Buổi đã chốt (khóa) không nhận hồ sơ chuyển vào.',
+    ],
+  },
+  {
+    id: 'them-ho-so',
+    tieuDe: 'Thêm hồ sơ và kiểm trùng',
+    khiNao: 'Có hồ sơ giấy nhưng tìm khắp nơi không thấy người đó trên máy.',
+    khoi: [
+      {
+        anh: { file: '10-them-ho-so.png', alt: 'Hộp thoại Thêm hồ sơ, cảnh báo hồ sơ trùng và nút Nhận hồ sơ này về buổi' },
+        buoc: [
+          { n: 1, t: 'Bấm **+ Thêm hồ sơ** phía trên bảng. Điền họ tên, giới tính, năm sinh (bắt buộc), CCCD, địa chỉ nếu có; bấm 8 ô cận lâm sàng theo giấy. Mã KCB có thể để trống.' },
+          { n: 2, t: 'Nếu hiện khung **Phát hiện … hồ sơ trùng**, người này đã có trong hệ thống: **không tạo mới**.' },
+          { n: 3, t: 'Hồ sơ trùng đang ở kho thì bấm **Nhận hồ sơ này về buổi**. Đang ở buổi người khác thì bấm **Đề nghị chuyển về buổi này**.' },
+        ],
+      },
+    ],
+    luuY: [
+      'Chỉ khi chắc chắn là **người khác** mới tích “Vẫn tạo mới” và ghi lý do.',
+      'Hồ sơ thêm tay được xác nhận ngay khi thêm.',
+    ],
+  },
+  {
+    id: 'nhan-tu-kho',
+    tieuDe: 'Nhận hồ sơ vào danh sách (từ kho)',
+    khiNao: 'Có hồ sơ giấy của một người đang nằm trong kho chờ chung hoặc kho của tôi.',
+    khoi: [
+      {
+        anh: { file: '11b-kho-cho-chung.png', alt: 'Tab Kho chờ chung với bộ lọc đơn vị, ô tìm và nút Nhận về buổi' },
+        buoc: [
+          { n: 1, t: 'Bấm **Kho chờ** trên thanh menu, chọn tab **Kho chờ chung**. Lọc theo **đơn vị** hoặc gõ tên vào ô **Tìm hồ sơ**.' },
+          { n: 2, t: 'Ở dòng đúng người, bấm **Nhận về buổi…**, chọn buổi bạn phụ trách rồi bấm **Nhận về buổi khám**.' },
+        ],
+      },
+    ],
+    luuY: ['Hồ sơ nhận về sẽ vào danh sách của buổi bạn chọn. Nhớ đối chiếu và xác nhận như hồ sơ khác.'],
+  },
+  {
+    id: 'kho-cho',
+    tieuDe: 'Kho chờ cá nhân và kho chờ chung',
+    khiNao: 'Để xem lại những hồ sơ đã tạm cất đi.',
+    khoi: [
+      {
+        anh: { file: '11-kho-cua-toi.png', alt: 'Tab Kho của tôi với cột Nguồn gốc và nút Nhận về buổi' },
+        buoc: [
+          { n: 1, t: 'Cột **Nguồn gốc** cho biết hồ sơ đến từ buổi nào, ai chuyển, lúc nào.' },
+          { n: 2, t: 'Bấm **Nhận về buổi…** để đưa hồ sơ trở lại danh sách của buổi bạn phụ trách.' },
+        ],
+      },
+      {
+        ds: [
+          '**Kho của tôi**: chỉ bạn thấy. Dùng cho hồ sơ “chưa chắc, xem lại sau”.',
+          '**Kho chờ chung**: ai cũng thấy. Dùng cho hồ sơ không thuộc buổi của bạn, người khác có thể nhận.',
+          'Con số cạnh chữ **Kho chờ** trên menu là số hồ sơ trong kho của tôi.',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'tim-toan-app',
+    tieuDe: 'Tìm toàn app và đề nghị chuyển',
+    khiNao: 'Có giấy của một người nhưng người đó đang nằm trong buổi của nhân viên khác.',
+    khoi: [
+      {
+        anh: { file: '12-tim-kiem-toan-app.png', alt: 'Trang Tìm kiếm với phạm vi Toàn bộ app, dòng Chỉ xem và nút Đề nghị chuyển' },
+        buoc: [
+          { n: 1, t: 'Bấm **Tìm kiếm** trên menu, gõ tên không dấu, chọn **Phạm vi**: Buổi của tôi, Kho chờ chung hoặc **Toàn bộ app**.' },
+          { n: 2, t: 'Người thuộc buổi của người khác chỉ có nhãn **Chỉ xem**: bạn không sửa được hồ sơ đó.' },
+          { n: 3, t: 'Bấm **Đề nghị chuyển về buổi của tôi**, chọn buổi đích, ghi lý do rồi gửi. Chờ người phụ trách đồng ý.' },
+        ],
+      },
+      {
+        tieuDe: 'Nếu bạn là người nhận đề nghị',
+        anh: { file: '13-de-nghi-chuyen.png', alt: 'Tab Đề nghị chuyển với nút Đồng ý và Từ chối' },
+        buoc: [
+          { n: 1, t: 'Vào **Kho chờ**, tab **Đề nghị chuyển** (menu hiện **Đề nghị: n** khi có đề nghị chờ). Bấm **Đồng ý** nếu đúng: hồ sơ chuyển sang buổi của người đề nghị.' },
+          { n: 2, t: 'Bấm **Từ chối** nếu không đúng (có thể ghi lý do ngắn gọn).' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'chot',
+    tieuDe: 'Chốt danh sách',
+    khiNao: 'Khi mọi hồ sơ của buổi đã xác nhận xong.',
+    khoi: [
+      {
+        anh: { file: '14-chot-danh-sach.png', alt: 'Hộp thoại Xác nhận rà soát xong danh sách buổi khám' },
+        buoc: [
+          { n: 1, t: 'Bấm **Xác nhận rà soát xong danh sách** (nút xanh, sáng lên khi hết hồ sơ chưa xác nhận). Đọc phần **tóm tắt**: DS google sheet, trong danh sách, đã xác nhận, thừa, thiếu.' },
+          { n: 2, t: 'Nếu số hồ sơ **lệch DS google sheet**, ghi **giải trình** (bắt buộc), ví dụ “2 phiếu khám ngày 15/09 nhập nhầm sang buổi này”.' },
+          { n: 3, t: 'Bấm **Xác nhận và khóa danh sách**.' },
+        ],
+      },
+      {
+        tieuDe: 'Sau khi chốt',
+        anh: { file: '14b-danh-sach-da-khoa.png', alt: 'Dải xanh Đã xác nhận bởi … và nhãn Đã xác nhận trên buổi đã khóa' },
+        buoc: [
+          { n: 1, t: 'Dải xanh **Đã xác nhận bởi …** ghi người chốt, thời điểm và giải trình.' },
+          { n: 2, t: 'Nhãn **Đã xác nhận** cạnh tên buổi: danh sách đã khóa.' },
+        ],
+      },
+    ],
+    luuY: ['Danh sách đã khóa thì không sửa, thêm hay chuyển hồ sơ được nữa. Cần sửa: báo admin **mở khóa**.'],
+  },
+  {
+    id: 'hoi-dap',
+    tieuDe: 'Câu hỏi thường gặp',
+    khiNao: 'Khi gặp tình huống chưa rõ phải làm gì.',
+    khoi: [
+      {
+        ds: [
+          '**Tôi sửa nhầm thì sao?** Ô cận lâm sàng: bấm lại để trả về. Thông tin hành chính: nhìn dòng “Gốc: …”, gõ lại giá trị cũ rồi **Lưu thay đổi**. Mọi lần sửa đều ghi vào tab **Lịch sử**, không sợ mất dấu.',
+          '**Có giấy nhưng không tìm thấy người đó?** Thử gõ ít chữ hơn (chỉ tên, hoặc năm sinh, hoặc 4 số cuối CCCD). Rồi tìm ở **Kho chờ chung** và **Tìm kiếm → Toàn bộ app**. Vẫn không có thì **Thêm hồ sơ**.',
+          '**Trên máy có người nhưng không có hồ sơ giấy?** Nhấn `K` đưa vào **kho của tôi** và xem lại cuối buổi. Chắc chắn không phải người của buổi mình thì đưa vào **kho chờ chung** (nhấn `C`).',
+          '**App báo “Hồ sơ vừa được người khác sửa, đã tải lại bản mới nhất”?** Hai người cùng mở một hồ sơ và người kia lưu trước. App đã tải bản mới: xem lại rồi sửa tiếp phần của bạn.',
+          '**Không chuyển được hồ sơ?** Hồ sơ đã xác nhận phải bỏ xác nhận trước. Buổi đích đã chốt cũng không nhận thêm.',
+          '**Danh sách đã khóa mà cần sửa?** Báo admin (BS Khôi) mở khóa. Sửa xong thì chốt lại.',
+          '**Số lượng lệch DS google sheet (thừa/thiếu)?** Không sao nếu có lý do. Tìm thêm giấy ở kho; không có thì chốt và ghi giải trình.',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'admin',
+    tieuDe: 'Dành cho admin',
+    khiNao: 'Chỉ tài khoản quản trị (BS Bùi Minh Khôi) thấy các mục này trên menu.',
+    danhChoAdmin: true,
+    khoi: [
+      {
+        tieuDe: 'Tổng quan',
+        anh: { file: '15-admin-tong-quan.png', alt: 'Trang Tổng quan: bảng tiến độ theo nhân viên, thống kê theo đơn vị và nút xuất dữ liệu' },
+        buoc: [
+          { n: 1, t: 'Bảng **Tiến độ theo nhân viên**: ai đã làm đến đâu. Bấm tên để mở trang Phân công lọc theo người đó.' },
+          { n: 2, t: 'Bảng **Thống kê theo đơn vị**: DS google sheet, trong danh sách, đã xác nhận, thừa/thiếu, từng cận lâm sàng.' },
+          { n: 3, t: 'Nút **Xuất báo cáo Excel** và **Xuất gói cho Cowork (.zip)** ở phần Xuất dữ liệu & Báo cáo.' },
+        ],
+      },
+      {
+        tieuDe: 'Phân công',
+        anh: { file: '15b-admin-phan-cong.png', alt: 'Trang Phân công: bộ lọc, ô chọn nhiều buổi và nút Gán' },
+        buoc: [
+          { n: 1, t: 'Dùng **bộ lọc** (đơn vị, người phụ trách, trạng thái, ngày) để thu hẹp danh sách buổi.' },
+          { n: 2, t: 'Tích các buổi cần gán (hoặc **Chọn tất cả đang lọc**), chọn người ở ô **Gán cho**.' },
+          { n: 3, t: 'Bấm **Gán**. Nút **Phân công theo DS google sheet** gán tự động theo gợi ý của sổ đoàn.' },
+        ],
+      },
+      {
+        ds: [
+          '**Người dùng**: thêm tài khoản, khóa/mở khóa, đặt lại mật khẩu về `123456`.',
+          '**Nạp dữ liệu**: nạp gói dữ liệu mới của Cowork. Luôn bấm **Chạy thử** và đọc kết quả trước khi nạp thật.',
+          '**Nhật ký**: xem mọi thao tác sửa (ai, lúc nào, giá trị cũ và mới).',
+          '**Mở khóa danh sách**: vào buổi đã chốt, bấm **Mở khóa**, ghi lý do.',
+          '**Xuất**: cuối đợt, xuất gói Cowork và báo cáo Excel lần cuối rồi báo gỡ hệ thống.',
+        ],
+      },
+    ],
+  },
+];

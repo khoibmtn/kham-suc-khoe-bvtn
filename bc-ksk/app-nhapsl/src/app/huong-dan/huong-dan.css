@@ -1,0 +1,62 @@
+/* Trang hướng dẫn: chữ đọc >= 16px, đoạn văn <= 75 ký tự, ảnh rộng toàn khung. */
+.hd-trang { max-width: 980px; margin: 0 auto; padding: 8px 0 48px; font-size: 1.0625rem; line-height: 1.6; color: var(--text); }
+.hd-dau { margin-bottom: 16px; }
+.hd-h1 { font-size: 2rem; line-height: 1.25; margin-bottom: 8px; }
+.hd-lead { max-width: 75ch; color: var(--text-muted); }
+.hd-in-ra { margin-top: 12px; }
+.hd-nut { display: inline-block; padding: 8px 16px; border: 1px solid var(--primary); border-radius: 6px; color: var(--primary); font-weight: 600; text-decoration: none; background: var(--surface); }
+.hd-nut:hover { background: var(--primary-soft); }
+
+.hd-muc-luc { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin: 16px 0 8px; }
+.hd-muc-luc ol { columns: 2; column-gap: 32px; padding-left: 24px; }
+.hd-muc-luc .hd-toc-dau { list-style: none; display: flex; gap: 24px; padding: 0 0 8px; margin-bottom: 8px; border-bottom: 1px solid var(--border); columns: auto; }
+.hd-muc-luc li { padding: 2px 0; break-inside: avoid; }
+.hd-muc-luc a { color: var(--primary); }
+
+.hd-muc { margin-top: 40px; scroll-margin-top: 72px; }
+.hd-h2 { font-size: 1.5rem; line-height: 1.3; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 2px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.hd-h2-nho { font-size: 1.125rem; border: 0; padding: 0; margin-bottom: 8px; }
+.hd-h3 { font-size: 1.1875rem; margin: 24px 0 8px; }
+.hd-so-muc { display: inline-flex; align-items: center; justify-content: center; min-width: 34px; height: 34px; padding: 0 8px; border-radius: 17px; background: var(--primary); color: #fff; font-size: 1rem; font-weight: 700; flex: none; }
+.hd-khi { max-width: 75ch; margin: 8px 0 12px; }
+
+.hd-khoi { margin-top: 12px; }
+.hd-anh { display: block; width: 100%; height: auto; border: 1px solid var(--border-strong); border-radius: 6px; background: #fff; margin: 8px 0 14px; }
+
+.hd-buoc { list-style: none; padding: 0; max-width: 80ch; }
+.hd-buoc li { position: relative; padding: 6px 0 6px 44px; min-height: 40px; }
+.hd-buoc li::before { content: attr(data-n); position: absolute; left: 0; top: 6px; width: 28px; height: 28px; border-radius: 50%; background: #dc2626; color: #fff; font-weight: 700; font-size: 1rem; line-height: 28px; text-align: center; }
+.hd-ds { max-width: 75ch; padding-left: 22px; }
+.hd-ds li { padding: 4px 0; }
+
+.hd-luu-y { max-width: 80ch; margin-top: 14px; padding: 10px 16px; border-left: 4px solid var(--warning-strong); background: var(--warning-bg); border-radius: 4px; }
+.hd-luu-y ul { padding-left: 20px; margin-top: 4px; }
+.hd-luu-y li { padding: 2px 0; }
+
+.hd-nam-buoc { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+.hd-nam-buoc li { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 12px; display: flex; flex-direction: column; gap: 6px; font-size: 1rem; }
+.hd-so-lon { font-size: 2.5rem; line-height: 1; font-weight: 800; color: var(--primary); }
+
+.hd-bang { border-collapse: collapse; width: 100%; max-width: 760px; background: var(--surface); }
+.hd-bang th, .hd-bang td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
+.hd-bang th { background: var(--surface-subtle); }
+.hd-bang td:first-child { width: 120px; white-space: nowrap; }
+.hd-trang kbd { display: inline-block; min-width: 1.6em; padding: 1px 7px; border: 1px solid var(--border-strong); border-bottom-width: 2px; border-radius: 4px; background: var(--surface-subtle); font: 600 0.9em/1.4 ui-monospace, Menlo, monospace; text-align: center; }
+
+.hd-admin .hd-h2 { border-bottom-color: var(--primary); }
+
+@media screen and (max-width: 800px) {
+  .hd-nam-buoc { grid-template-columns: 1fr; }
+  .hd-muc-luc ol { columns: 1; }
+}
+
+@media print {
+  .app-topbar, .hd-in-ra, .hd-muc-luc { display: none !important; }
+  body, .app-layout, .app-main { background: #fff !important; }
+  .app-main { padding: 0 !important; max-width: none !important; }
+  .hd-trang { max-width: none; font-size: 12pt; padding: 0; }
+  .hd-muc { margin-top: 20px; }
+  .hd-khoi, .hd-anh, .hd-luu-y, .hd-nam-buoc li, .hd-buoc li { break-inside: avoid; }
+  .hd-h2, .hd-h3 { break-after: avoid; }
+  .hd-anh { max-height: 230mm; width: auto; max-width: 100%; margin-left: auto; margin-right: auto; }
+}

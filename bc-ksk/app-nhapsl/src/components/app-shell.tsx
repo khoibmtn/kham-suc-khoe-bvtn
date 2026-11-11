@@ -5,12 +5,14 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LogoutButton } from '@/app/logout-button';
+import { DeNghiThongBao, denToi } from '@/components/de-nghi-thong-bao';
 import type { DeNghiChuyen, KetQuaTimKiem } from '@/lib/api-types';
 import { formatNumber } from '@/lib/client/format';
 
@@ -44,6 +46,10 @@ export function AppShell({ user: propUser, children, fullWidth = false }: AppShe
 
   const isLoginPage = pathname === '/dang-nhap' || pathname.startsWith('/dang-nhap/');
   const currentUser = propUser ?? fetchedUser;
+  const currentUserRef = useRef<ShellUser | null>(null);
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
 
   useEffect(() => {
     if (isLoginPage || propUser) return;
@@ -81,7 +87,11 @@ export function AppShell({ user: propUser, children, fullWidth = false }: AppShe
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { de_nghi?: DeNghiChuyen[] } | null) => {
         if (data && Array.isArray(data.de_nghi)) {
-          setDeNghiChoCount(data.de_nghi.length);
+          // Same rule as the banner: only requests addressed to me (not the ones I sent).
+          const me = currentUserRef.current;
+          setDeNghiChoCount(
+            me ? data.de_nghi.filter((d) => denToi(d, me.id, me.role === 'admin')).length : 0,
+          );
         }
       })
       .catch(() => {});
@@ -98,7 +108,7 @@ export function AppShell({ user: propUser, children, fullWidth = false }: AppShe
     return () => {
       window.removeEventListener('nhapsl:pool-changed', handlePoolChanged);
     };
-  }, [isInsideShell, isLoginPage, loadNavCounts, pathname]);
+  }, [isInsideShell, isLoginPage, loadNavCounts, pathname, currentUser?.id]);
 
   if (isLoginPage) {
     return <>{children}</>;
@@ -120,6 +130,7 @@ export function AppShell({ user: propUser, children, fullWidth = false }: AppShe
   const isNguoiDungActive = pathname.startsWith('/admin/nguoi-dung');
   const isNapDuLieuActive = pathname.startsWith('/admin/nap-du-lieu');
   const isNhatKyActive = pathname.startsWith('/admin/nhat-ky');
+  const isHuongDanActive = pathname === '/huong-dan' || pathname.startsWith('/huong-dan/');
   const isDoiMatKhauActive = pathname.startsWith('/doi-mat-khau');
 
   return (
@@ -217,6 +228,13 @@ export function AppShell({ user: propUser, children, fullWidth = false }: AppShe
                     </Link>
                   </>
                 )}
+                <Link
+                  href="/huong-dan"
+                  className={`app-nav-link ${isHuongDanActive ? 'active' : ''}`}
+                  aria-current={isHuongDanActive ? 'page' : undefined}
+                >
+                  Hướng dẫn
+                </Link>
               </nav>
             </div>
 
@@ -239,6 +257,8 @@ export function AppShell({ user: propUser, children, fullWidth = false }: AppShe
             </div>
           </div>
         </header>
+
+        {currentUser && <DeNghiThongBao userId={currentUser.id} isAdmin={isAdmin} />}
 
         <main className={fullWidth ? 'app-main app-main-full' : 'app-main'}>
           {children}

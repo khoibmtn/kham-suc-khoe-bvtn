@@ -2,6 +2,8 @@
 
 **Địa chỉ:** https://ksk-ra-soat-2026.vercel.app · Dùng Chrome hoặc Edge trên máy tính.
 
+> **Bản có hình ảnh, từng bước:** mục **Hướng dẫn** trên menu của app (`/huong-dan`), hoặc file `docs/huong-dan-nhanh.pdf` / `docs/HUONG-DAN-NHANH.md`.
+
 ## 1. Đăng nhập
 Chọn **tên của mình** trong danh sách → mật khẩu `123456` → **Đăng nhập**. Đổi mật khẩu (nếu muốn) ở góc trên bên phải.
 
