@@ -1597,17 +1597,66 @@ textarea {
 }
 
 /* ---- Phase 3: Search Box in Ra Soat Toolbar ---- */
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+
 .rasoat-search-box {
   position: relative;
   display: inline-flex;
   align-items: center;
 }
 
+.form-input.rasoat-search-input,
 .rasoat-search-input {
   width: 330px;
   min-width: 240px;
   padding-right: 28px;
   font-size: 0.875rem; /* 14px */
+  background-color: #fff4e0;
+  border: 1.5px solid #f5a524;
+  color: var(--text);
+  transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.rasoat-search-input::placeholder {
+  color: #8a5a00;
+  opacity: 1;
+}
+
+.form-input.rasoat-search-input.has-text,
+.rasoat-search-input.has-text,
+.form-input.rasoat-search-input:not(:placeholder-shown),
+.rasoat-search-input:not(:placeholder-shown) {
+  background-color: #b4482a;
+  border-color: #8f351d;
+  color: #ffffff;
+  font-weight: 700;
+  caret-color: #ffffff;
+}
+
+.form-input.rasoat-search-input:focus,
+.form-input.rasoat-search-input:focus-visible,
+.rasoat-search-input:focus,
+.rasoat-search-input:focus-visible {
+  outline: 2px solid #1d4ed8;
+  outline-offset: 1px;
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.45);
+}
+
+.form-input.rasoat-search-input:not(.has-text):placeholder-shown:focus,
+.form-input.rasoat-search-input:not(.has-text):placeholder-shown:focus-visible {
+  border-color: #f5a524;
+}
+
+.form-input.rasoat-search-input.has-text:focus,
+.form-input.rasoat-search-input.has-text:focus-visible,
+.form-input.rasoat-search-input:not(:placeholder-shown):focus,
+.form-input.rasoat-search-input:not(:placeholder-shown):focus-visible {
+  border-color: #8f351d;
 }
 
 .rasoat-search-clear {
@@ -1623,16 +1672,21 @@ textarea {
   border: none;
   border-radius: 3px;
   background: transparent;
-  color: var(--text-muted);
-  font-size: 1rem;
+  color: #ffffff;
+  font-size: 1.0625rem;
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
 }
 
 .rasoat-search-clear:hover {
-  background-color: #e2e8f0;
-  color: var(--text);
+  background-color: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+
+.rasoat-search-clear:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: -2px;
 }
 
 /* ---- Phase 3: Compact Filter Panel in Ra Soat ---- */

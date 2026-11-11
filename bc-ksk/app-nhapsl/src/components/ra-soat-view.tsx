@@ -999,6 +999,7 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
 
   const handleChangeSearch = useCallback((val: string) => {
     setSearchQuery(val);
+    setSelectedId(null);
     if (val.trim().length < 2) {
       setIdsKhopTimKiem(null);
       setSearchError('');
@@ -1009,6 +1010,7 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
 
   const handleClearSearch = useCallback(() => {
     setSearchQuery('');
+    setSelectedId(null);
     setIdsKhopTimKiem(null);
     setSearchError('');
     setSearching(false);
@@ -1018,6 +1020,7 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
   const handleResetAllFilters = useCallback(() => {
     setBoLoc(cloneBoLocMacDinh());
     setSearchQuery('');
+    setSelectedId(null);
     setChiCoCanhBao(false);
     setIdsKhopTimKiem(null);
     setSearchError('');
@@ -1693,7 +1696,7 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
                 ref={searchInputRef}
                 id="rasoat-search-input"
                 type="search"
-                className="form-input form-input-xs rasoat-search-input"
+                className={`form-input form-input-xs rasoat-search-input${searchQuery.length > 0 ? ' has-text' : ''}`}
                 placeholder="Tìm họ tên, năm sinh, CCCD, mã KCB, SĐT, thẻ BHYT…"
                 value={searchQuery}
                 onChange={(e) => handleChangeSearch(e.target.value)}
@@ -1704,6 +1707,68 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
                     handleClearSearch();
                     searchInputRef.current?.blur();
                     tableScrollRef.current?.focus();
+                    return;
+                  }
+
+                  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    searchInputRef.current?.blur();
+                    tableScrollRef.current?.focus();
+
+                    if (danhSachHienThi.length === 0) return;
+                    if (trimmedSearch.length >= 2 && idsKhopTimKiem === null) {
+                      return;
+                    }
+
+                    const currentIndex =
+                      selectedId !== null
+                        ? danhSachHienThi.findIndex((h) => h.id === selectedId)
+                        : -1;
+
+                    let nextIndex = 0;
+                    if (currentIndex === -1) {
+                      nextIndex =
+                        e.key === 'ArrowDown' ? 0 : danhSachHienThi.length - 1;
+                    } else if (e.key === 'ArrowDown') {
+                      nextIndex = Math.min(
+                        danhSachHienThi.length - 1,
+                        currentIndex + 1,
+                      );
+                    } else {
+                      nextIndex = Math.max(0, currentIndex - 1);
+                    }
+
+                    const nextHoSo = danhSachHienThi[nextIndex];
+                    if (nextHoSo) {
+                      handleSelectRow(nextHoSo.id);
+                      const rowEl = tableBodyRef.current?.querySelector(
+                        `tr[data-hoso-id="${nextHoSo.id}"]`,
+                      );
+                      rowEl?.scrollIntoView({ block: 'nearest' });
+                    }
+                    return;
+                  }
+
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    searchInputRef.current?.blur();
+                    tableScrollRef.current?.focus();
+
+                    if (danhSachHienThi.length === 0) return;
+                    if (trimmedSearch.length >= 2 && idsKhopTimKiem === null) {
+                      return;
+                    }
+
+                    const firstHoSo = danhSachHienThi[0];
+                    if (firstHoSo) {
+                      handleSelectRow(firstHoSo.id);
+                      const rowEl = tableBodyRef.current?.querySelector(
+                        `tr[data-hoso-id="${firstHoSo.id}"]`,
+                      );
+                      rowEl?.scrollIntoView({ block: 'nearest' });
+                    }
                   }
                 }}
               />
@@ -2017,9 +2082,10 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
 
       <footer className="rasoat-footer-bar" aria-label="Phím tắt và chú thích">
         <span className="rasoat-footer-shortcuts">
-          <strong>Phím tắt:</strong> <kbd>/</kbd> tìm · <kbd>↑</kbd>/<kbd>↓</kbd> chọn ·{' '}
-          <kbd>Space</kbd> xác nhận · <kbd>1</kbd>–<kbd>8</kbd> bật/tắt CLS ·{' '}
-          <kbd>K</kbd> kho cá nhân · <kbd>C</kbd> kho chung ·{' '}
+          <strong>Phím tắt:</strong> <kbd>/</kbd> tìm · <kbd>↓</kbd> hoặc{' '}
+          <kbd>Enter</kbd>: từ ô tìm xuống danh sách · <kbd>↑</kbd>/<kbd>↓</kbd>{' '}
+          chọn · <kbd>Space</kbd> xác nhận · <kbd>1</kbd>–<kbd>8</kbd> bật/tắt
+          CLS · <kbd>K</kbd> kho cá nhân · <kbd>C</kbd> kho chung ·{' '}
           <kbd>Enter</kbd>/nhấp đúp: mở chi tiết
         </span>
         <span className="rasoat-footer-legend">
