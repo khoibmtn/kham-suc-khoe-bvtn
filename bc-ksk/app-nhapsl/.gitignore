@@ -1,0 +1,34 @@
+# --- BẮT BUỘC (CLAUDE.md): không đưa dữ liệu người dân vào git ---
+data/
+handoff/
+db/
+*.csv
+*.xlsx
+.env*
+.DS_Store
+
+# dependencies
+node_modules/
+/.pnp
+.pnp.*
+
+# testing
+/coverage
+/test-results/
+/playwright-report/
+
+# next.js
+.next/
+/out/
+/build
+
+# misc
+*.pem
+npm-debug.log*
+
+# vercel
+.vercel/
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts

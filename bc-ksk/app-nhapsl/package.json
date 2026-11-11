@@ -1,0 +1,41 @@
+{
+  "name": "app-nhapsl",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "import": "tsx scripts/import.ts",
+    "users:create": "tsx scripts/users-create.ts",
+    "export:cowork": "tsx scripts/export-cowork.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "csv-parse": "^7.0.3",
+    "drizzle-orm": "^0.45.4",
+    "jose": "^6.2.17",
+    "next": "16.4.6",
+    "postgres": "^4.1.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "dotenv": "^18.0.10",
+    "drizzle-kit": "^0.31.11",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.6",
+    "tsx": "^4.23.15",
+    "typescript": "^5",
+    "vitest": "^4.1.12"
+  }
+}
