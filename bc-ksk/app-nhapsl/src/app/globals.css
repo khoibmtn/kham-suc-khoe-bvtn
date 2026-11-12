@@ -1053,31 +1053,49 @@ textarea {
 }
 
 .col-makcb {
-  width: 96px;
+  width: 92px;
   white-space: nowrap;
 }
 
 .col-hoten {
-  min-width: 210px;
+  min-width: 185px;
 }
 
 .col-gt {
-  width: 66px;
+  width: 60px;
   white-space: nowrap;
 }
 
 .col-namsinh {
-  width: 72px;
+  width: 68px;
 }
 
 .col-cccd {
-  width: 118px;
+  width: 114px;
   white-space: nowrap;
 }
 
 .col-diachi {
-  min-width: 140px;
-  max-width: 240px;
+  min-width: 105px;
+  max-width: 180px;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.col-ghichu {
+  min-width: 130px;
+  max-width: 200px;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.ghichu-clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  line-height: 1.35;
+  word-break: break-word;
 }
 
 .col-cls {
@@ -1100,7 +1118,7 @@ textarea {
 }
 
 .col-confirm {
-  width: 126px;
+  width: 120px;
   white-space: nowrap;
 }
 
@@ -1575,7 +1593,8 @@ textarea {
 /* Detail pane open: hide columns already shown in the pane so the 8 CLS cells
    and the confirm checkbox stay visible on a 1366px screen. */
 .rasoat-workspace.has-detail .col-makcb,
-.rasoat-workspace.has-detail .col-diachi {
+.rasoat-workspace.has-detail .col-diachi,
+.rasoat-workspace.has-detail .col-ghichu {
   display: none;
 }
 .rasoat-workspace.has-detail .rasoat-detail-pane {
@@ -2853,4 +2872,75 @@ input[type="search"]::-webkit-search-decoration {
 .buoi-table td.num-col {
   width: 1%;
   white-space: nowrap;
+}
+
+/* ---- Phase 9 (T18): Tô vàng tìm mờ, bộ lọc /tim-kiem, báo bản cập nhật ---- */
+.hl {
+  background: #fde047;
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.timkiem-filter-panel {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.app-update-banner {
+  position: sticky;
+  top: 0;
+  z-index: 95;
+  background-color: #e0f2fe;
+  border-bottom: 2px solid #0284c7;
+  color: #0c4a6e;
+  padding: 8px 16px;
+}
+
+.app-update-banner-inner {
+  max-width: 1680px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.app-update-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.app-update-banner-main,
+.app-update-main {
+  font-size: 0.9375rem; /* 15px */
+  font-weight: 600;
+  color: #0c4a6e;
+}
+
+.app-update-main strong.num,
+.app-update-countdown {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background-color: #bae6fd;
+  border: 1px solid #0284c7;
+  border-radius: 3px;
+  padding: 1px 6px;
+  margin-left: 2px;
+}
+
+.app-update-banner-sub,
+.app-update-sub {
+  font-size: 0.875rem; /* 14px */
+  color: #075985;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-update-banner,
+  .app-update-banner * {
+    animation: none !important;
+    transition: none !important;
+  }
 }

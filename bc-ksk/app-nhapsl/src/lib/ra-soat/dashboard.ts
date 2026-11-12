@@ -65,7 +65,7 @@ export async function dashboardAdmin(): Promise<{
   const sql = getSql();
   const clsSql = CLS_KEYS.map((k) => sql`(count(*) FILTER (WHERE h.${sql(k)} = 1))::int AS ${sql(k)}`)
     .reduce((a, f) => sql`${a}, ${f}`);
-  const [buoi, users, khoUser, hoatDong, clsDv, [dem]] = await Promise.all([
+  const [buoi, users, khoUser, hoatDong, clsDv, [dem], hoSoUser] = await Promise.all([
     truyVanBuoi(sql, ADMIN_GIA, {}),
     sql<{ id: number; username: string; ho_ten: string; role: string; active: boolean; last_seen_at: Date | null }[]>`
       SELECT id, username, ho_ten, role, active, last_seen_at FROM users
@@ -83,11 +83,18 @@ export async function dashboardAdmin(): Promise<{
       SELECT (SELECT count(*) FROM ho_so WHERE vi_tri = 'kho_chung')::int AS kho_chung,
              (SELECT count(*) FROM ho_so WHERE vi_tri = 'kho_ca_nhan')::int AS kho_ca_nhan,
              (SELECT count(*) FROM de_nghi_chuyen WHERE trang_thai = 'cho_xu_ly')::int AS de_nghi_cho`,
+    // Người từng xác nhận / chuyển hồ sơ — để giữ lại admin có phát sinh trong bảng theo người.
+    sql<{ uid: number }[]>`
+      SELECT DISTINCT xac_nhan_by AS uid FROM ho_so WHERE xac_nhan_by IS NOT NULL
+      UNION SELECT DISTINCT chuyen_boi FROM ho_so WHERE chuyen_boi IS NOT NULL`,
   ]);
+  const coHoSo = new Set(hoSoUser.map((r) => r.uid));
 
   const khoMap = new Map(khoUser.map((r) => [r.kho_user_id, r.n]));
   const hdMap = new Map(hoatDong.map((r) => [r.user_id, r.luc]));
-  const theo_user: DongTheoUser[] = users.map((u) => ({
+  const coPhatSinh = (u: { id: number; role: string }) =>
+    u.role !== 'admin' || buoi.some((b) => b.phu_trach?.id === u.id) || (khoMap.get(u.id) ?? 0) > 0 || coHoSo.has(u.id);
+  const theo_user: DongTheoUser[] = users.filter(coPhatSinh).map((u) => ({
     ...tongHopTuBuoi(buoi.filter((b) => b.phu_trach?.id === u.id), khoMap.get(u.id) ?? 0),
     user: { id: u.id, username: u.username, ho_ten: u.ho_ten },
     active: u.active,

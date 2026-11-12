@@ -12,6 +12,7 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LogoutButton } from '@/app/logout-button';
+import { CapNhatPhienBan } from '@/components/cap-nhat-phien-ban';
 import { DeNghiThongBao, denToi } from '@/components/de-nghi-thong-bao';
 import type { DeNghiChuyen, KetQuaTimKiem } from '@/lib/api-types';
 import { formatNumber } from '@/lib/client/format';
@@ -136,6 +137,7 @@ export function AppShell({ user: propUser, children, fullWidth = false }: AppShe
   return (
     <AppShellActiveContext.Provider value={true}>
       <div className="app-layout">
+        <CapNhatPhienBan />
         <header className="app-topbar">
           <div className="app-topbar-inner">
             <div className="app-topbar-left">

@@ -2,7 +2,8 @@ import type postgres from 'postgres';
 import type { AuthUser } from '@/lib/auth/guard';
 import type { KetQuaTimKiem, UserNgan } from '@/lib/api-types';
 import { getSql } from '@/db/client';
-import { khongDau } from '@/lib/text';
+import { CLS_KEYS, type ClsKey } from '@/lib/cls';
+import { coTheTim, tachTuKhoa, type TuKhoa as TuKhoaMo } from '@/lib/tim-mo';
 import { LoiNghiepVu } from './loi';
 import { layBuoiCoQuyen } from './buoi';
 import { COT_HO_SO, mapHoSo, type Row } from './ho-so';
@@ -13,27 +14,52 @@ type Frag = postgres.PendingQuery<postgres.Row[]>;
 
 export type PhamViTimKiem = 'buoi' | 'cua_toi' | 'kho_chung' | 'tat_ca';
 export const GIOI_HAN_TIM_KIEM = 200;
-export const LOI_TU_KHOA = 'Nhập ít nhất 2 ký tự (họ tên, năm sinh, ≥4 số CCCD…)';
+export const LOI_TU_KHOA = 'Nhập ít nhất 2 ký tự (họ tên, năm sinh, ≥4 số CCCD…) hoặc chọn bộ lọc';
 
-export type TuKhoa =
-  | { loai: 'chu'; gia_tri: string }      // chỉ chữ → đầu một từ của họ tên
-  | { loai: 'so4'; gia_tri: string }      // đúng 4 số → năm sinh hoặc chứa trong CCCD/mã KCB/SĐT/thẻ
-  | { loai: 'so'; gia_tri: string }       // ≥5 số → chứa trong CCCD/mã KCB/SĐT/thẻ
-  | { loai: 'chu_so'; gia_tri: string };  // chữ + số → thẻ BHYT hoặc mã KCB
+export type TuKhoa = TuKhoaMo;
 
-/** Thuần: bỏ dấu, tách khoảng trắng, loại ký tự lạ, phân loại; token 1–3 số bị bỏ. */
+/** Thuần: tách + phân loại theo `tim-mo.ts` (SO / MA / CHU). Ký tự điều khiển \u0001 bị loại. */
 export function phanTichTuKhoa(q: string): TuKhoa[] {
-  const kq: TuKhoa[] = [];
-  for (const tho of khongDau(q).split(' ')) {
-    const t = tho.replace(/[^a-z0-9]/g, '');
-    if (!t) continue;
-    if (/^[a-z]+$/.test(t)) kq.push({ loai: 'chu', gia_tri: t });
-    else if (/^\d+$/.test(t)) {
-      if (t.length === 4) kq.push({ loai: 'so4', gia_tri: t });
-      else if (t.length >= 5) kq.push({ loai: 'so', gia_tri: t });
-    } else kq.push({ loai: 'chu_so', gia_tri: t });
+  return tachTuKhoa(q.replace(/\u0001/g, ' '));
+}
+
+/** Bộ lọc bổ sung của GET /api/tim-kiem (AND với từ khóa). */
+export type BoLoc = {
+  don_vi?: 'TN' | 'LK' | 'VK';
+  ngay?: string;
+  cls?: Partial<Record<ClsKey, 'co' | 'khong'>>;
+  xac_nhan?: 'da' | 'chua';
+  phu_trach?: number;
+  co_ghi_chu?: boolean;
+  tt_ksk?: 'co' | 'khong';
+  nguon?: 'his' | 'them_tay' | 'kho_chung';
+  vi_tri?: 'buoi' | 'kho_ca_nhan' | 'kho_chung' | 'da_loai';
+};
+
+export function coBoLoc(l: BoLoc | undefined): boolean {
+  if (!l) return false;
+  return Object.entries(l).some(([k, v]) => (k === 'cls' ? Object.keys((v as object) ?? {}).length > 0 : v !== undefined));
+}
+
+/** Điều kiện SQL cho bộ lọc (alias h, b). Mọi giá trị đi qua tham số; khóa cột lấy từ danh sách trắng. */
+export function dieuKienBoLoc(sql: Sql, l: BoLoc): Frag {
+  const dk: Frag[] = [];
+  if (l.don_vi) dk.push(sql`COALESCE(b.don_vi, h.don_vi_goi_y) = ${l.don_vi}`);
+  if (l.ngay) dk.push(sql`b.ngay_kham = ${l.ngay}::date`);
+  for (const k of CLS_KEYS) {
+    const v = l.cls?.[k];
+    if (v) dk.push(sql`h.${sql(k)} = ${v === 'co' ? 1 : 0}`);
   }
-  return kq;
+  if (l.xac_nhan) dk.push(l.xac_nhan === 'da' ? sql`h.da_xac_nhan` : sql`NOT h.da_xac_nhan`);
+  if (l.phu_trach !== undefined) dk.push(sql`b.phu_trach_user_id = ${l.phu_trach}`);
+  if (l.co_ghi_chu !== undefined) dk.push(l.co_ghi_chu ? sql`btrim(h.ghi_chu) <> ''` : sql`btrim(h.ghi_chu) = ''`);
+  if (l.tt_ksk) dk.push(sql`h.co_tt_ksk = ${l.tt_ksk === 'co' ? 1 : 0}`);
+  if (l.nguon === 'his') dk.push(sql`(h.nguon = 'cowork' AND NOT h.nhan_tu_kho_chung)`);
+  else if (l.nguon === 'them_tay') dk.push(sql`h.nguon = 'them_tay'`);
+  else if (l.nguon === 'kho_chung') dk.push(sql`h.nhan_tu_kho_chung`);
+  if (l.vi_tri === 'da_loai') dk.push(sql`h.vi_tri IN ('kho_ca_nhan', 'kho_chung')`);
+  else if (l.vi_tri) dk.push(sql`h.vi_tri = ${l.vi_tri}`);
+  return dk.reduce<Frag>((a, f) => sql`${a} AND ${f}`, sql`TRUE`);
 }
 
 type RowTK = Row & {
@@ -48,18 +74,50 @@ type RowTK = Row & {
 const userNgan = (id: number | null, username: string | null, hoTen: string | null): UserNgan | null =>
   id === null || username === null ? null : { id, username, ho_ten: hoTen ?? '' };
 
-function dieuKienTuKhoa(sql: Sql, t: TuKhoa): Frag {
-  const chua = '%' + t.gia_tri + '%';
-  switch (t.loai) {
-    case 'chu':
-      return sql`h.ho_ten_kd ~ ${'(^| )' + t.gia_tri}`;
-    case 'so4':
-      return sql`(h.nam_sinh = ${Number(t.gia_tri)} OR h.cccd LIKE ${chua} OR h.ma_kcb LIKE ${chua} OR h.so_dt LIKE ${chua} OR h.so_the_bhyt LIKE ${chua})`;
-    case 'so':
-      return sql`(h.cccd LIKE ${chua} OR h.ma_kcb LIKE ${chua} OR h.so_dt LIKE ${chua} OR h.so_the_bhyt LIKE ${chua})`;
-    case 'chu_so':
-      return sql`(lower(h.so_the_bhyt) LIKE ${chua} OR lower(h.ma_kcb) LIKE ${chua})`;
+const escapeRegex = (t: string) => t.replace(/[.*+?^${}()|[\]\\\/-]/g, '\\$&');
+const kd = (sql: Sql, col: string): Frag => sql`lower(unaccent(${sql.unsafe(col)}))`;
+const VAN_BAN_CHU = (sql: Sql): Frag => sql`(h.ho_ten_kd || chr(1) || lower(unaccent(normalize(h.ghi_chu, NFC))))`;
+export const TOI_DA_TOKEN_MA = 6;
+
+/** Các token CHU theo thứ tự: tìm tuần tự trong họ tên ␁ ghi chú (token không vắt qua dấu phân cách). */
+function dieuKienChu(sql: Sql, tokens: string[]): Frag {
+  if (tokens.length === 0) return sql`TRUE`;
+  return sql`${VAN_BAN_CHU(sql)} ~ ${tokens.map(escapeRegex).join('.*')}`;
+}
+
+function dieuKienSo(sql: Sql, tu: string): Frag {
+  const chua = '%' + tu + '%';
+  const namSinh = tu.length === 4 ? sql`h.nam_sinh = ${Number(tu)} OR ` : sql``;
+  return sql`(${namSinh}${kd(sql, 'h.cccd')} LIKE ${chua} OR ${kd(sql, 'h.ma_kcb')} LIKE ${chua} OR ${kd(sql, 'h.so_dt')} LIKE ${chua} OR ${kd(sql, 'h.so_the_bhyt')} LIKE ${chua})`;
+}
+
+function dieuKienMa(sql: Sql, tu: string): Frag {
+  const chua = '%' + tu + '%';
+  return sql`(${kd(sql, 'h.so_the_bhyt')} LIKE ${chua} OR ${kd(sql, 'h.ma_kcb')} LIKE ${chua})`;
+}
+
+/**
+ * Điều kiện cho cả câu hỏi — phản chiếu `khopHoSo` của tim-mo.ts:
+ *  SO: từng token; MA: khớp thẻ/mã KCB, nếu không thì nhập vào dãy CHU (theo đúng vị trí ban đầu);
+ *  CHU: cùng một regex có thứ tự. Token MA "rơi" vào dãy CHU tùy từng hồ sơ nên mở rộng theo tập con (≤ 2^6).
+ */
+export function dieuKienTatCaTuKhoa(sql: Sql, tuKhoa: TuKhoa[]): Frag {
+  const ma = tuKhoa.filter((t) => t.loai === 'MA');
+  if (ma.length > TOI_DA_TOKEN_MA) throw new LoiNghiepVu(400, 'Quá nhiều mã trong một lần tìm');
+  const dkSo = tuKhoa.filter((t) => t.loai === 'SO').map((t) => dieuKienSo(sql, t.tu));
+  const chung = dkSo.reduce<Frag>((a, f) => sql`${a} AND ${f}`, sql`TRUE`);
+  if (ma.length === 0) return sql`${chung} AND ${dieuKienChu(sql, tuKhoa.filter((t) => t.loai === 'CHU').map((t) => t.tu))}`;
+
+  const nhanh: Frag[] = [];
+  for (let mask = 0; mask < 1 << ma.length; mask++) {
+    const roi = new Set(ma.filter((_, i) => mask & (1 << i)).map((t) => t));
+    const dkMa = ma.map((t) => (roi.has(t) ? sql`NOT ${dieuKienMa(sql, t.tu)}` : dieuKienMa(sql, t.tu)));
+    const chuoi = tuKhoa.filter((t) => t.loai === 'CHU' || roi.has(t)).map((t) => t.tu);
+    const dk = [...dkMa, dieuKienChu(sql, chuoi)].reduce<Frag>((a, f) => sql`${a} AND ${f}`, sql`TRUE`);
+    nhanh.push(sql`(${dk})`);
   }
+  const hoac = nhanh.reduce<Frag>((a, f, i) => (i === 0 ? f : sql`${a} OR ${f}`), sql`FALSE`);
+  return sql`${chung} AND (${hoac})`;
 }
 
 export async function layKetQuaTheoId(sql: Sql, user: AuthUser, id: number): Promise<KetQuaTimKiem> {
@@ -70,13 +128,15 @@ export async function layKetQuaTheoId(sql: Sql, user: AuthUser, id: number): Pro
 
 export async function timKiem(
   user: AuthUser,
-  p: { q: string; pham_vi: PhamViTimKiem; buoi?: string | null },
+  p: { q: string; pham_vi: PhamViTimKiem; buoi?: string | null; loc?: BoLoc },
   sqlIn?: Sql,
 ): Promise<{ ket_qua: KetQuaTimKiem[]; tong: number; gioi_han: number | null }> {
   const sql = sqlIn ?? getSql();
   const q = p.q.trim();
-  const tuKhoa = q.length < 2 ? [] : phanTichTuKhoa(q);
-  if (tuKhoa.length === 0) throw new LoiNghiepVu(400, LOI_TU_KHOA);
+  const coLoc = coBoLoc(p.loc);
+  // q không dùng được (rỗng / quá ngắn): chỉ chấp nhận khi có ít nhất một bộ lọc.
+  const tuKhoa = coTheTim(q) ? phanTichTuKhoa(q) : [];
+  if (tuKhoa.length === 0 && !coLoc) throw new LoiNghiepVu(400, LOI_TU_KHOA);
 
   let phamVi: Frag;
   let gioiHan: number | null = GIOI_HAN_TIM_KIEM;
@@ -102,18 +162,15 @@ export async function timKiem(
   }
 
   const dieuKien = dieuKienTatCaTuKhoa(sql, tuKhoa);
-  return truyVanKetQua(sql, user, sql`${phamVi} AND ${dieuKien}`, gioiHan);
-}
-
-export function dieuKienTatCaTuKhoa(sql: Sql, tuKhoa: TuKhoa[]): Frag {
-  return tuKhoa.map((t) => dieuKienTuKhoa(sql, t)).reduce<Frag>((a, f) => sql`${a} AND ${f}`, sql`TRUE`);
+  const dkLoc = p.loc && coLoc ? dieuKienBoLoc(sql, p.loc) : sql`TRUE`;
+  return truyVanKetQua(sql, user, sql`${phamVi} AND ${dieuKien} AND ${dkLoc}`, gioiHan);
 }
 
 /** Thuần: q rỗng → []; q có nhưng không token hợp lệ → 400. Dùng cho kho chung (q tùy chọn). */
 export function tuKhoaTuyChon(q: string): TuKhoa[] {
   const t = q.trim();
   if (t === '') return [];
-  const tk = t.length < 2 ? [] : phanTichTuKhoa(t);
+  const tk = coTheTim(t) ? phanTichTuKhoa(t) : [];
   if (tk.length === 0) throw new LoiNghiepVu(400, LOI_TU_KHOA);
   return tk;
 }

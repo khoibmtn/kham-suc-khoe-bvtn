@@ -11,6 +11,7 @@ import {
   type BaTrangThai,
   type BoLoc,
 } from '@/lib/loc-ho-so';
+import { coTheTim } from '@/lib/tim-mo';
 import { formatNumber } from '@/lib/client/format';
 
 export type LuuBoLocSession = {
@@ -186,8 +187,8 @@ type RaSoatBoLocProps = {
   boLoc: BoLoc;
   chiCoCanhBao: boolean;
   searchQuery: string;
-  searching: boolean;
-  searchError: string;
+  searching?: boolean;
+  searchError?: string;
   onChangeBoLoc: (next: BoLoc) => void;
   onChangeChiCoCanhBao: (next: boolean) => void;
   onResetAll: () => void;
@@ -199,8 +200,8 @@ export function RaSoatBoLoc({
   boLoc,
   chiCoCanhBao,
   searchQuery,
-  searching,
-  searchError,
+  searching = false,
+  searchError = '',
   onChangeBoLoc,
   onChangeChiCoCanhBao,
   onResetAll,
@@ -249,7 +250,7 @@ export function RaSoatBoLoc({
     [boLoc, chiCoCanhBao],
   );
   const trimmedQ = searchQuery.trim();
-  const coTimKiem = trimmedQ.length >= 2;
+  const coTimKiem = coTheTim(searchQuery);
   const tongBoLocDangBat = soBoLoc + (coTimKiem ? 1 : 0);
 
   function handleCycleCls(key: ClsKey) {

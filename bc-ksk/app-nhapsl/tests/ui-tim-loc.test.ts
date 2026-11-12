@@ -11,7 +11,18 @@ import {
 } from '@/components/ra-soat-bo-loc';
 import { locDanhSachBuoi } from '@/components/home-buoi-list';
 import { sapXepDanhSachBuoi } from '@/components/admin-phan-cong-view';
-import { formatViTriKetQua } from '@/components/tim-kiem-view';
+import {
+  cloneBoLocTimKiemMacDinh,
+  demSoBoLocTimKiem,
+  docBoLocTimKiemTuUrl,
+  formatViTriKetQua,
+  taoDanhSachNgayKhamOption,
+  taoDanhSachPhuTrachOption,
+  taoUrlSearchParamsTimKiem,
+} from '@/components/tim-kiem-view';
+import { timMoDanhSachHoSo } from '@/components/ra-soat-view';
+import { coBanCapNhatMoi, formatDemNguocCapNhat } from '@/components/cap-nhat-phien-ban';
+import { tinhTongTheoUser } from '@/components/admin-tong-quan-view';
 
 function taoHoSoMau(overrides: Partial<HoSoDong> = {}): HoSoDong {
   const clsMacDinh = {
@@ -197,5 +208,139 @@ describe('UI tìm kiếm & bộ lọc helpers', () => {
       co_quyen_sua: false,
     };
     expect(formatViTriKetQua(oKhoCaNhan)).toBe('Kho của Diệp');
+  });
+
+  it('tìm mờ phía trình duyệt ở màn rà soát khớp theo thứ tự, tìm trong ghi chú và trả vị trí tô vàng', () => {
+    const ds = [
+      taoHoSoMau({ id: 1, ho_ten: 'NGUYỄN HOÀNG ANH', ghi_chu: '' }),
+      taoHoSoMau({ id: 2, ho_ten: 'TRẦN VĂN BÌNH', ghi_chu: 'Thiếu phiếu siêu âm bụng' }),
+      taoHoSoMau({ id: 3, ho_ten: 'LÊ THỊ MAI', ghi_chu: '' }),
+    ];
+
+    const kqRong = timMoDanhSachHoSo(ds, 'a');
+    expect(kqRong.idsKhop).toBeNull();
+
+    const kqTen = timMoDanhSachHoSo(ds, 'ng anh');
+    expect(kqTen.idsKhop ? Array.from(kqTen.idsKhop) : []).toEqual([1]);
+    expect(kqTen.danhDauMap.get(1)?.ho_ten.length).toBeGreaterThan(0);
+
+    const kqGhiChu = timMoDanhSachHoSo(ds, 'sieu am');
+    expect(kqGhiChu.idsKhop ? Array.from(kqGhiChu.idsKhop) : []).toEqual([2]);
+    expect(kqGhiChu.danhDauMap.get(2)?.ghi_chu.length).toBeGreaterThan(0);
+  });
+
+  it('đồng bộ bộ lọc trang /tim-kiem với URL query và tạo danh sách ngày khám / người phụ trách', () => {
+    const boLoc = cloneBoLocTimKiemMacDinh();
+    expect(demSoBoLocTimKiem(boLoc)).toBe(0);
+
+    boLoc.don_vi = 'TN';
+    boLoc.ngay = '2026-09-07';
+    boLoc.xac_nhan = 'chua';
+    boLoc.cls.sieu_am = 'khong';
+    boLoc.co_ghi_chu = '1';
+    expect(demSoBoLocTimKiem(boLoc)).toBe(5);
+
+    const params = taoUrlSearchParamsTimKiem('ng anh', 'tat_ca', boLoc, true);
+    expect(params.get('q')).toBe('ng anh');
+    expect(params.get('don_vi')).toBe('TN');
+    expect(params.get('ngay')).toBe('2026-09-07');
+    expect(params.get('xac_nhan')).toBe('chua');
+    expect(params.get('cls_sieu_am')).toBe('khong');
+    expect(params.get('co_ghi_chu')).toBe('1');
+
+    const parsed = docBoLocTimKiemTuUrl(params);
+    expect(parsed.boLoc).toEqual(boLoc);
+
+    const buoiList: BuoiTomTat[] = [
+      {
+        id: 1,
+        ma_buoi: 'TN-20260907',
+        don_vi: 'TN',
+        ten_don_vi: 'Thủy Nguyên',
+        ngay_kham: '2026-09-07',
+        diem_kham: 'Trạm A',
+        doan_kham: 'Đoàn 1',
+        nv_goi_y: 'ngan',
+        so_doan_tong: 50,
+        hien_co: 50,
+        da_xac_nhan: 10,
+        chua_xac_nhan: 40,
+        tien_do: 20,
+        thua: 0,
+        thieu: 0,
+        bo_sung: 0,
+        phu_trach: { id: 2, username: 'ngan', ho_ten: 'Ngân' },
+        trang_thai: 'dang_ra_soat',
+        xac_nhan_at: null,
+        xac_nhan_by: null,
+        giai_trinh: '',
+        co_quyen_sua: true,
+      },
+    ];
+    expect(taoDanhSachNgayKhamOption(buoiList, 'TN')).toEqual([
+      { ngay: '2026-09-07', label: '07/09/2026 · Thủy Nguyên · Trạm A' },
+    ]);
+    expect(taoDanhSachPhuTrachOption(buoiList)).toEqual([
+      { id: 2, username: 'ngan', ho_ten: 'Ngân' },
+    ]);
+  });
+
+  it('kiểm tra phiên bản cập nhật và tính dòng Tổng cộng bảng Tiến độ theo nhân viên', () => {
+    expect(coBanCapNhatMoi('', 'v2')).toBe(false);
+    expect(coBanCapNhatMoi('v1', '')).toBe(false);
+    expect(coBanCapNhatMoi('v1', 'v1')).toBe(false);
+    expect(coBanCapNhatMoi('v1', 'v2')).toBe(true);
+    expect(formatDemNguocCapNhat(179)).toBe('02:59');
+    expect(formatDemNguocCapNhat(0)).toBe('00:00');
+
+    const tong = tinhTongTheoUser([
+      {
+        user: { id: 2, username: 'ngan', ho_ten: 'Ngân' },
+        active: true,
+        so_buoi: 3,
+        so_buoi_da_xac_nhan: 1,
+        so_buoi_chua_xac_nhan: 2,
+        so_doan: 100,
+        hien_co: 100,
+        da_xac_nhan: 40,
+        chua_xac_nhan: 60,
+        thua: 0,
+        thieu: 0,
+        chenh_lech: 0,
+        bo_sung: 2,
+        kho_ca_nhan: 2,
+        tien_do: 40,
+        last_seen_at: '2026-11-12T08:00:00Z',
+        lan_hoat_dong_cuoi: '2026-11-12T08:00:00Z',
+      },
+      {
+        user: { id: 3, username: 'diep', ho_ten: 'Diệp' },
+        active: true,
+        so_buoi: 2,
+        so_buoi_da_xac_nhan: 1,
+        so_buoi_chua_xac_nhan: 1,
+        so_doan: 100,
+        hien_co: 100,
+        da_xac_nhan: 60,
+        chua_xac_nhan: 40,
+        thua: 0,
+        thieu: 0,
+        chenh_lech: 0,
+        bo_sung: 1,
+        kho_ca_nhan: 0,
+        tien_do: 60,
+        last_seen_at: '2026-11-12T09:30:00Z',
+        lan_hoat_dong_cuoi: '2026-11-12T09:30:00Z',
+      },
+    ]);
+    expect(tong.so_buoi).toBe(5);
+    expect(tong.so_buoi_da_xac_nhan).toBe(2);
+    expect(tong.hien_co).toBe(200);
+    expect(tong.da_xac_nhan).toBe(100);
+    expect(tong.chua_xac_nhan).toBe(100);
+    expect(tong.bo_sung).toBe(3);
+    expect(tong.tien_do).toBe(50);
+    expect(tong.kho_ca_nhan).toBe(2);
+    expect(tong.hoat_dong_gan_nhat).toBe('2026-11-12T09:30:00Z');
   });
 });

@@ -100,25 +100,30 @@ export const MUC: Muc[] = [
         buoc: [
           {
             n: 1,
-            t: 'Bấm vào **ô tìm** (hoặc nhấn `/`) rồi gõ **tên không dấu**, năm sinh hoặc 4 số cuối CCCD. Ô trống có nền **vàng cam nhạt** (chưa tìm); khi có chữ sẽ đổi sang nền **màu gạch**, chữ trắng (đang tìm).',
+            t: 'Bấm vào **ô tìm** (hoặc nhấn `/`) rồi gõ **tên không dấu**, ghi chú, năm sinh, CCCD hoặc mã KCB. Ô trống có nền **vàng cam nhạt** (chưa tìm); khi có chữ sẽ đổi sang nền **màu gạch**, chữ trắng (đang tìm).',
           },
           {
             n: 2,
-            t: 'Nhìn dòng **Đang hiển thị 3 / 38 hồ sơ**: bảng chỉ còn những người khớp từ khóa.',
+            t: 'App hỗ trợ **tìm mờ theo thứ tự chữ cái** (ví dụ gõ “ng anh” khớp “Nguyễn Hoàng Anh”), tìm cả trong **cột Ghi chú**, và **tô vàng** các chữ cái khớp từ khóa.',
           },
           {
             n: 3,
-            t: 'Nhấn `↓` hoặc `Enter` để từ ô tìm **xuống danh sách**, chọn dòng đầu kết quả (có viền nhấn); sau đó dùng `Space`, `1`–`8`, `Enter`, `K`, `C` bình thường trên danh sách đã lọc.',
+            t: 'Nhìn dòng **Đang hiển thị 3 / 38 hồ sơ**: bảng chỉ còn những người khớp từ khóa.',
           },
           {
             n: 4,
+            t: 'Nhấn `↓` hoặc `Enter` để từ ô tìm **xuống danh sách**, chọn dòng đầu kết quả (có viền nhấn); sau đó dùng `Space`, `1`–`8`, `Enter`, `K`, `C` bình thường trên danh sách đã lọc.',
+          },
+          {
+            n: 5,
             t: 'Nhấn `/` để **quay lại ô tìm** (chữ cũ được bôi đen để gõ đè tên người tiếp theo).',
           },
         ],
       },
     ],
     luuY: [
-      'Tìm không phân biệt dấu và chữ hoa/thường: gõ “thuy” vẫn ra “Thủy”, “Thuỷ”.',
+      'Tìm không phân biệt dấu và chữ hoa/thường: gõ “thuy” vẫn ra “Thủy”, “Thuỷ”; gõ “ng anh” khớp mọi tên có các chữ theo đúng thứ tự như “Nguyễn Hoàng Anh”.',
+      'Tìm kiếm tra cứu cả trong **cột Ghi chú** và tự động **tô vàng** những ký tự khớp.',
       'Xóa tìm kiếm: bấm dấu **×** trong ô hoặc nhấn `Esc`.',
     ],
   },
@@ -272,14 +277,15 @@ export const MUC: Muc[] = [
   {
     id: 'tim-toan-app',
     tieuDe: 'Tìm toàn app và đề nghị chuyển',
-    khiNao: 'Có giấy của một người nhưng người đó đang nằm trong buổi của nhân viên khác.',
+    khiNao: 'Có giấy của một người nhưng người đó đang nằm trong buổi của nhân viên khác, hoặc cần lọc hồ sơ trên toàn hệ thống.',
     khoi: [
       {
         anh: { file: '12-tim-kiem-toan-app.png', alt: 'Trang Tìm kiếm với phạm vi Toàn bộ app, dòng Chỉ xem và nút Đề nghị chuyển' },
         buoc: [
-          { n: 1, t: 'Bấm **Tìm kiếm** trên menu, gõ tên không dấu, chọn **Phạm vi**: Buổi của tôi, Kho chờ chung hoặc **Toàn bộ app**.' },
-          { n: 2, t: 'Người thuộc buổi của người khác chỉ có nhãn **Chỉ xem**: bạn không sửa được hồ sơ đó.' },
-          { n: 3, t: 'Bấm **Đề nghị chuyển về buổi của tôi**, chọn buổi đích, ghi lý do rồi gửi. Chờ người phụ trách đồng ý.' },
+          { n: 1, t: 'Bấm **Tìm kiếm** trên menu, gõ từ khóa (họ tên, ghi chú, năm sinh, CCCD, mã KCB — hỗ trợ **tìm mờ theo thứ tự** và **tô vàng** chữ khớp), chọn **Phạm vi**: Buổi của tôi, Kho chờ chung hoặc **Toàn bộ app**.' },
+          { n: 2, t: 'Dùng thanh **Bộ lọc tìm kiếm** (Xã/phường, Ngày khám, 8 cận lâm sàng **Tất cả / Có / Không**, Xác nhận, Nhân viên rà soát, Ghi chú, DS đẩy cổng, Nguồn, Vị trí) để lọc kết quả. Khi bật ít nhất 1 bộ lọc, bạn có thể bấm **Tìm kiếm** ngay cả khi để trống ô từ khóa.' },
+          { n: 3, t: 'Người thuộc buổi của người khác chỉ có nhãn **Chỉ xem**: bạn không sửa được hồ sơ đó.' },
+          { n: 4, t: 'Bấm **Đề nghị chuyển về buổi của tôi**, chọn buổi đích, ghi lý do rồi gửi. Chờ người phụ trách đồng ý.' },
         ],
       },
       {

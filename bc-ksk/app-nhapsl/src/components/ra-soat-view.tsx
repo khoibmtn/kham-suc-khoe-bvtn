@@ -28,6 +28,12 @@ import {
   type ClsKey,
 } from '@/lib/cls';
 import { khopBoLoc, type BoLoc } from '@/lib/loc-ho-so';
+import {
+  coTheTim,
+  khopHoSo,
+  tachTuKhoa,
+  type KetQuaKhop,
+} from '@/lib/tim-mo';
 import { apiRequest } from '@/lib/client/api';
 import {
   formatDate,
@@ -54,7 +60,31 @@ import {
   ThemHoSoModal,
   XacNhanBuoiModal,
 } from './ra-soat-dialogs';
+import { ToVang } from './to-vang';
 import { useToast } from './toast';
+
+export function timMoDanhSachHoSo(
+  list: HoSoDong[],
+  q: string,
+): {
+  idsKhop: Set<number> | null;
+  danhDauMap: Map<number, KetQuaKhop['danhDau']>;
+} {
+  const danhDauMap = new Map<number, KetQuaKhop['danhDau']>();
+  if (!coTheTim(q)) {
+    return { idsKhop: null, danhDauMap };
+  }
+  const tokens = tachTuKhoa(q);
+  const idsKhop = new Set<number>();
+  for (const h of list) {
+    const kq = khopHoSo(tokens, h);
+    if (kq.khop) {
+      idsKhop.add(h.id);
+      danhDauMap.set(h.id, kq.danhDau);
+    }
+  }
+  return { idsKhop, danhDauMap };
+}
 
 type RaSoatViewProps = {
   maBuoi: string;
@@ -64,6 +94,7 @@ type RaSoatViewProps = {
 type HoSoRowProps = {
   stt: number;
   hoSo: HoSoDong;
+  danhDau?: KetQuaKhop['danhDau'];
   isSelected: boolean;
   canEdit: boolean;
   rowBusy: boolean;
@@ -76,6 +107,7 @@ type HoSoRowProps = {
 const HoSoRow = memo(function HoSoRow({
   stt,
   hoSo,
+  danhDau,
   isSelected,
   canEdit,
   rowBusy,
@@ -104,7 +136,13 @@ const HoSoRow = memo(function HoSoRow({
     >
       <td className="num-col col-stt">{stt}</td>
       <td className="col-makcb">
-        <span className="num">{hoSo.ma_kcb || '—'}</span>
+        <span className="num">
+          {hoSo.ma_kcb ? (
+            <ToVang text={hoSo.ma_kcb} ranges={danhDau?.ma_kcb} />
+          ) : (
+            '—'
+          )}
+        </span>
         {hoSo.src && hoSo.src.ma_kcb !== hoSo.ma_kcb && (
           <span className="diff-dot" title={`Gốc: ${hoSo.src.ma_kcb || '(trống)'}`}>
             *
@@ -113,7 +151,9 @@ const HoSoRow = memo(function HoSoRow({
       </td>
       <td className="col-hoten">
         <div className="hoten-main-line">
-          <strong className="hoten-text">{hoSo.ho_ten}</strong>
+          <strong className="hoten-text">
+            <ToVang text={hoSo.ho_ten} ranges={danhDau?.ho_ten} />
+          </strong>
           {hoSo.sua_nhan_than && (
             <span className="chip chip-edited" title="Đã sửa thông tin nhân thân theo hồ sơ giấy">
               Đã sửa
@@ -142,9 +182,31 @@ const HoSoRow = memo(function HoSoRow({
         </div>
       </td>
       <td className="col-gt">{hoSo.gioi_tinh || 'Chưa rõ'}</td>
-      <td className="num-col col-namsinh">{hoSo.nam_sinh || '—'}</td>
-      <td className="col-cccd num">{hoSo.cccd || '—'}</td>
+      <td className="num-col col-namsinh">
+        {hoSo.nam_sinh ? (
+          <ToVang text={String(hoSo.nam_sinh)} ranges={danhDau?.nam_sinh} />
+        ) : (
+          '—'
+        )}
+      </td>
+      <td className="col-cccd num">
+        {hoSo.cccd ? (
+          <ToVang text={hoSo.cccd} ranges={danhDau?.cccd} />
+        ) : (
+          '—'
+        )}
+      </td>
       <td className="col-diachi">{hoSo.dia_chi_chi_tiet || '—'}</td>
+      <td className="col-ghichu" title={hoSo.ghi_chu || undefined}>
+        {hoSo.ghi_chu ? (
+          // Show the whole note while it contains a search match, so the highlight is never clipped.
+          <div className={danhDau?.ghi_chu?.length ? undefined : 'ghichu-clamp'}>
+            <ToVang text={hoSo.ghi_chu} ranges={danhDau?.ghi_chu} />
+          </div>
+        ) : (
+          '—'
+        )}
+      </td>
 
       {CLS.map((c, idx) => {
         const val = hoSo.cls[c.key] === 1 ? 1 : 0;
@@ -788,12 +850,12 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
   const [searchQuery, setSearchQuery] = useState<string>(
     () => docBoLocSession(maBuoi).q,
   );
+  const [debouncedQuery, setDebouncedQuery] = useState<string>(
+    () => docBoLocSession(maBuoi).q,
+  );
   const [chiCoCanhBao, setChiCoCanhBao] = useState<boolean>(
     () => docBoLocSession(maBuoi).chiCoCanhBao,
   );
-  const [idsKhopTimKiem, setIdsKhopTimKiem] = useState<Set<number> | null>(null);
-  const [searching, setSearching] = useState<boolean>(false);
-  const [searchError, setSearchError] = useState<string>('');
 
   // Set id giữ tạm: khi sửa CLS/xác nhận/nhân thân mà dòng không còn khớp bộ lọc,
   // giữ dòng đó hiển thị tới khi đổi bộ lọc hoặc chọn dòng khác.
@@ -818,50 +880,22 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
     ghiBoLocSession(maBuoi, boLoc, searchQuery, chiCoCanhBao);
   }, [maBuoi, boLoc, searchQuery, chiCoCanhBao]);
 
-  const trimmedSearch = searchQuery.trim();
-  const activeIdsKhop = trimmedSearch.length >= 2 ? idsKhopTimKiem : null;
-  const activeSearching = trimmedSearch.length >= 2 ? searching : false;
-  const activeSearchError = trimmedSearch.length >= 2 ? searchError : '';
-
-  // Gọi API tìm kiếm sau 250 ms, hủy request cũ bằng AbortController
+  // Tìm mờ tại chỗ (trễ ~120 ms, không cần mạng); xóa tìm kiếm áp dụng ngay qua effectiveQuery.
   useEffect(() => {
-    if (trimmedSearch.length < 2) {
-      return;
-    }
+    const timer = window.setTimeout(
+      () => {
+        setDebouncedQuery(searchQuery);
+      },
+      coTheTim(searchQuery) ? 120 : 0,
+    );
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
 
-    const controller = new AbortController();
-    const timer = window.setTimeout(async () => {
-      setSearching(true);
-      setSearchError('');
-      const url = `/api/tim-kiem?q=${encodeURIComponent(trimmedSearch)}&pham_vi=buoi&buoi=${encodeURIComponent(maBuoi)}`;
-      const res = await apiRequest<{
-        ket_qua: KetQuaTimKiem[];
-        tong: number;
-        gioi_han: number | null;
-      }>(url, { signal: controller.signal });
-
-      if (controller.signal.aborted) return;
-      setSearching(false);
-
-      if (!res.ok) {
-        if (res.status === 400) {
-          setIdsKhopTimKiem(null);
-          setSearchError(res.error);
-          return;
-        }
-        setSearchError(res.error);
-        return;
-      }
-
-      setSearchError('');
-      setIdsKhopTimKiem(new Set(res.data.ket_qua.map((item) => item.id)));
-    }, 250);
-
-    return () => {
-      window.clearTimeout(timer);
-      controller.abort();
-    };
-  }, [maBuoi, trimmedSearch]);
+  const effectiveQuery = coTheTim(searchQuery) ? debouncedQuery : '';
+  const { idsKhop: activeIdsKhop, danhDauMap } = useMemo(
+    () => timMoDanhSachHoSo(hoSoList, effectiveQuery),
+    [hoSoList, effectiveQuery],
+  );
 
   const reloadBuoiHoSo = useCallback(async () => {
     setLoading(true);
@@ -910,15 +944,13 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
           const saved = docBoLocSession(maBuoi);
           if (
             !khopBoLoc(target, saved.boLoc) ||
-            saved.q.trim().length >= 2 ||
+            coTheTim(saved.q) ||
             (saved.chiCoCanhBao && target.canh_bao.length === 0)
           ) {
             setBoLoc(cloneBoLocMacDinh());
             setSearchQuery('');
+            setDebouncedQuery('');
             setChiCoCanhBao(false);
-            setIdsKhopTimKiem(null);
-            setSearchError('');
-            setSearching(false);
             setGiuTamIds(new Set());
           }
           setSelectedId(parsedChon);
@@ -1000,31 +1032,25 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
   const handleChangeSearch = useCallback((val: string) => {
     setSearchQuery(val);
     setSelectedId(null);
-    if (val.trim().length < 2) {
-      setIdsKhopTimKiem(null);
-      setSearchError('');
-      setSearching(false);
+    if (!coTheTim(val)) {
+      setDebouncedQuery(val);
     }
     setGiuTamIds(new Set());
   }, []);
 
   const handleClearSearch = useCallback(() => {
     setSearchQuery('');
+    setDebouncedQuery('');
     setSelectedId(null);
-    setIdsKhopTimKiem(null);
-    setSearchError('');
-    setSearching(false);
     setGiuTamIds(new Set());
   }, []);
 
   const handleResetAllFilters = useCallback(() => {
     setBoLoc(cloneBoLocMacDinh());
     setSearchQuery('');
+    setDebouncedQuery('');
     setSelectedId(null);
     setChiCoCanhBao(false);
-    setIdsKhopTimKiem(null);
-    setSearchError('');
-    setSearching(false);
     setGiuTamIds(new Set());
   }, []);
 
@@ -1697,7 +1723,7 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
                 id="rasoat-search-input"
                 type="search"
                 className={`form-input form-input-xs rasoat-search-input${searchQuery.length > 0 ? ' has-text' : ''}`}
-                placeholder="Tìm họ tên, năm sinh, CCCD, mã KCB, SĐT, thẻ BHYT…"
+                placeholder="Tìm họ tên, ghi chú, năm sinh, CCCD, mã KCB…"
                 value={searchQuery}
                 onChange={(e) => handleChangeSearch(e.target.value)}
                 onKeyDown={(e) => {
@@ -1713,39 +1739,50 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
                   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
                     e.preventDefault();
                     e.stopPropagation();
+                    if (debouncedQuery !== searchQuery) {
+                      setDebouncedQuery(searchQuery);
+                    }
                     searchInputRef.current?.blur();
                     tableScrollRef.current?.focus();
 
-                    if (danhSachHienThi.length === 0) return;
-                    if (trimmedSearch.length >= 2 && idsKhopTimKiem === null) {
-                      return;
-                    }
+                    const dsTucThi =
+                      debouncedQuery === searchQuery
+                        ? danhSachHienThi
+                        : locHoSoKetHopCanhBao(
+                            hoSoList,
+                            boLoc,
+                            timMoDanhSachHoSo(hoSoList, searchQuery).idsKhop,
+                            chiCoCanhBao,
+                          );
+                    if (dsTucThi.length === 0) return;
 
                     const currentIndex =
                       selectedId !== null
-                        ? danhSachHienThi.findIndex((h) => h.id === selectedId)
+                        ? dsTucThi.findIndex((h) => h.id === selectedId)
                         : -1;
 
                     let nextIndex = 0;
                     if (currentIndex === -1) {
                       nextIndex =
-                        e.key === 'ArrowDown' ? 0 : danhSachHienThi.length - 1;
+                        e.key === 'ArrowDown' ? 0 : dsTucThi.length - 1;
                     } else if (e.key === 'ArrowDown') {
                       nextIndex = Math.min(
-                        danhSachHienThi.length - 1,
+                        dsTucThi.length - 1,
                         currentIndex + 1,
                       );
                     } else {
                       nextIndex = Math.max(0, currentIndex - 1);
                     }
 
-                    const nextHoSo = danhSachHienThi[nextIndex];
+                    const nextHoSo = dsTucThi[nextIndex];
                     if (nextHoSo) {
                       handleSelectRow(nextHoSo.id);
-                      const rowEl = tableBodyRef.current?.querySelector(
-                        `tr[data-hoso-id="${nextHoSo.id}"]`,
-                      );
-                      rowEl?.scrollIntoView({ block: 'nearest' });
+                      window.setTimeout(() => {
+                        const rowEl = tableBodyRef.current?.querySelector(
+                          `tr[data-hoso-id="${nextHoSo.id}"]`,
+                        );
+                        rowEl?.scrollIntoView({ block: 'nearest' });
+                      }, 0);
                     }
                     return;
                   }
@@ -1753,21 +1790,32 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
                   if (e.key === 'Enter') {
                     e.preventDefault();
                     e.stopPropagation();
+                    if (debouncedQuery !== searchQuery) {
+                      setDebouncedQuery(searchQuery);
+                    }
                     searchInputRef.current?.blur();
                     tableScrollRef.current?.focus();
 
-                    if (danhSachHienThi.length === 0) return;
-                    if (trimmedSearch.length >= 2 && idsKhopTimKiem === null) {
-                      return;
-                    }
+                    const dsTucThi =
+                      debouncedQuery === searchQuery
+                        ? danhSachHienThi
+                        : locHoSoKetHopCanhBao(
+                            hoSoList,
+                            boLoc,
+                            timMoDanhSachHoSo(hoSoList, searchQuery).idsKhop,
+                            chiCoCanhBao,
+                          );
+                    if (dsTucThi.length === 0) return;
 
-                    const firstHoSo = danhSachHienThi[0];
+                    const firstHoSo = dsTucThi[0];
                     if (firstHoSo) {
                       handleSelectRow(firstHoSo.id);
-                      const rowEl = tableBodyRef.current?.querySelector(
-                        `tr[data-hoso-id="${firstHoSo.id}"]`,
-                      );
-                      rowEl?.scrollIntoView({ block: 'nearest' });
+                      window.setTimeout(() => {
+                        const rowEl = tableBodyRef.current?.querySelector(
+                          `tr[data-hoso-id="${firstHoSo.id}"]`,
+                        );
+                        rowEl?.scrollIntoView({ block: 'nearest' });
+                      }, 0);
                     }
                   }
                 }}
@@ -1896,8 +1944,6 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
           boLoc={boLoc}
           chiCoCanhBao={chiCoCanhBao}
           searchQuery={searchQuery}
-          searching={activeSearching}
-          searchError={activeSearchError}
           onChangeBoLoc={handleChangeBoLoc}
           onChangeChiCoCanhBao={handleChangeChiCoCanhBao}
           onResetAll={handleResetAllFilters}
@@ -1981,6 +2027,7 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
                     <th className="num-col col-namsinh">Năm sinh</th>
                     <th className="col-cccd">CCCD</th>
                     <th className="col-diachi">Địa chỉ chi tiết</th>
+                    <th className="col-ghichu">Ghi chú</th>
                     {CLS.map((c, idx) => (
                       <th
                         key={c.key}
@@ -2000,6 +2047,7 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
                       key={h.id}
                       stt={sttGocMap.get(h.id) ?? index + 1}
                       hoSo={h}
+                      danhDau={danhDauMap.get(h.id)}
                       isSelected={effectiveSelectedId === h.id}
                       canEdit={canEdit}
                       rowBusy={Boolean(busyRowIds[h.id])}

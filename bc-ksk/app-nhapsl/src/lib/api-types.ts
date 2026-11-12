@@ -331,3 +331,22 @@ export type KeHoachNap = {
 //                        (+ field force=1 optional)  (admin) → { ok, errors: string[], warnings: string[], ke_hoach: KeHoachNap | null }
 // POST /api/import/ghi   same body → same shape; writes in ONE transaction only when ok && !tu_choi.
 // GET  /api/import/lich-su (admin) → { lan_nap: { phien_ban, che_do, nap_boi, nap_luc, tom_tat: unknown }[] } newest first
+
+// ---- Phase 9 (owner feedback 12/11/2026): fuzzy ordered search, search filters, app version ----
+// Matching semantics: src/lib/tim-mo.ts (tachTuKhoa / khopHoSo) — the SQL in /api/tim-kiem MUST mirror it:
+//   CHU tokens in ORDER as substrings of  ho_ten_kd ␁ khongdau(ghi_chu)  (never spanning the separator);
+//   SO tokens (≥4 digits): nam_sinh = tok (4 digits) OR cccd/ma_kcb/so_dt/so_the_bhyt contains tok;
+//   MA tokens (letters+digits): so_the_bhyt/ma_kcb contains tok (case-insensitive) OR treated as a CHU token.
+// GET /api/tim-kiem  — extra optional query params (AND-ed):
+//   don_vi=TN|LK|VK            ngay=yyyy-mm-dd (ngay_kham of the record's session)
+//   cls_<key>=co|khong         (key ∈ ctm, glucose, ure, creatinin, got, gpt, tpt_nuoc_tieu, sieu_am; current values)
+//   xac_nhan=da|chua           phu_trach=<user_id>  (assignee of the record's session)
+//   co_ghi_chu=1|0             tt_ksk=co|khong      nguon=his|them_tay|kho_chung (kho_chung = nhan_tu_kho_chung)
+//   vi_tri=buoi|kho_ca_nhan|kho_chung|da_loai   (da_loai = kho_ca_nhan OR kho_chung, i.e. removed from a list)
+//   q becomes OPTIONAL when at least one filter is set (else still ≥ 2 chars → 400).
+//   Limit stays 200 (pham_vi=buoi: none); `tong` = total. Results ordered don_vi, ngay_kham, id.
+//   Filter option lists come from GET /api/buoi?tat_ca=1 (dates, units, assignees).
+// GET /api/app-version (any logged-in user) → { version: string }  — equals process.env.NEXT_PUBLIC_APP_VERSION
+//   baked at build time (next.config.ts sets it to the build timestamp). Client compares with its own baked
+//   value every 60 s; different → "Có bản cập nhật mới, trang sẽ tự tải lại sau 03:00 · Cập nhật ngay".
+// GET /api/dashboard/admin: theo_user omits users with role admin that have 0 sessions, 0 records and 0 pool items.

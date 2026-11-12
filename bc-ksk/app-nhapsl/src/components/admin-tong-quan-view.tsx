@@ -26,6 +26,66 @@ export type DashboardAdminData = {
   the: TheTongHop;
 };
 
+export type TongTheoUser = {
+  so_buoi: number;
+  so_buoi_da_xac_nhan: number;
+  hien_co: number;
+  da_xac_nhan: number;
+  bo_sung: number;
+  chua_xac_nhan: number;
+  kho_ca_nhan: number;
+  tien_do: number;
+  hoat_dong_gan_nhat: string | null;
+};
+
+export function tinhTongTheoUser(rows: DongTheoUser[]): TongTheoUser {
+  let so_buoi = 0;
+  let so_buoi_da_xac_nhan = 0;
+  let hien_co = 0;
+  let da_xac_nhan = 0;
+  let bo_sung = 0;
+  let chua_xac_nhan = 0;
+  let kho_ca_nhan = 0;
+  let maxTimeMs = -Infinity;
+  let hoat_dong_gan_nhat: string | null = null;
+
+  for (const r of rows) {
+    so_buoi += r.so_buoi;
+    so_buoi_da_xac_nhan += r.so_buoi_da_xac_nhan;
+    hien_co += r.hien_co;
+    da_xac_nhan += r.da_xac_nhan;
+    bo_sung += r.bo_sung;
+    chua_xac_nhan += r.chua_xac_nhan;
+    kho_ca_nhan += r.kho_ca_nhan;
+
+    const raw = r.lan_hoat_dong_cuoi ?? r.last_seen_at;
+    if (raw) {
+      const ms = Date.parse(raw);
+      if (!Number.isNaN(ms) && ms > maxTimeMs) {
+        maxTimeMs = ms;
+        hoat_dong_gan_nhat = raw;
+      } else if (Number.isNaN(ms) && hoat_dong_gan_nhat === null) {
+        hoat_dong_gan_nhat = raw;
+      }
+    }
+  }
+
+  const tien_do =
+    hien_co === 0 ? 0 : Math.round((da_xac_nhan / hien_co) * 1000) / 10;
+
+  return {
+    so_buoi,
+    so_buoi_da_xac_nhan,
+    hien_co,
+    da_xac_nhan,
+    bo_sung,
+    chua_xac_nhan,
+    kho_ca_nhan,
+    tien_do,
+    hoat_dong_gan_nhat,
+  };
+}
+
 type AdminTongQuanViewProps = {
   initialData?: DashboardAdminData | null;
 };
@@ -513,6 +573,65 @@ export function AdminTongQuanView({
                         </tr>
                       );
                     })}
+                    {(() => {
+                      const tong = tinhTongTheoUser(data.theo_user);
+                      const tongActivityLabel = formatShortDateTime(
+                        tong.hoat_dong_gan_nhat,
+                      );
+                      return (
+                        <tr className="row-total">
+                          <td>
+                            <span className="font-bold">Tổng cộng</span>
+                          </td>
+                          <td className="num-col">
+                            {formatNumber(tong.so_buoi)}
+                          </td>
+                          <td className="num-col">
+                            {formatNumber(tong.so_buoi_da_xac_nhan)}
+                          </td>
+                          <td className="num-col">
+                            {formatNumber(tong.hien_co)}
+                          </td>
+                          <td className="num-col font-semibold text-success">
+                            {formatNumber(tong.da_xac_nhan)}
+                          </td>
+                          <td className="num-col">
+                            {formatNumber(tong.bo_sung)}
+                          </td>
+                          <td className="num-col">
+                            {formatNumber(tong.chua_xac_nhan)}
+                          </td>
+                          <td className="num-col">
+                            {formatNumber(tong.kho_ca_nhan)}
+                          </td>
+                          <td className="num-col">
+                            <div className="table-progress-cell">
+                              <div
+                                className="progress-track progress-track-sm"
+                                aria-hidden="true"
+                              >
+                                <div
+                                  className="progress-fill"
+                                  style={{
+                                    width: `${Math.min(100, Math.max(0, tong.tien_do))}%`,
+                                  }}
+                                />
+                              </div>
+                              <span className="font-bold num">
+                                {formatPercent(tong.tien_do)}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="nowrap num">
+                            {tongActivityLabel === 'chưa đăng nhập' ? (
+                              <span className="text-muted">chưa đăng nhập</span>
+                            ) : (
+                              tongActivityLabel
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })()}
                   </tbody>
                 </table>
               </div>
