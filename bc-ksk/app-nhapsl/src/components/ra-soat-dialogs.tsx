@@ -530,7 +530,12 @@ export function ThemHoSoModal({
     }
 
     notifyPoolChanged();
-    showToast('Đã gửi đề nghị chuyển hồ sơ về buổi này', 'success');
+    showToast(
+      res.data.de_nghi.trang_thai === 'dong_y'
+        ? 'Đã chuyển hồ sơ về buổi này'
+        : 'Đã gửi đề nghị chuyển hồ sơ về buổi này',
+      'success',
+    );
     onClose();
   }
 

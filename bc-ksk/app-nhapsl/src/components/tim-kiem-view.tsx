@@ -318,7 +318,7 @@ function DeNghiChuyenTuTimKiemModal({
     }
     const trimmedLyDo = lyDo.trim();
     if (!trimmedLyDo) {
-      setError('Vui lòng nhập lý do đề nghị chuyển.');
+      setError('Vui lòng nhập lý do chuyển.');
       return;
     }
 
@@ -342,7 +342,12 @@ function DeNghiChuyenTuTimKiemModal({
     }
 
     notifyPoolChanged();
-    showToast('Đã gửi đề nghị chuyển hồ sơ về buổi của bạn.', 'success');
+    showToast(
+      res.data.de_nghi.trang_thai === 'dong_y'
+        ? `Đã chuyển hồ sơ về buổi ${res.data.de_nghi.den_buoi.ma_buoi}.`
+        : 'Đã gửi đề nghị chuyển hồ sơ về buổi của bạn.',
+      'success',
+    );
     onSuccess();
   }
 
@@ -356,7 +361,7 @@ function DeNghiChuyenTuTimKiemModal({
       <div className="modal-card">
         <div className="modal-header">
           <h2 id="modal-denghi-timkiem-title" className="modal-title">
-            Đề nghị chuyển hồ sơ về buổi của tôi
+            Chuyển hồ sơ về buổi của tôi
           </h2>
         </div>
         <form onSubmit={handleSubmit}>
@@ -366,9 +371,10 @@ function DeNghiChuyenTuTimKiemModal({
               {hoSo.nam_sinh ?? '—'})
             </p>
             <p className="modal-consequence">
-              Đang ở: <strong>{formatViTriKetQua(hoSo)}</strong>. Đề nghị sẽ
-              được gửi tới người phụ trách buổi hiện tại (hoặc quản trị viên) để
-              xác nhận chuyển sang buổi của bạn.
+              Đang ở: <strong>{formatViTriKetQua(hoSo)}</strong>.{' '}
+              {hoSo.co_quyen_sua
+                ? 'Hồ sơ đang ở buổi bạn có quyền sửa nên được chuyển ngay, không cần chờ duyệt.'
+                : 'Đề nghị sẽ được gửi tới người phụ trách buổi hiện tại (hoặc quản trị viên) để xác nhận chuyển sang buổi của bạn.'}
             </p>
 
             {error && (
@@ -408,7 +414,7 @@ function DeNghiChuyenTuTimKiemModal({
 
                 <div className="form-group mb-0">
                   <label htmlFor="denghi-ly-do" className="form-label">
-                    Lý do đề nghị chuyển <span className="text-danger">*</span>
+                    Lý do chuyển <span className="text-danger">*</span>
                   </label>
                   <input
                     id="denghi-ly-do"
@@ -438,7 +444,7 @@ function DeNghiChuyenTuTimKiemModal({
               className="btn btn-primary btn-sm"
               disabled={submitting || loadingBuoi || buoiList.length === 0}
             >
-              {submitting ? 'Đang gửi…' : 'Gửi đề nghị chuyển'}
+              {submitting ? 'Đang gửi…' : hoSo.co_quyen_sua ? 'Chuyển ngay' : 'Gửi đề nghị chuyển'}
             </button>
           </div>
         </form>
@@ -1281,12 +1287,21 @@ export function TimKiemView() {
                     <span className="text-xs font-semibold">{viTriLabel}</span>
                     <div>
                       {canOpenSession && h.buoi ? (
-                        <Link
-                          href={`/ra-soat/${encodeURIComponent(h.buoi.ma_buoi)}?chon=${h.id}`}
-                          className="btn btn-primary btn-xs"
-                        >
-                          Mở trong danh sách
-                        </Link>
+                        <>
+                          <Link
+                            href={`/ra-soat/${encodeURIComponent(h.buoi.ma_buoi)}?chon=${h.id}`}
+                            className="btn btn-primary btn-xs"
+                          >
+                            Mở trong danh sách
+                          </Link>{' '}
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-xs"
+                            onClick={() => setDeNghiTarget(h)}
+                          >
+                            Chuyển về buổi của tôi
+                          </button>
+                        </>
                       ) : isOtherUserSession ? (
                         <button
                           type="button"
@@ -1477,12 +1492,21 @@ export function TimKiemView() {
 
                       <td className="col-thaotac">
                         {canOpenSession && h.buoi ? (
-                          <Link
-                            href={`/ra-soat/${encodeURIComponent(h.buoi.ma_buoi)}?chon=${h.id}`}
-                            className="btn btn-primary btn-xs"
-                          >
-                            Mở trong danh sách
-                          </Link>
+                          <div className="timkiem-actions-cell">
+                            <Link
+                              href={`/ra-soat/${encodeURIComponent(h.buoi.ma_buoi)}?chon=${h.id}`}
+                              className="btn btn-primary btn-xs"
+                            >
+                              Mở trong danh sách
+                            </Link>
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-xs"
+                              onClick={() => setDeNghiTarget(h)}
+                            >
+                              Chuyển về buổi của tôi
+                            </button>
+                          </div>
                         ) : isOtherUserSession ? (
                           <div className="timkiem-actions-cell">
                             <span className="badge badge-neutral">Chỉ xem</span>

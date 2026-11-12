@@ -224,3 +224,23 @@ describe('web push', () => {
     expect(rows[0].endpoint).toBe(sub('b').endpoint);
   });
 });
+
+describe('đề nghị trên hồ sơ ở buổi của chính mình (13/11/2026)', () => {
+  it('người phụ trách cả hai buổi → chuyển ngay, đề nghị dong_y + tu_dong, dù tự duyệt đang tắt', async () => {
+    await phanCong(admin, [(await buoiTT(B8)).id], ngan.id); // ngan giữ cả B7 và B8
+    const h = await hs('H001'); // ở B7 của ngan
+    const { de_nghi } = await taoDeNghi(ngan, { ho_so_id: h.id, den_buoi: B8, ly_do: 'Nhập nhầm ngày' });
+    expect(de_nghi).toMatchObject({ trang_thai: 'dong_y', tu_dong: true, tu_dong_loi: '', han_tu_duyet: null });
+    expect(de_nghi.xu_ly_by?.username).toBe('ngan');
+    expect(await viTri('H001')).toEqual({ ma_buoi: B8, vi_tri: 'buoi' });
+    const nk = await sql()<{ hanh_dong: string; user_id: number | null }[]>`
+      SELECT hanh_dong, user_id FROM nhat_ky WHERE hanh_dong IN ('chuyen','de_nghi_chuyen','xu_ly_de_nghi') ORDER BY id`;
+    expect(nk.map((x) => x.hanh_dong).sort()).toEqual(['chuyen', 'de_nghi_chuyen', 'xu_ly_de_nghi']);
+    expect(nk.every((x) => x.user_id === ngan.id)).toBe(true);
+  });
+  it('hồ sơ của người khác vẫn tạo đề nghị chờ xử lý như cũ', async () => {
+    const d = await taoDeNghiH('H001'); // trinh xin hồ sơ ở B7 của ngan
+    expect(d.trang_thai).toBe('cho_xu_ly');
+    expect(await viTri('H001')).toEqual({ ma_buoi: B7, vi_tri: 'buoi' });
+  });
+});

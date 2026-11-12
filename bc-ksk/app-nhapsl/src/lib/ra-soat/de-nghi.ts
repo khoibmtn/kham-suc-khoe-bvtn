@@ -69,6 +69,8 @@ async function layMot(sql: Sql, id: number): Promise<DeNghiChuyen> {
   return d;
 }
 
+export const GHI_CHU_CUNG_NGUOI = 'Tự động duyệt: hồ sơ đang ở buổi của chính người đề nghị';
+
 export async function taoDeNghi(user: AuthUser, body: { ho_so_id: number; den_buoi: number | string; ly_do?: string }): Promise<{ de_nghi: DeNghiChuyen }> {
   const lyDo = (body.ly_do ?? '').trim();
   if (!lyDo) throw new LoiNghiepVu(400, 'Cần ghi lý do đề nghị chuyển');
@@ -79,21 +81,35 @@ export async function taoDeNghi(user: AuthUser, body: { ho_so_id: number; den_bu
     if (!h) throw new LoiNghiepVu(404, 'Không tìm thấy hồ sơ');
     if (h.vi_tri !== 'buoi' || h.buoi_id === null) throw new LoiNghiepVu(400, 'Chỉ đề nghị chuyển hồ sơ đang nằm trong một buổi khám');
     const [bNguon] = await sql<{ phu_trach_user_id: number | null }[]>`SELECT phu_trach_user_id FROM buoi_kham WHERE id = ${h.buoi_id}`;
-    if (!laAdmin(user) && coQuyenBuoi(user, bNguon.phu_trach_user_id)) {
-      throw new LoiNghiepVu(400, 'Hồ sơ đang ở buổi bạn phụ trách, hãy chuyển trực tiếp');
-    }
+    // Owner 13/11/2026: the requester already has write access on the source session (their own session, or admin)
+    // → no one else needs to approve: move right away and record the request as auto-approved.
+    const tuDuyetNgay = coQuyenBuoi(user, bNguon.phu_trach_user_id);
     const denId = await giaiBuoi(sql, body.den_buoi);
     if (denId === h.buoi_id) throw new LoiNghiepVu(400, 'Hồ sơ đã ở buổi khám đó');
     const [bDen] = await sql<{ phu_trach_user_id: number | null }[]>`SELECT phu_trach_user_id FROM buoi_kham WHERE id = ${denId}`;
     if (!coQuyenBuoi(user, bDen.phu_trach_user_id)) throw new LoiNghiepVu(403, LOI_KHONG_QUYEN_BUOI);
     const [cho] = await sql`SELECT 1 FROM de_nghi_chuyen WHERE ho_so_id = ${h.id} AND trang_thai = 'cho_xu_ly' LIMIT 1`;
     if (cho) throw new LoiNghiepVu(400, 'Hồ sơ này đã có đề nghị chuyển đang chờ xử lý');
-    const [moi] = await sql<{ id: number }[]>`
-      INSERT INTO de_nghi_chuyen (ho_so_id, tu_user_id, den_buoi_id, ly_do) VALUES (${h.id}, ${user.id}, ${denId}, ${lyDo}) RETURNING id`;
+    if (tuDuyetNgay) {
+      // Lỗi 400/423 (hồ sơ đã xác nhận, buổi đã chốt…) ném ra → rollback, báo thẳng cho người thao tác.
+      await diChuyenTrongTx(sql, user, { id: h.id, version: null, dich: { loai: 'buoi', buoi: denId }, lyDo, che: 'chuyen' });
+    }
+    const [moi] = tuDuyetNgay
+      ? await sql<{ id: number }[]>`
+          INSERT INTO de_nghi_chuyen (ho_so_id, tu_user_id, den_buoi_id, ly_do, trang_thai, tu_dong, xu_ly_by, xu_ly_at, xu_ly_ghi_chu)
+          VALUES (${h.id}, ${user.id}, ${denId}, ${lyDo}, 'dong_y', true, ${user.id}, now(), ${GHI_CHU_CUNG_NGUOI}) RETURNING id`
+      : await sql<{ id: number }[]>`
+          INSERT INTO de_nghi_chuyen (ho_so_id, tu_user_id, den_buoi_id, ly_do) VALUES (${h.id}, ${user.id}, ${denId}, ${lyDo}) RETURNING id`;
     await ghiNhatKy({
       userId: user.id, hanhDong: 'de_nghi_chuyen', doiTuong: 'de_nghi_chuyen', doiTuongId: moi.id,
       truong: 'ho_so_id', giaTriMoi: h.id, ghiChu: lyDo,
     }, sql);
+    if (tuDuyetNgay) {
+      await ghiNhatKy({
+        userId: user.id, hanhDong: 'xu_ly_de_nghi', doiTuong: 'de_nghi_chuyen', doiTuongId: moi.id,
+        truong: 'trang_thai', giaTriCu: 'cho_xu_ly', giaTriMoi: 'dong_y', ghiChu: `[Tự động] ${GHI_CHU_CUNG_NGUOI}`,
+      }, sql);
+    }
     return { de_nghi: await layMot(sql, moi.id) };
   })) as { de_nghi: DeNghiChuyen };
   // Sau commit: quét tự duyệt (bắt buộc) rồi trả bản mới nhất; chỉ báo "đề nghị mới" nếu vẫn đang chờ.
