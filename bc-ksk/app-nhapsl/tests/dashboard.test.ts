@@ -135,7 +135,9 @@ describe('dashboardToi', () => {
 describe('dashboardAdmin', () => {
   it('theo user: nhân viên khớp SQL; admin 0 buổi/0 hồ sơ/0 kho bị bỏ', async () => {
     const d = await dashboardAdmin();
-    expect(d.theo_user.map((x) => x.user.username)).toEqual(['ngan', 'trinh']);
+    expect(d.theo_user.map((x) => x.user.username).sort()).toEqual(['ngan', 'trinh']);
+    const td = d.theo_user.map((x) => (x.hien_co === 0 ? 0 : x.da_xac_nhan / x.hien_co));
+    expect(td).toEqual([...td].sort((a, b) => b - a)); // tiến độ giảm dần
     for (const r of d.theo_user) {
       const { user, active, last_seen_at, lan_hoat_dong_cuoi, ...the } = r;
       void user; void active; void last_seen_at; void lan_hoat_dong_cuoi;
@@ -147,7 +149,7 @@ describe('dashboardAdmin', () => {
   it('admin có phát sinh (đã xác nhận hồ sơ) thì vẫn có dòng', async () => {
     await xn(admin, 'H005');
     const d = await dashboardAdmin();
-    expect(d.theo_user.map((x) => x.user.username)).toEqual(['ngan', 'trinh', 'admin']);
+    expect(d.theo_user.map((x) => x.user.username).sort()).toEqual(['admin', 'ngan', 'trinh']);
   });
   it('lan_hoat_dong_cuoi = max(nhat_ky.at) của user', async () => {
     const d = await dashboardAdmin();

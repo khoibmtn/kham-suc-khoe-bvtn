@@ -4,18 +4,24 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type {
+  CaiDatTuDuyet,
+  CheDoTuDuyet,
   DongTheoDonVi,
   DongTheoUser,
   TheTongHop,
 } from '@/lib/api-types';
 import { CLS, DON_VI, NHAN, type DonVi } from '@/lib/cls';
 import { apiRequest, downloadFile } from '@/lib/client/api';
+import { moTaCaiDatTuDuyet } from '@/lib/client/am-bao';
 import {
   formatChenhLech,
+  formatDateTime,
   formatNumber,
   formatPercent,
   formatShortDateTime,
 } from '@/lib/client/format';
+import { notifyPoolChanged } from './app-shell';
+import { ConfirmDialog } from './confirm-dialog';
 import { useToast } from './toast';
 
 export type DashboardAdminData = {
@@ -100,6 +106,19 @@ export function AdminTongQuanView({
   const [loading, setLoading] = useState<boolean>(initialData === null);
   const [error, setError] = useState<string>('');
 
+  // Cài đặt tự động duyệt đề nghị chuyển
+  const [tuDuyet, setTuDuyet] = useState<CaiDatTuDuyet>({
+    che_do: 'tat',
+    sau_phut: 5,
+    updated_by: null,
+    updated_at: null,
+  });
+  const [cheDoDraft, setCheDoDraft] = useState<CheDoTuDuyet>('tat');
+  const [sauPhutDraft, setSauPhutDraft] = useState<number>(5);
+  const [tuDuyetError, setTuDuyetError] = useState<string>('');
+  const [confirmTuDuyetOpen, setConfirmTuDuyetOpen] = useState<boolean>(false);
+  const [savingTuDuyet, setSavingTuDuyet] = useState<boolean>(false);
+
   // Tùy chọn Xuất báo cáo Excel
   const [chiDaXacNhan, setChiDaXacNhan] = useState<'1' | '0'>('1');
   const [donViExport, setDonViExport] = useState<string>('');
@@ -107,21 +126,51 @@ export function AdminTongQuanView({
   const [exportingCowork, setExportingCowork] = useState<boolean>(false);
   const [exportError, setExportError] = useState<string>('');
 
+  const loadTuDuyet = useCallback(async () => {
+    const res = await apiRequest<{ tu_duyet: CaiDatTuDuyet }>('/api/cai-dat/tu-duyet');
+    if (res.ok && res.data?.tu_duyet) {
+      const td = res.data.tu_duyet;
+      setTuDuyet(td);
+      setCheDoDraft(td.che_do);
+      setSauPhutDraft(td.sau_phut >= 1 && td.sau_phut <= 120 ? td.sau_phut : 5);
+    }
+  }, []);
+
   const reloadDashboard = useCallback(async () => {
     setLoading(true);
     setError('');
-    const res = await apiRequest<DashboardAdminData>('/api/dashboard/admin');
+    const [res] = await Promise.all([
+      apiRequest<DashboardAdminData>('/api/dashboard/admin'),
+      loadTuDuyet(),
+    ]);
     setLoading(false);
     if (!res.ok) {
       setError(res.error);
       return;
     }
     setData(res.data);
-  }, []);
+  }, [loadTuDuyet]);
 
   useEffect(() => {
-    if (initialData !== null) return;
     let cancelled = false;
+    apiRequest<{ tu_duyet: CaiDatTuDuyet }>('/api/cai-dat/tu-duyet').then(
+      (res) => {
+        if (cancelled) return;
+        if (res.ok && res.data?.tu_duyet) {
+          const td = res.data.tu_duyet;
+          setTuDuyet(td);
+          setCheDoDraft(td.che_do);
+          setSauPhutDraft(
+            td.sau_phut >= 1 && td.sau_phut <= 120 ? td.sau_phut : 5,
+          );
+        }
+      },
+    );
+    if (initialData !== null) {
+      return () => {
+        cancelled = true;
+      };
+    }
     apiRequest<DashboardAdminData>('/api/dashboard/admin').then((res) => {
       if (cancelled) return;
       setLoading(false);
@@ -146,6 +195,44 @@ export function AdminTongQuanView({
       window.removeEventListener('nhapsl:pool-changed', handlePoolChanged);
     };
   }, [reloadDashboard]);
+
+  function handleMoXacNhanLuuTuDuyet() {
+    setTuDuyetError('');
+    if (cheDoDraft === 'sau_phut') {
+      const n = Number(sauPhutDraft);
+      if (!Number.isInteger(n) || n < 1 || n > 120) {
+        setTuDuyetError('Số phút tự duyệt phải là số nguyên từ 1 đến 120.');
+        return;
+      }
+    }
+    setConfirmTuDuyetOpen(true);
+  }
+
+  async function handleXacNhanLuuTuDuyet() {
+    setSavingTuDuyet(true);
+    setTuDuyetError('');
+    const phut = Math.min(120, Math.max(1, Math.round(Number(sauPhutDraft) || 5)));
+    const res = await apiRequest<{ tu_duyet: CaiDatTuDuyet }>('/api/cai-dat/tu-duyet', {
+      method: 'PUT',
+      body: JSON.stringify({
+        che_do: cheDoDraft,
+        sau_phut: phut,
+      }),
+    });
+    setSavingTuDuyet(false);
+    if (!res.ok) {
+      setTuDuyetError(res.error);
+      showToast(`Không lưu được cài đặt tự duyệt: ${res.error}`, 'error');
+      return;
+    }
+    const td = res.data.tu_duyet;
+    setTuDuyet(td);
+    setCheDoDraft(td.che_do);
+    setSauPhutDraft(td.sau_phut);
+    setConfirmTuDuyetOpen(false);
+    notifyPoolChanged();
+    showToast(`Đã lưu cài đặt: ${moTaCaiDatTuDuyet(td)}`, 'success');
+  }
 
   async function handleExportExcel() {
     setExportError('');
@@ -239,6 +326,97 @@ export function AdminTongQuanView({
           <p className="state-title">Đang tải dữ liệu tổng quan toàn hệ thống…</p>
         </div>
       )}
+
+      {/* Thẻ cài đặt Tự động duyệt đề nghị chuyển (gần đầu trang /admin) */}
+      <section className="panel-card tu-duyet-admin-card" aria-label="Tự động duyệt đề nghị chuyển">
+        <div className="panel-header-inline">
+          <div>
+            <h2 className="panel-title">Tự động duyệt đề nghị chuyển</h2>
+            <p className="text-muted text-xs">
+              Hồ sơ đã xác nhận hoặc buổi đã chốt sẽ không tự duyệt — vẫn chờ người xử lý
+            </p>
+          </div>
+          <span
+            className={`badge ${tuDuyet.che_do === 'tat' ? 'badge-chua' : 'badge-xong'}`}
+          >
+            {moTaCaiDatTuDuyet(tuDuyet)}
+          </span>
+        </div>
+
+        <div className="tu-duyet-radio-list" role="radiogroup" aria-label="Chế độ tự động duyệt">
+          <label className="tu-duyet-radio-item">
+            <input
+              type="radio"
+              name="che_do_tu_duyet"
+              value="tat"
+              checked={cheDoDraft === 'tat'}
+              onChange={() => setCheDoDraft('tat')}
+            />
+            <span>Tắt</span>
+          </label>
+
+          <label className="tu-duyet-radio-item">
+            <input
+              type="radio"
+              name="che_do_tu_duyet"
+              value="ngay"
+              checked={cheDoDraft === 'ngay'}
+              onChange={() => setCheDoDraft('ngay')}
+            />
+            <span>Duyệt ngay khi có đề nghị</span>
+          </label>
+
+          <div className="tu-duyet-radio-item tu-duyet-radio-inline">
+            <label className="tu-duyet-radio-label-inline">
+              <input
+                type="radio"
+                name="che_do_tu_duyet"
+                value="sau_phut"
+                checked={cheDoDraft === 'sau_phut'}
+                onChange={() => setCheDoDraft('sau_phut')}
+              />
+              <span>Duyệt nếu sau</span>
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={120}
+              aria-label="Số phút chờ trước khi tự duyệt"
+              className="form-input tu-duyet-minutes-input num"
+              value={sauPhutDraft}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                setSauPhutDraft(Number.isNaN(v) ? 5 : v);
+                if (cheDoDraft !== 'sau_phut') setCheDoDraft('sau_phut');
+              }}
+            />
+            <span>phút người giữ hồ sơ chưa xử lý</span>
+          </div>
+        </div>
+
+        {tuDuyetError && (
+          <div className="form-error" role="alert">
+            {tuDuyetError}
+          </div>
+        )}
+
+        <div className="tu-duyet-footer-row">
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={handleMoXacNhanLuuTuDuyet}
+            disabled={savingTuDuyet}
+          >
+            {savingTuDuyet ? 'Đang lưu…' : 'Lưu'}
+          </button>
+          <span className="text-muted text-xs">
+            Cập nhật lần cuối:{' '}
+            {tuDuyet.updated_by || tuDuyet.updated_at
+              ? `${tuDuyet.updated_by?.ho_ten ?? 'Hệ thống'}, ${formatDateTime(tuDuyet.updated_at)}`
+              : 'Chưa cập nhật'}
+          </span>
+        </div>
+      </section>
 
       {data && the && (
         <>
@@ -465,176 +643,235 @@ export function AdminTongQuanView({
                 <p className="state-title">Chưa có tài khoản nhân viên nào.</p>
               </div>
             ) : (
-              <div className="table-wrap">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Họ tên</th>
-                      <th className="num-col">Số buổi</th>
-                      <th className="num-col">Buổi đã xác nhận</th>
-                      <th className="num-col">Tổng hồ sơ</th>
-                      <th className="num-col">Đã xác nhận</th>
-                      <th className="num-col">Bổ sung</th>
-                      <th className="num-col">Chưa xác nhận</th>
-                      <th className="num-col">Trong kho</th>
-                      <th className="num-col">Tiến độ %</th>
-                      <th>Hoạt động gần nhất</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.theo_user.map((row) => {
-                      const rawActivity =
-                        row.lan_hoat_dong_cuoi ?? row.last_seen_at;
-                      const activityLabel = formatShortDateTime(rawActivity);
-                      const targetUrl = `/admin/phan-cong?phu_trach=${row.user.id}`;
-
-                      return (
-                        <tr
-                          key={row.user.id}
-                          className={`clickable-row ${!row.active ? 'row-muted' : ''}`}
-                          onClick={() => router.push(targetUrl)}
-                          tabIndex={0}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault();
-                              router.push(targetUrl);
-                            }
-                          }}
-                        >
-                          <td>
-                            <Link
-                              href={targetUrl}
-                              onClick={(e) => e.stopPropagation()}
-                              className="row-primary-link font-semibold"
-                            >
-                              {row.user.ho_ten}
-                            </Link>{' '}
-                            <span className="text-muted text-xs">
-                              ({row.user.username})
-                            </span>
+              <>
+                {/* Danh sách dạng thẻ gọn trên điện thoại */}
+                <div className="mobile-only-cards admin-user-card-list">
+                  {data.theo_user.map((row) => {
+                    const rawActivity =
+                      row.lan_hoat_dong_cuoi ?? row.last_seen_at;
+                    const activityLabel = formatShortDateTime(rawActivity);
+                    const targetUrl = `/admin/phan-cong?phu_trach=${row.user.id}`;
+                    return (
+                      <Link
+                        key={row.user.id}
+                        href={targetUrl}
+                        className={`mobile-data-card ${!row.active ? 'row-muted' : ''}`}
+                      >
+                        <div className="mobile-data-card-head">
+                          <div>
+                            <span className="font-semibold">{row.user.ho_ten}</span>{' '}
+                            <span className="text-muted text-xs">({row.user.username})</span>
                             {!row.active && (
-                              <span className="badge badge-danger ml-1">
-                                Đã khóa
-                              </span>
+                              <span className="badge badge-danger ml-1">Đã khóa</span>
                             )}
-                          </td>
-                          <td className="num-col">
+                          </div>
+                          <span className="font-bold num text-primary">
+                            {formatPercent(row.tien_do)}
+                          </span>
+                        </div>
+                        <div className="progress-track progress-track-sm">
+                          <div
+                            className="progress-fill"
+                            style={{
+                              width: `${Math.min(100, Math.max(0, row.tien_do))}%`,
+                            }}
+                          />
+                        </div>
+                        <div className="mobile-data-card-metrics num">
+                          <span>
+                            Buổi: <strong>{formatNumber(row.so_buoi_da_xac_nhan)}</strong>/
                             {formatNumber(row.so_buoi)}
-                          </td>
-                          <td className="num-col">
-                            {formatNumber(row.so_buoi_da_xac_nhan)}
-                          </td>
-                          <td className="num-col">
-                            {formatNumber(row.hien_co)}
-                          </td>
-                          <td className="num-col font-semibold text-success">
-                            {formatNumber(row.da_xac_nhan)}
-                          </td>
-                          <td className="num-col">
-                            {formatNumber(row.bo_sung)}
-                          </td>
-                          <td className="num-col">
-                            {row.chua_xac_nhan > 0 ? (
-                              <span className="font-semibold">
-                                {formatNumber(row.chua_xac_nhan)}
-                              </span>
-                            ) : (
-                              <span className="text-muted">0</span>
-                            )}
-                          </td>
-                          <td className="num-col">
-                            {formatNumber(row.kho_ca_nhan)}
-                          </td>
-                          <td className="num-col">
-                            <div className="table-progress-cell">
-                              <div
-                                className="progress-track progress-track-sm"
-                                aria-hidden="true"
+                          </span>
+                          <span>
+                            Đã XN:{' '}
+                            <strong className="text-success">
+                              {formatNumber(row.da_xac_nhan)}
+                            </strong>
+                            /{formatNumber(row.hien_co)}
+                          </span>
+                          <span>Còn: <strong>{formatNumber(row.chua_xac_nhan)}</strong></span>
+                          <span>Kho: {formatNumber(row.kho_ca_nhan)}</span>
+                        </div>
+                        <div className="text-muted text-xs">
+                          Hoạt động: {activityLabel}
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+
+                {/* Bảng đầy đủ trên máy tính */}
+                <div className="table-wrap desktop-only-table">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Họ tên</th>
+                        <th className="num-col">Số buổi</th>
+                        <th className="num-col">Buổi đã xác nhận</th>
+                        <th className="num-col">Tổng hồ sơ</th>
+                        <th className="num-col">Đã xác nhận</th>
+                        <th className="num-col">Bổ sung</th>
+                        <th className="num-col">Chưa xác nhận</th>
+                        <th className="num-col">Trong kho</th>
+                        <th className="num-col">Tiến độ %</th>
+                        <th>Hoạt động gần nhất</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.theo_user.map((row) => {
+                        const rawActivity =
+                          row.lan_hoat_dong_cuoi ?? row.last_seen_at;
+                        const activityLabel = formatShortDateTime(rawActivity);
+                        const targetUrl = `/admin/phan-cong?phu_trach=${row.user.id}`;
+
+                        return (
+                          <tr
+                            key={row.user.id}
+                            className={`clickable-row ${!row.active ? 'row-muted' : ''}`}
+                            onClick={() => router.push(targetUrl)}
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                router.push(targetUrl);
+                              }
+                            }}
+                          >
+                            <td>
+                              <Link
+                                href={targetUrl}
+                                onClick={(e) => e.stopPropagation()}
+                                className="row-primary-link font-semibold"
                               >
-                                <div
-                                  className="progress-fill"
-                                  style={{
-                                    width: `${Math.min(100, Math.max(0, row.tien_do))}%`,
-                                  }}
-                                />
-                              </div>
-                              <span className="font-semibold num">
-                                {formatPercent(row.tien_do)}
+                                {row.user.ho_ten}
+                              </Link>{' '}
+                              <span className="text-muted text-xs">
+                                ({row.user.username})
                               </span>
-                            </div>
-                          </td>
-                          <td className="nowrap num">
-                            {activityLabel === 'chưa đăng nhập' ? (
-                              <span className="text-muted">chưa đăng nhập</span>
-                            ) : (
-                              activityLabel
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    {(() => {
-                      const tong = tinhTongTheoUser(data.theo_user);
-                      const tongActivityLabel = formatShortDateTime(
-                        tong.hoat_dong_gan_nhat,
-                      );
-                      return (
-                        <tr className="row-total">
-                          <td>
-                            <span className="font-bold">Tổng cộng</span>
-                          </td>
-                          <td className="num-col">
-                            {formatNumber(tong.so_buoi)}
-                          </td>
-                          <td className="num-col">
-                            {formatNumber(tong.so_buoi_da_xac_nhan)}
-                          </td>
-                          <td className="num-col">
-                            {formatNumber(tong.hien_co)}
-                          </td>
-                          <td className="num-col font-semibold text-success">
-                            {formatNumber(tong.da_xac_nhan)}
-                          </td>
-                          <td className="num-col">
-                            {formatNumber(tong.bo_sung)}
-                          </td>
-                          <td className="num-col">
-                            {formatNumber(tong.chua_xac_nhan)}
-                          </td>
-                          <td className="num-col">
-                            {formatNumber(tong.kho_ca_nhan)}
-                          </td>
-                          <td className="num-col">
-                            <div className="table-progress-cell">
-                              <div
-                                className="progress-track progress-track-sm"
-                                aria-hidden="true"
-                              >
+                              {!row.active && (
+                                <span className="badge badge-danger ml-1">
+                                  Đã khóa
+                                </span>
+                              )}
+                            </td>
+                            <td className="num-col">
+                              {formatNumber(row.so_buoi)}
+                            </td>
+                            <td className="num-col">
+                              {formatNumber(row.so_buoi_da_xac_nhan)}
+                            </td>
+                            <td className="num-col">
+                              {formatNumber(row.hien_co)}
+                            </td>
+                            <td className="num-col font-semibold text-success">
+                              {formatNumber(row.da_xac_nhan)}
+                            </td>
+                            <td className="num-col">
+                              {formatNumber(row.bo_sung)}
+                            </td>
+                            <td className="num-col">
+                              {row.chua_xac_nhan > 0 ? (
+                                <span className="font-semibold">
+                                  {formatNumber(row.chua_xac_nhan)}
+                                </span>
+                              ) : (
+                                <span className="text-muted">0</span>
+                              )}
+                            </td>
+                            <td className="num-col">
+                              {formatNumber(row.kho_ca_nhan)}
+                            </td>
+                            <td className="num-col">
+                              <div className="table-progress-cell">
                                 <div
-                                  className="progress-fill"
-                                  style={{
-                                    width: `${Math.min(100, Math.max(0, tong.tien_do))}%`,
-                                  }}
-                                />
+                                  className="progress-track progress-track-sm"
+                                  aria-hidden="true"
+                                >
+                                  <div
+                                    className="progress-fill"
+                                    style={{
+                                      width: `${Math.min(100, Math.max(0, row.tien_do))}%`,
+                                    }}
+                                  />
+                                </div>
+                                <span className="font-semibold num">
+                                  {formatPercent(row.tien_do)}
+                                </span>
                               </div>
-                              <span className="font-bold num">
-                                {formatPercent(tong.tien_do)}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="nowrap num">
-                            {tongActivityLabel === 'chưa đăng nhập' ? (
-                              <span className="text-muted">chưa đăng nhập</span>
-                            ) : (
-                              tongActivityLabel
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })()}
-                  </tbody>
-                </table>
-              </div>
+                            </td>
+                            <td className="nowrap num">
+                              {activityLabel === 'chưa đăng nhập' ? (
+                                <span className="text-muted">chưa đăng nhập</span>
+                              ) : (
+                                activityLabel
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {(() => {
+                        const tong = tinhTongTheoUser(data.theo_user);
+                        const tongActivityLabel = formatShortDateTime(
+                          tong.hoat_dong_gan_nhat,
+                        );
+                        return (
+                          <tr className="row-total">
+                            <td>
+                              <span className="font-bold">Tổng cộng</span>
+                            </td>
+                            <td className="num-col">
+                              {formatNumber(tong.so_buoi)}
+                            </td>
+                            <td className="num-col">
+                              {formatNumber(tong.so_buoi_da_xac_nhan)}
+                            </td>
+                            <td className="num-col">
+                              {formatNumber(tong.hien_co)}
+                            </td>
+                            <td className="num-col font-semibold text-success">
+                              {formatNumber(tong.da_xac_nhan)}
+                            </td>
+                            <td className="num-col">
+                              {formatNumber(tong.bo_sung)}
+                            </td>
+                            <td className="num-col">
+                              {formatNumber(tong.chua_xac_nhan)}
+                            </td>
+                            <td className="num-col">
+                              {formatNumber(tong.kho_ca_nhan)}
+                            </td>
+                            <td className="num-col">
+                              <div className="table-progress-cell">
+                                <div
+                                  className="progress-track progress-track-sm"
+                                  aria-hidden="true"
+                                >
+                                  <div
+                                    className="progress-fill"
+                                    style={{
+                                      width: `${Math.min(100, Math.max(0, tong.tien_do))}%`,
+                                    }}
+                                  />
+                                </div>
+                                <span className="font-bold num">
+                                  {formatPercent(tong.tien_do)}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="nowrap num">
+                              {tongActivityLabel === 'chưa đăng nhập' ? (
+                                <span className="text-muted">chưa đăng nhập</span>
+                              ) : (
+                                tongActivityLabel
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </section>
 
@@ -730,6 +967,31 @@ export function AdminTongQuanView({
           </section>
         </>
       )}
+
+      <ConfirmDialog
+        open={confirmTuDuyetOpen}
+        title="Xác nhận lưu cài đặt tự động duyệt"
+        confirmLabel="Lưu cài đặt"
+        loading={savingTuDuyet}
+        onConfirm={() => void handleXacNhanLuuTuDuyet()}
+        onCancel={() => setConfirmTuDuyetOpen(false)}
+      >
+        <div>
+          <p>
+            Bạn sắp áp dụng chế độ:{' '}
+            <strong>
+              {moTaCaiDatTuDuyet({
+                che_do: cheDoDraft,
+                sau_phut: Math.min(120, Math.max(1, Math.round(Number(sauPhutDraft) || 5))),
+              })}
+            </strong>
+            .
+          </p>
+          <p className="text-muted text-xs" style={{ marginTop: 8 }}>
+            Hồ sơ đã xác nhận hoặc buổi đã chốt sẽ không tự duyệt — vẫn chờ người xử lý.
+          </p>
+        </div>
+      </ConfirmDialog>
     </div>
   );
 }

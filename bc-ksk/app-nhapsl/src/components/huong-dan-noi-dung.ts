@@ -280,9 +280,9 @@ export const MUC: Muc[] = [
     khiNao: 'Có giấy của một người nhưng người đó đang nằm trong buổi của nhân viên khác, hoặc cần lọc hồ sơ trên toàn hệ thống.',
     khoi: [
       {
-        anh: { file: '12-tim-kiem-toan-app.png', alt: 'Trang Tìm kiếm với phạm vi Toàn bộ app, dòng Chỉ xem và nút Đề nghị chuyển' },
+        anh: { file: '12-tim-kiem-toan-app.png', alt: 'Trang Tìm kiếm với phạm vi Toàn bộ DS, dòng Chỉ xem và nút Chuyển về buổi của tôi' },
         buoc: [
-          { n: 1, t: 'Bấm **Tìm kiếm** trên menu, gõ từ khóa (họ tên, ghi chú, năm sinh, CCCD, mã KCB — hỗ trợ **tìm mờ theo thứ tự** và **tô vàng** chữ khớp), chọn **Phạm vi**: Buổi của tôi, Kho chờ chung hoặc **Toàn bộ app**.' },
+          { n: 1, t: 'Bấm **Tìm kiếm** trên menu, gõ từ khóa (họ tên, ghi chú, năm sinh, CCCD, mã KCB — hỗ trợ **tìm mờ theo thứ tự** và **tô vàng** chữ khớp), **Phạm vi** mặc định là **Toàn bộ DS** (có thể thu hẹp: Buổi của tôi, Kho chờ chung). Bấm dấu **✕** cuối ô hoặc **Esc** để xóa chữ.' },
           { n: 2, t: 'Dùng thanh **Bộ lọc tìm kiếm** (Xã/phường, Ngày khám, 8 cận lâm sàng **Tất cả / Có / Không**, Xác nhận, Nhân viên rà soát, Ghi chú, DS đẩy cổng, Nguồn, Vị trí) để lọc kết quả. Khi bật ít nhất 1 bộ lọc, bạn có thể bấm **Tìm kiếm** ngay cả khi để trống ô từ khóa.' },
           { n: 3, t: 'Người thuộc buổi của người khác chỉ có nhãn **Chỉ xem**: bạn không sửa được hồ sơ đó.' },
           { n: 4, t: 'Bấm **Đề nghị chuyển về buổi của tôi**, chọn buổi đích, ghi lý do rồi gửi. Chờ người phụ trách đồng ý.' },
@@ -354,6 +354,47 @@ export const MUC: Muc[] = [
     luuY: ['Danh sách đã khóa thì không sửa, thêm hay chuyển hồ sơ được nữa. Cần sửa: báo admin **mở khóa**.'],
   },
   {
+    id: 'dien-thoai-thong-bao',
+    tieuDe: 'Dùng trên điện thoại & thông báo',
+    khiNao:
+      'Khi muốn theo dõi tiến độ, duyệt đề nghị chuyển hồ sơ trên điện thoại hoặc nhận tiếng chuông báo ngay khi có đề nghị mới.',
+    khoi: [
+      {
+        tieuDe: '1. Cài ứng dụng lên màn hình chính (Android & iPhone)',
+        ds: [
+          '**Trên điện thoại Android (Chrome)**: mở trang web ứng dụng → bấm biểu tượng menu **⋮** (góc trên phải) → chọn **Cài đặt ứng dụng** hoặc **Thêm vào màn hình chính**.',
+          '**Trên iPhone / iPad (Safari)**: mở trang web trong Safari → bấm nút **Chia sẻ** (biểu tượng ô vuông có mũi tên lên ở thanh dưới) → chọn **Thêm vào MH chính** → bấm **Thêm**. Mở ứng dụng từ biểu tượng **Rà soát KSK** trên màn hình chính.',
+          'Giao diện trên điện thoại có **thanh 5 tab dưới cùng** (**Trang chủ · Rà soát · Kho & đề nghị · Tìm kiếm · Thêm**) để chuyển nhanh bằng một tay.',
+        ],
+      },
+      {
+        tieuDe: '2. Bật âm báo và thông báo đẩy',
+        buoc: [
+          {
+            n: 1,
+            t: 'Bấm nút **chuông (Âm báo)** trên thanh trên cùng hoặc vào mục **Thêm → Thông báo & âm báo**.',
+          },
+          {
+            n: 2,
+            t: '**Âm báo trong ứng dụng** (mặc định đang bật): phát tiếng chuông 2 nốt và rung nhẹ khi có đề nghị chuyển hồ sơ gửi đến bạn (kể cả khi tab trình duyệt đang ẩn trên máy tính). Nếu sau 2 phút vẫn còn đề nghị chờ và bạn chưa mở tab Đề nghị chuyển, chuông sẽ nhắc lại. Bấm **Nghe thử** để kiểm tra loa.',
+          },
+          {
+            n: 3,
+            t: '**Thông báo trên thiết bị này (Web Push)**: bấm **Bật thông báo** và chọn **Cho phép** khi trình duyệt hỏi. Thông báo đẩy hiện cả khi khóa màn hình hoặc đóng tab; âm báo chỉ phát khi app đang mở. Có thể bấm **Gửi thử** để kiểm tra ngay.',
+          },
+        ],
+      },
+      {
+        tieuDe: '3. Tự động duyệt đề nghị chuyển là gì?',
+        ds: [
+          'Để nhân viên xin nhận hồ sơ không phải chờ lâu khi người giữ buổi gốc đang bận, **Quản trị viên (Admin)** có thể cấu hình chế độ **Tự động duyệt đề nghị chuyển** tại trang **Tổng quan (/admin)**: **Tắt**, **Duyệt ngay khi có đề nghị**, hoặc **Duyệt nếu sau N phút người giữ hồ sơ chưa xử lý** (mặc định 5 phút).',
+          'Trong tab **Kho chờ → Đề nghị chuyển**, dòng đầu trang cho biết chế độ tự duyệt hiện tại và mỗi đề nghị đang chờ sẽ hiển thị đồng hồ đếm ngược **Tự duyệt sau mm:ss**.',
+          'Các đề nghị được hệ thống tự duyệt sẽ gắn nhãn **Tự động**. Nếu hồ sơ đã xác nhận hoặc buổi khám đã chốt khóa thì hệ thống **không tự duyệt** và sẽ hiện nhãn đỏ báo cần xử lý tay.',
+        ],
+      },
+    ],
+  },
+  {
     id: 'hoi-dap',
     tieuDe: 'Câu hỏi thường gặp',
     khiNao: 'Khi gặp tình huống chưa rõ phải làm gì.',
@@ -361,7 +402,7 @@ export const MUC: Muc[] = [
       {
         ds: [
           '**Tôi sửa nhầm thì sao?** Ô cận lâm sàng: bấm lại để trả về. Thông tin hành chính: nhìn dòng “Gốc: …”, gõ lại giá trị cũ rồi **Lưu thay đổi**. Mọi lần sửa đều ghi vào tab **Lịch sử**, không sợ mất dấu.',
-          '**Có giấy nhưng không tìm thấy người đó?** Thử gõ ít chữ hơn (chỉ tên, hoặc năm sinh, hoặc 4 số cuối CCCD). Rồi tìm ở **Kho chờ chung** và **Tìm kiếm → Toàn bộ app**. Vẫn không có thì **Thêm hồ sơ**.',
+          '**Có giấy nhưng không tìm thấy người đó?** Thử gõ ít chữ hơn (chỉ tên, hoặc năm sinh, hoặc 4 số cuối CCCD). Rồi tìm ở **Kho chờ chung** và **Tìm kiếm → Toàn bộ DS**. Vẫn không có thì **Thêm hồ sơ**.',
           '**Trên máy có người nhưng không có hồ sơ giấy?** Nhấn `K` đưa vào **kho của tôi** và xem lại cuối buổi. Chắc chắn không phải người của buổi mình thì đưa vào **kho chờ chung** (nhấn `C`).',
           '**App báo “Hồ sơ vừa được người khác sửa, đã tải lại bản mới nhất”?** Hai người cùng mở một hồ sơ và người kia lưu trước. App đã tải bản mới: xem lại rồi sửa tiếp phần của bạn.',
           '**Không chuyển được hồ sơ?** Hồ sơ đã xác nhận phải bỏ xác nhận trước. Buổi đích đã chốt cũng không nhận thêm.',

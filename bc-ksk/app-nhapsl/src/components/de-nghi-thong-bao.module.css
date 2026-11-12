@@ -25,6 +25,11 @@
   font-size: 0.8125rem;
 }
 
+.bannerText {
+  min-width: 0;
+  flex: 1;
+}
+
 .bannerDetail {
   color: #92400e;
 }
@@ -129,9 +134,16 @@
 }
 
 .popupReason {
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   color: #475569;
   font-size: 0.875rem;
+}
+
+.popupAutoApprove {
+  margin: 0 0 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #b45309;
 }
 
 .popupLink {
@@ -142,4 +154,42 @@
   color: #fff;
   font-weight: 600;
   text-decoration: none;
+}
+
+/* Điện thoại & máy tính bảng (< 1024px): popup nằm trên, rộng toàn màn trừ lề 8px, không che thanh tab dưới */
+@media (max-width: 1023px) {
+  .banner {
+    padding: 8px 12px;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 0.875rem;
+  }
+
+  .bannerLink {
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+  }
+
+  .popupStack {
+    top: calc(56px + env(safe-area-inset-top, 0px));
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-height: calc(100vh - 140px - env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+  }
+
+  .close {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .popupLink {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 14px;
+  }
 }

@@ -283,6 +283,147 @@ const HoSoRow = memo(function HoSoRow({
   );
 });
 
+const HoSoMobileCard = memo(function HoSoMobileCard({
+  stt,
+  hoSo,
+  danhDau,
+  isSelected,
+  canEdit,
+  rowBusy,
+  onOpenDetail,
+  onToggleCls,
+  onToggleXacNhan,
+}: HoSoRowProps) {
+  const cardClasses = [
+    'mobile-data-card',
+    'rasoat-mobile-card',
+    hoSo.da_xac_nhan ? 'hoso-row-confirmed' : '',
+    isSelected ? 'hoso-row-selected' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  return (
+    <div
+      data-hoso-id={hoSo.id}
+      className={cardClasses}
+      onClick={() => onOpenDetail(hoSo.id)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          onOpenDetail(hoSo.id);
+        }
+      }}
+    >
+      <div className="rasoat-mobile-card-head">
+        <div className="rasoat-mobile-card-title">
+          <span className="text-muted text-xs num">#{stt}</span>{' '}
+          <strong className="hoten-text">
+            <ToVang text={hoSo.ho_ten} ranges={danhDau?.ho_ten} />
+          </strong>{' '}
+          <span className="num">
+            (
+            {hoSo.nam_sinh ? (
+              <ToVang text={String(hoSo.nam_sinh)} ranges={danhDau?.nam_sinh} />
+            ) : (
+              '—'
+            )}
+            )
+          </span>
+          {hoSo.sua_nhan_than && (
+            <span className="chip chip-edited ml-1">Đã sửa</span>
+          )}
+          {hoSo.nguon === 'them_tay' && (
+            <span className="chip chip-manual ml-1">Thêm tay</span>
+          )}
+        </div>
+        <button
+          type="button"
+          className={`rasoat-mobile-confirm-btn ${hoSo.da_xac_nhan ? 'confirmed' : ''}`}
+          disabled={!canEdit || rowBusy}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleXacNhan(hoSo);
+          }}
+          aria-pressed={hoSo.da_xac_nhan}
+        >
+          {hoSo.da_xac_nhan ? '✓ Đã kiểm' : 'Chưa kiểm'}
+        </button>
+      </div>
+
+      <div className="rasoat-mobile-card-sub num">
+        <span>{hoSo.gioi_tinh || 'Chưa rõ'}</span>
+        <span>
+          CCCD:{' '}
+          {hoSo.cccd ? (
+            <ToVang text={hoSo.cccd} ranges={danhDau?.cccd} />
+          ) : (
+            '—'
+          )}
+        </span>
+        {hoSo.ma_kcb && (
+          <span>
+            Mã KCB: <ToVang text={hoSo.ma_kcb} ranges={danhDau?.ma_kcb} />
+          </span>
+        )}
+      </div>
+
+      {hoSo.ghi_chu && (
+        <div className="rasoat-mobile-card-note">
+          Ghi chú: <ToVang text={hoSo.ghi_chu} ranges={danhDau?.ghi_chu} />
+        </div>
+      )}
+
+      {hoSo.canh_bao && hoSo.canh_bao.length > 0 && (
+        <div className="rasoat-mobile-card-warnings">
+          {hoSo.canh_bao.map((code) => (
+            <span
+              key={code}
+              className="chip chip-warning"
+              title={getCanhBaoTooltip(code, hoSo.cls_ghi_chu)}
+            >
+              {CANH_BAO_NHAN[code] ?? code}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div
+        className="rasoat-mobile-cls-grid"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {CLS.map((c) => {
+          const val = hoSo.cls[c.key] === 1 ? 1 : 0;
+          const srcVal = hoSo.src ? hoSo.src.cls[c.key] : val;
+          const isDiff = hoSo.src !== null && srcVal !== val;
+          return (
+            <button
+              key={c.key}
+              type="button"
+              className={[
+                'cls-btn',
+                'rasoat-mobile-cls-chip',
+                val === 1 ? 'cls-btn-on' : 'cls-btn-off',
+                isDiff ? 'cls-btn-diff' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              aria-pressed={val === 1}
+              aria-label={`${c.ten}: ${val === 1 ? 'Có' : 'Không'}`}
+              disabled={!canEdit || rowBusy}
+              onClick={() => onToggleCls(hoSo, c.key)}
+            >
+              {c.ngan}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+});
+
 type HoSoThongTinFormProps = {
   hoSo: HoSoDong;
   canEdit: boolean;
@@ -291,6 +432,7 @@ type HoSoThongTinFormProps = {
   onOpenKhoChungModal: (hoSo: HoSoDong) => void;
   onOpenChuyenBuoiModal: (hoSo: HoSoDong) => void;
   onSuccess: (updated: HoSoDong) => void;
+  onCloseDetail?: () => void;
   onWriteError: (
     res: {
       status: number;
@@ -310,6 +452,7 @@ function HoSoThongTinForm({
   onOpenKhoChungModal,
   onOpenChuyenBuoiModal,
   onSuccess,
+  onCloseDetail,
   onWriteError,
 }: HoSoThongTinFormProps) {
   const { showToast } = useToast();
@@ -583,7 +726,7 @@ function HoSoThongTinForm({
 
       <button
         type="submit"
-        className="btn btn-primary btn-block"
+        className="btn btn-primary btn-block desktop-only-save-btn"
         disabled={!canEdit || savingForm}
       >
         {savingForm ? 'Đang lưu…' : 'Lưu thay đổi'}
@@ -694,6 +837,26 @@ function HoSoThongTinForm({
             </dd>
           </div>
         </dl>
+      </div>
+
+      {/* Thanh nút Đóng / Lưu dính đáy trên điện thoại */}
+      <div className="detail-mobile-sticky-bar">
+        {onCloseDetail && (
+          <button
+            type="button"
+            className="btn btn-secondary detail-mobile-btn"
+            onClick={onCloseDetail}
+          >
+            Đóng
+          </button>
+        )}
+        <button
+          type="submit"
+          className="btn btn-primary detail-mobile-btn"
+          disabled={!canEdit || savingForm}
+        >
+          {savingForm ? 'Đang lưu…' : 'Lưu thay đổi'}
+        </button>
       </div>
     </form>
   );
@@ -2012,54 +2175,75 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
               </div>
             </div>
           ) : (
-            <div
-              ref={tableScrollRef}
-              tabIndex={-1}
-              className="rasoat-table-scroll"
-            >
-              <table className="data-table rasoat-table">
-                <thead>
-                  <tr>
-                    <th className="num-col col-stt">STT</th>
-                    <th className="col-makcb">Mã KCB</th>
-                    <th className="col-hoten">Họ tên</th>
-                    <th className="col-gt">GT</th>
-                    <th className="num-col col-namsinh">Năm sinh</th>
-                    <th className="col-cccd">CCCD</th>
-                    <th className="col-diachi">Địa chỉ chi tiết</th>
-                    <th className="col-ghichu">Ghi chú</th>
-                    {CLS.map((c, idx) => (
-                      <th
-                        key={c.key}
-                        className="col-cls"
-                        title={`${idx + 1}. ${c.ten} (Phím ${idx + 1})`}
-                      >
-                        <div className="cls-th-label">{c.ngan}</div>
-                        <div className="cls-th-key">{idx + 1}</div>
-                      </th>
+            <>
+              {/* Danh sách thẻ rà soát trên điện thoại */}
+              <div className="mobile-only-cards rasoat-card-list">
+                {danhSachHienThi.map((h, index) => (
+                  <HoSoMobileCard
+                    key={h.id}
+                    stt={sttGocMap.get(h.id) ?? index + 1}
+                    hoSo={h}
+                    danhDau={danhDauMap.get(h.id)}
+                    isSelected={effectiveSelectedId === h.id}
+                    canEdit={canEdit}
+                    rowBusy={Boolean(busyRowIds[h.id])}
+                    onSelectRow={handleSelectRow}
+                    onOpenDetail={handleOpenDetail}
+                    onToggleCls={handleToggleCls}
+                    onToggleXacNhan={handleToggleXacNhan}
+                  />
+                ))}
+              </div>
+
+              <div
+                ref={tableScrollRef}
+                tabIndex={-1}
+                className="rasoat-table-scroll desktop-only-table"
+              >
+                <table className="data-table rasoat-table">
+                  <thead>
+                    <tr>
+                      <th className="num-col col-stt">STT</th>
+                      <th className="col-makcb">Mã KCB</th>
+                      <th className="col-hoten">Họ tên</th>
+                      <th className="col-gt">GT</th>
+                      <th className="num-col col-namsinh">Năm sinh</th>
+                      <th className="col-cccd">CCCD</th>
+                      <th className="col-diachi">Địa chỉ chi tiết</th>
+                      <th className="col-ghichu">Ghi chú</th>
+                      {CLS.map((c, idx) => (
+                        <th
+                          key={c.key}
+                          className="col-cls"
+                          title={`${idx + 1}. ${c.ten} (Phím ${idx + 1})`}
+                        >
+                          <div className="cls-th-label">{c.ngan}</div>
+                          <div className="cls-th-key">{idx + 1}</div>
+                        </th>
+                      ))}
+                      <th className="col-confirm">Đã kiểm – có hồ sơ giấy</th>
+                    </tr>
+                  </thead>
+                  <tbody ref={tableBodyRef}>
+                    {danhSachHienThi.map((h, index) => (
+                      <HoSoRow
+                        key={h.id}
+                        stt={sttGocMap.get(h.id) ?? index + 1}
+                        hoSo={h}
+                        danhDau={danhDauMap.get(h.id)}
+                        isSelected={effectiveSelectedId === h.id}
+                        canEdit={canEdit}
+                        rowBusy={Boolean(busyRowIds[h.id])}
+                        onSelectRow={handleSelectRow}
+                        onOpenDetail={handleOpenDetail}
+                        onToggleCls={handleToggleCls}
+                        onToggleXacNhan={handleToggleXacNhan}
+                      />
                     ))}
-                    <th className="col-confirm">Đã kiểm – có hồ sơ giấy</th>
-                  </tr>
-                </thead>
-                <tbody ref={tableBodyRef}>
-                  {danhSachHienThi.map((h, index) => (
-                    <HoSoRow
-                      key={h.id}
-                      stt={sttGocMap.get(h.id) ?? index + 1}
-                      hoSo={h}
-                      danhDau={danhDauMap.get(h.id)}
-                      isSelected={effectiveSelectedId === h.id}
-                      canEdit={canEdit}
-                      rowBusy={Boolean(busyRowIds[h.id])}
-                      onSelectRow={handleSelectRow}
-                      onOpenDetail={handleOpenDetail}
-                      onToggleCls={handleToggleCls}
-                      onToggleXacNhan={handleToggleXacNhan}
-                    />
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
 
@@ -2114,6 +2298,7 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
                   onOpenKhoChungModal={(h) => setKhoChungTarget(h)}
                   onOpenChuyenBuoiModal={(h) => setChuyenBuoiTarget(h)}
                   onSuccess={handleFormSaveSuccess}
+                  onCloseDetail={() => setDrawerOpen(false)}
                   onWriteError={handleWriteError}
                 />
               ) : (

@@ -98,7 +98,7 @@ export function docBoLocTimKiemTuUrl(params: {
   const phamVi: PhamViTimKiemTrang =
     rawPv === 'kho_chung' || rawPv === 'tat_ca' || rawPv === 'cua_toi'
       ? rawPv
-      : 'cua_toi';
+      : 'tat_ca';
 
   const boLoc = cloneBoLocTimKiemMacDinh();
   const dv = params.get('don_vi');
@@ -173,7 +173,7 @@ export function taoUrlSearchParamsTimKiem(
     if (trimmed) {
       p.set('q', trimmed);
     }
-    if (phamVi !== 'cua_toi') {
+    if (phamVi !== 'tat_ca') {
       p.set('pham_vi', phamVi);
     }
   }
@@ -197,41 +197,42 @@ export function taoUrlSearchParamsTimKiem(
 }
 
 export type NgayKhamOption = {
+  /** <option value>: 'yyyy-mm-dd' when a unit is selected, else 'DV|yyyy-mm-dd' (picking it also sets the unit). */
+  value: string;
+  don_vi: DonVi;
   ngay: string;
   label: string;
 };
 
+/**
+ * Owner 12/11/2026: no unit selected → one option per (unit, date), unit first then date ascending,
+ * label "Phường Lưu Kiếm · 16/09/2026" (no venue). Unit selected → dates of that unit only.
+ */
 export function taoDanhSachNgayKhamOption(
   buoiList: BuoiTomTat[],
   donVi: '' | DonVi = '',
 ): NgayKhamOption[] {
-  const filtered = donVi
-    ? buoiList.filter((b) => b.don_vi === donVi)
-    : buoiList;
-  const byDate = new Map<string, BuoiTomTat[]>();
-  for (const b of filtered) {
+  const thuTuDv = Object.keys(DON_VI) as DonVi[];
+  const seen = new Map<string, NgayKhamOption>();
+  for (const b of buoiList) {
     if (!b.ngay_kham) continue;
-    const arr = byDate.get(b.ngay_kham) ?? [];
-    arr.push(b);
-    byDate.set(b.ngay_kham, arr);
+    if (donVi && b.don_vi !== donVi) continue;
+    const key = `${b.don_vi}|${b.ngay_kham}`;
+    if (seen.has(key)) continue;
+    seen.set(key, {
+      value: donVi ? b.ngay_kham : key,
+      don_vi: b.don_vi,
+      ngay: b.ngay_kham,
+      label: donVi
+        ? formatDate(b.ngay_kham)
+        : `${b.ten_don_vi || DON_VI[b.don_vi] || b.don_vi} · ${formatDate(b.ngay_kham)}`,
+    });
   }
-  const sortedDates = [...byDate.keys()].sort();
-  return sortedDates.map((ngay) => {
-    const ds = byDate.get(ngay)!;
-    if (ds.length === 1) {
-      const b = ds[0];
-      return {
-        ngay,
-        label: `${formatDate(ngay)} · ${b.ten_don_vi || b.don_vi} · ${b.diem_kham || '—'}`,
-      };
-    }
-    const donViLabel = ds.map((b) => b.ten_don_vi || b.don_vi).join(', ');
-    const diemLabel = ds.map((b) => b.diem_kham || '—').join(', ');
-    return {
-      ngay,
-      label: `${formatDate(ngay)} · ${donViLabel} · ${diemLabel}`,
-    };
-  });
+  return [...seen.values()].sort(
+    (a, b) =>
+      thuTuDv.indexOf(a.don_vi) - thuTuDv.indexOf(b.don_vi) ||
+      a.ngay.localeCompare(b.ngay),
+  );
 }
 
 export function taoDanhSachPhuTrachOption(buoiList: BuoiTomTat[]): UserNgan[] {
@@ -461,6 +462,7 @@ export function TimKiemView() {
   );
   const [boLoc, setBoLoc] = useState<BoLocTimKiem>(initialParsed.boLoc);
   const [filterCollapsed, setFilterCollapsed] = useState<boolean>(false);
+  const [mobileFilterOpen, setMobileFilterOpen] = useState<boolean>(false);
 
   const [tatCaBuoi, setTatCaBuoi] = useState<BuoiTomTat[]>([]);
   const [ketQua, setKetQua] = useState<KetQuaTimKiem[]>([]);
@@ -478,7 +480,6 @@ export function TimKiemView() {
     searchInputRef.current?.focus();
   }, []);
 
-  // Tải danh sách buổi khám để lấy các ngày khám có thật và danh sách nhân viên phụ trách
   useEffect(() => {
     let cancelled = false;
     apiRequest<{ buoi: BuoiTomTat[] }>('/api/buoi?tat_ca=1').then((res) => {
@@ -506,7 +507,6 @@ export function TimKiemView() {
   const duDieuKienTim = coTuKhoa || soBoLoc > 0;
   const tongBoLocDangBat = soBoLoc + (coTuKhoa ? 1 : 0);
 
-  // Đồng bộ từ khóa + phạm vi + bộ lọc lên URL query (tải lại trang vẫn giữ)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const urlParams = taoUrlSearchParamsTimKiem(query, phamVi, boLoc, false);
@@ -647,6 +647,264 @@ export function TimKiemView() {
 
   const vuotGioiHan = gioiHan !== null && tong > gioiHan;
 
+  function renderFilterControls(idPrefix: string) {
+    return (
+      <div className="rasoat-filter-rows">
+        <div className="rasoat-filter-row">
+          <div className="rasoat-filter-item">
+            <label
+              htmlFor={`${idPrefix}-loc-don-vi`}
+              className="rasoat-filter-label"
+            >
+              Xã/phường:
+            </label>
+            <select
+              id={`${idPrefix}-loc-don-vi`}
+              className="form-select rasoat-filter-select"
+              value={boLoc.don_vi}
+              onChange={(e) =>
+                handleChangeDonVi(e.target.value as '' | DonVi)
+              }
+            >
+              <option value="">Tất cả</option>
+              {(Object.keys(DON_VI) as DonVi[]).map((code) => (
+                <option key={code} value={code}>
+                  {DON_VI[code]} ({code})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="rasoat-filter-item">
+            <label
+              htmlFor={`${idPrefix}-loc-ngay`}
+              className="rasoat-filter-label"
+            >
+              Ngày khám:
+            </label>
+            <select
+              id={`${idPrefix}-loc-ngay`}
+              className="form-select rasoat-filter-select rasoat-filter-select-wide"
+              value={boLoc.ngay}
+              onChange={(e) => {
+                const v = e.target.value;
+                const i = v.indexOf('|');
+                if (i > 0) {
+                  handleChangeBoLoc({ ...boLoc, don_vi: v.slice(0, i) as DonVi, ngay: v.slice(i + 1) });
+                } else {
+                  handleChangeBoLoc({ ...boLoc, ngay: v });
+                }
+              }}
+            >
+              <option value="">Tất cả</option>
+              {boLoc.ngay &&
+                !ngayKhamOptions.some((o) => o.value === boLoc.ngay) && (
+                  <option value={boLoc.ngay}>
+                    {formatDate(boLoc.ngay)}
+                  </option>
+                )}
+              {ngayKhamOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="rasoat-filter-item">
+            <label
+              htmlFor={`${idPrefix}-loc-phu-trach`}
+              className="rasoat-filter-label"
+            >
+              Nhân viên rà soát:
+            </label>
+            <select
+              id={`${idPrefix}-loc-phu-trach`}
+              className="form-select rasoat-filter-select"
+              value={boLoc.phu_trach}
+              onChange={(e) =>
+                handleChangeBoLoc({ ...boLoc, phu_trach: e.target.value })
+              }
+            >
+              <option value="">Tất cả</option>
+              {boLoc.phu_trach &&
+                !phuTrachOptions.some(
+                  (u) => String(u.id) === boLoc.phu_trach,
+                ) && (
+                  <option value={boLoc.phu_trach}>
+                    NV #{boLoc.phu_trach}
+                  </option>
+                )}
+              {phuTrachOptions.map((u) => (
+                <option key={u.id} value={String(u.id)}>
+                  {u.ho_ten} ({u.username})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="rasoat-filter-item">
+            <label
+              htmlFor={`${idPrefix}-loc-xac-nhan`}
+              className="rasoat-filter-label"
+            >
+              Xác nhận:
+            </label>
+            <select
+              id={`${idPrefix}-loc-xac-nhan`}
+              className="form-select rasoat-filter-select"
+              value={boLoc.xac_nhan}
+              onChange={(e) =>
+                handleChangeBoLoc({
+                  ...boLoc,
+                  xac_nhan: e.target.value as BoLocTimKiem['xac_nhan'],
+                })
+              }
+            >
+              <option value="tat_ca">Tất cả</option>
+              <option value="da">Đã xác nhận</option>
+              <option value="chua">Chưa xác nhận</option>
+            </select>
+          </div>
+
+          <div className="rasoat-filter-item">
+            <label
+              htmlFor={`${idPrefix}-loc-vi-tri`}
+              className="rasoat-filter-label"
+            >
+              Vị trí:
+            </label>
+            <select
+              id={`${idPrefix}-loc-vi-tri`}
+              className="form-select rasoat-filter-select"
+              value={boLoc.vi_tri}
+              onChange={(e) =>
+                handleChangeBoLoc({
+                  ...boLoc,
+                  vi_tri: e.target.value as BoLocTimKiem['vi_tri'],
+                })
+              }
+            >
+              <option value="tat_ca">Tất cả</option>
+              <option value="buoi">Trong danh sách</option>
+              <option value="kho_ca_nhan">Kho cá nhân</option>
+              <option value="kho_chung">Kho chờ chung</option>
+              <option value="da_loai">Đã loại khỏi danh sách</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="rasoat-filter-row">
+          <div className="rasoat-filter-item">
+            <span className="rasoat-filter-label">CLS:</span>
+            <div
+              className="cls-filter-group"
+              role="group"
+              aria-label="Lọc theo 8 cận lâm sàng (bấm để xoay vòng Tất cả, Có, Không)"
+            >
+              {CLS.map((c) => {
+                const st = boLoc.cls[c.key];
+                const labelText = nhanTrangThaiCls(c.ngan, st);
+                const stateClass =
+                  st === 'co'
+                    ? 'cls-filter-yes'
+                    : st === 'khong'
+                      ? 'cls-filter-no'
+                      : 'cls-filter-all';
+
+                return (
+                  <button
+                    key={c.key}
+                    type="button"
+                    className={`cls-filter-btn ${stateClass}`}
+                    onClick={() => handleCycleCls(c.key)}
+                    title={`${c.ten} (${c.ngan}): ${st === 'tat_ca' ? 'Tất cả' : st === 'co' ? 'Có làm' : 'Không làm'} — Bấm để đổi Tất cả → Có → Không`}
+                    aria-label={`Lọc ${c.nhan} (${labelText})`}
+                  >
+                    {labelText}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="rasoat-filter-item">
+            <label
+              htmlFor={`${idPrefix}-loc-ghi-chu`}
+              className="rasoat-filter-label"
+            >
+              Ghi chú:
+            </label>
+            <select
+              id={`${idPrefix}-loc-ghi-chu`}
+              className="form-select rasoat-filter-select"
+              value={boLoc.co_ghi_chu}
+              onChange={(e) =>
+                handleChangeBoLoc({
+                  ...boLoc,
+                  co_ghi_chu: e.target.value as BoLocTimKiem['co_ghi_chu'],
+                })
+              }
+            >
+              <option value="tat_ca">Tất cả</option>
+              <option value="1">Có ghi chú</option>
+              <option value="0">Không</option>
+            </select>
+          </div>
+
+          <div className="rasoat-filter-item">
+            <label
+              htmlFor={`${idPrefix}-loc-tt-ksk`}
+              className="rasoat-filter-label"
+            >
+              {NHAN.TT_KSK}:
+            </label>
+            <select
+              id={`${idPrefix}-loc-tt-ksk`}
+              className="form-select rasoat-filter-select"
+              value={boLoc.tt_ksk}
+              onChange={(e) =>
+                handleChangeBoLoc({
+                  ...boLoc,
+                  tt_ksk: e.target.value as BaTrangThai,
+                })
+              }
+            >
+              <option value="tat_ca">Tất cả</option>
+              <option value="co">Có</option>
+              <option value="khong">Không</option>
+            </select>
+          </div>
+
+          <div className="rasoat-filter-item">
+            <label
+              htmlFor={`${idPrefix}-loc-nguon`}
+              className="rasoat-filter-label"
+            >
+              Nguồn:
+            </label>
+            <select
+              id={`${idPrefix}-loc-nguon`}
+              className="form-select rasoat-filter-select"
+              value={boLoc.nguon}
+              onChange={(e) =>
+                handleChangeBoLoc({
+                  ...boLoc,
+                  nguon: e.target.value as BoLocTimKiem['nguon'],
+                })
+              }
+            >
+              <option value="tat_ca">Tất cả</option>
+              <option value="his">HIS</option>
+              <option value="them_tay">Thêm tay</option>
+              <option value="kho_chung">Nhận từ kho chung</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="page-container">
       <div className="page-header-row">
@@ -683,13 +941,17 @@ export function TimKiemView() {
           {query && (
             <button
               type="button"
-              className="btn btn-secondary btn-xs"
+              className="timkiem-clear"
+              aria-label="Xóa từ khóa (Esc)"
+              title="Xóa từ khóa (Esc)"
               onClick={() => {
                 handleChangeQuery('');
                 searchInputRef.current?.focus();
               }}
             >
-              Xóa từ khóa
+              <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+                <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
             </button>
           )}
         </div>
@@ -701,6 +963,14 @@ export function TimKiemView() {
             role="group"
             aria-label="Phạm vi tìm kiếm"
           >
+            <button
+              type="button"
+              className={`seg-btn ${phamVi === 'tat_ca' ? 'active' : ''}`}
+              aria-pressed={phamVi === 'tat_ca'}
+              onClick={() => setPhamVi('tat_ca')}
+            >
+              Toàn bộ DS
+            </button>
             <button
               type="button"
               className={`seg-btn ${phamVi === 'cua_toi' ? 'active' : ''}`}
@@ -717,271 +987,25 @@ export function TimKiemView() {
             >
               Kho chờ chung
             </button>
-            <button
-              type="button"
-              className={`seg-btn ${phamVi === 'tat_ca' ? 'active' : ''}`}
-              aria-pressed={phamVi === 'tat_ca'}
-              onClick={() => setPhamVi('tat_ca')}
-            >
-              Toàn bộ app
-            </button>
           </div>
+          {/* Nút mở tấm trượt Bộ lọc (N) trên điện thoại */}
+          <button
+            type="button"
+            className={`btn btn-sm ${soBoLoc > 0 ? 'btn-primary' : 'btn-secondary'} mobile-filter-sheet-btn`}
+            onClick={() => setMobileFilterOpen(true)}
+            aria-expanded={mobileFilterOpen}
+          >
+            Bộ lọc ({formatNumber(soBoLoc)})
+          </button>
         </div>
       </div>
 
+      {/* Bộ lọc inline trên máy tính */}
       <div
-        className="rasoat-filter-panel timkiem-filter-panel"
+        className="rasoat-filter-panel timkiem-filter-panel desktop-only-filter-panel"
         aria-label="Bộ lọc tìm kiếm hồ sơ"
       >
-        {!filterCollapsed && (
-          <div className="rasoat-filter-rows">
-            <div className="rasoat-filter-row">
-              <div className="rasoat-filter-item">
-                <label
-                  htmlFor="timkiem-loc-don-vi"
-                  className="rasoat-filter-label"
-                >
-                  Xã/phường:
-                </label>
-                <select
-                  id="timkiem-loc-don-vi"
-                  className="form-select rasoat-filter-select"
-                  value={boLoc.don_vi}
-                  onChange={(e) =>
-                    handleChangeDonVi(e.target.value as '' | DonVi)
-                  }
-                >
-                  <option value="">Tất cả</option>
-                  {(Object.keys(DON_VI) as DonVi[]).map((code) => (
-                    <option key={code} value={code}>
-                      {DON_VI[code]} ({code})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="rasoat-filter-item">
-                <label
-                  htmlFor="timkiem-loc-ngay"
-                  className="rasoat-filter-label"
-                >
-                  Ngày khám:
-                </label>
-                <select
-                  id="timkiem-loc-ngay"
-                  className="form-select rasoat-filter-select rasoat-filter-select-wide"
-                  value={boLoc.ngay}
-                  onChange={(e) =>
-                    handleChangeBoLoc({ ...boLoc, ngay: e.target.value })
-                  }
-                >
-                  <option value="">Tất cả</option>
-                  {boLoc.ngay &&
-                    !ngayKhamOptions.some((o) => o.ngay === boLoc.ngay) && (
-                      <option value={boLoc.ngay}>
-                        {formatDate(boLoc.ngay)}
-                      </option>
-                    )}
-                  {ngayKhamOptions.map((opt) => (
-                    <option key={opt.ngay} value={opt.ngay}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="rasoat-filter-item">
-                <label
-                  htmlFor="timkiem-loc-phu-trach"
-                  className="rasoat-filter-label"
-                >
-                  Nhân viên rà soát:
-                </label>
-                <select
-                  id="timkiem-loc-phu-trach"
-                  className="form-select rasoat-filter-select"
-                  value={boLoc.phu_trach}
-                  onChange={(e) =>
-                    handleChangeBoLoc({ ...boLoc, phu_trach: e.target.value })
-                  }
-                >
-                  <option value="">Tất cả</option>
-                  {boLoc.phu_trach &&
-                    !phuTrachOptions.some(
-                      (u) => String(u.id) === boLoc.phu_trach,
-                    ) && (
-                      <option value={boLoc.phu_trach}>
-                        NV #{boLoc.phu_trach}
-                      </option>
-                    )}
-                  {phuTrachOptions.map((u) => (
-                    <option key={u.id} value={String(u.id)}>
-                      {u.ho_ten} ({u.username})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="rasoat-filter-item">
-                <label
-                  htmlFor="timkiem-loc-xac-nhan"
-                  className="rasoat-filter-label"
-                >
-                  Xác nhận:
-                </label>
-                <select
-                  id="timkiem-loc-xac-nhan"
-                  className="form-select rasoat-filter-select"
-                  value={boLoc.xac_nhan}
-                  onChange={(e) =>
-                    handleChangeBoLoc({
-                      ...boLoc,
-                      xac_nhan: e.target.value as BoLocTimKiem['xac_nhan'],
-                    })
-                  }
-                >
-                  <option value="tat_ca">Tất cả</option>
-                  <option value="da">Đã xác nhận</option>
-                  <option value="chua">Chưa xác nhận</option>
-                </select>
-              </div>
-
-              <div className="rasoat-filter-item">
-                <label
-                  htmlFor="timkiem-loc-vi-tri"
-                  className="rasoat-filter-label"
-                >
-                  Vị trí:
-                </label>
-                <select
-                  id="timkiem-loc-vi-tri"
-                  className="form-select rasoat-filter-select"
-                  value={boLoc.vi_tri}
-                  onChange={(e) =>
-                    handleChangeBoLoc({
-                      ...boLoc,
-                      vi_tri: e.target.value as BoLocTimKiem['vi_tri'],
-                    })
-                  }
-                >
-                  <option value="tat_ca">Tất cả</option>
-                  <option value="buoi">Trong danh sách</option>
-                  <option value="kho_ca_nhan">Kho cá nhân</option>
-                  <option value="kho_chung">Kho chờ chung</option>
-                  <option value="da_loai">Đã loại khỏi danh sách</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="rasoat-filter-row">
-              <div className="rasoat-filter-item">
-                <span className="rasoat-filter-label">CLS:</span>
-                <div
-                  className="cls-filter-group"
-                  role="group"
-                  aria-label="Lọc theo 8 cận lâm sàng (bấm để xoay vòng Tất cả, Có, Không)"
-                >
-                  {CLS.map((c) => {
-                    const st = boLoc.cls[c.key];
-                    const labelText = nhanTrangThaiCls(c.ngan, st);
-                    const stateClass =
-                      st === 'co'
-                        ? 'cls-filter-yes'
-                        : st === 'khong'
-                          ? 'cls-filter-no'
-                          : 'cls-filter-all';
-
-                    return (
-                      <button
-                        key={c.key}
-                        type="button"
-                        className={`cls-filter-btn ${stateClass}`}
-                        onClick={() => handleCycleCls(c.key)}
-                        title={`${c.ten} (${c.ngan}): ${st === 'tat_ca' ? 'Tất cả' : st === 'co' ? 'Có làm' : 'Không làm'} — Bấm để đổi Tất cả → Có → Không`}
-                        aria-label={`Lọc ${c.nhan} (${labelText})`}
-                      >
-                        {labelText}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="rasoat-filter-item">
-                <label
-                  htmlFor="timkiem-loc-ghi-chu"
-                  className="rasoat-filter-label"
-                >
-                  Ghi chú:
-                </label>
-                <select
-                  id="timkiem-loc-ghi-chu"
-                  className="form-select rasoat-filter-select"
-                  value={boLoc.co_ghi_chu}
-                  onChange={(e) =>
-                    handleChangeBoLoc({
-                      ...boLoc,
-                      co_ghi_chu: e.target.value as BoLocTimKiem['co_ghi_chu'],
-                    })
-                  }
-                >
-                  <option value="tat_ca">Tất cả</option>
-                  <option value="1">Có ghi chú</option>
-                  <option value="0">Không</option>
-                </select>
-              </div>
-
-              <div className="rasoat-filter-item">
-                <label
-                  htmlFor="timkiem-loc-tt-ksk"
-                  className="rasoat-filter-label"
-                >
-                  {NHAN.TT_KSK}:
-                </label>
-                <select
-                  id="timkiem-loc-tt-ksk"
-                  className="form-select rasoat-filter-select"
-                  value={boLoc.tt_ksk}
-                  onChange={(e) =>
-                    handleChangeBoLoc({
-                      ...boLoc,
-                      tt_ksk: e.target.value as BaTrangThai,
-                    })
-                  }
-                >
-                  <option value="tat_ca">Tất cả</option>
-                  <option value="co">Có</option>
-                  <option value="khong">Không</option>
-                </select>
-              </div>
-
-              <div className="rasoat-filter-item">
-                <label
-                  htmlFor="timkiem-loc-nguon"
-                  className="rasoat-filter-label"
-                >
-                  Nguồn:
-                </label>
-                <select
-                  id="timkiem-loc-nguon"
-                  className="form-select rasoat-filter-select"
-                  value={boLoc.nguon}
-                  onChange={(e) =>
-                    handleChangeBoLoc({
-                      ...boLoc,
-                      nguon: e.target.value as BoLocTimKiem['nguon'],
-                    })
-                  }
-                >
-                  <option value="tat_ca">Tất cả</option>
-                  <option value="his">HIS</option>
-                  <option value="them_tay">Thêm tay</option>
-                  <option value="kho_chung">Nhận từ kho chung</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        )}
+        {!filterCollapsed && renderFilterControls('timkiem')}
 
         <div className="rasoat-filter-status-bar" aria-live="polite">
           <div className="rasoat-filter-status-left">
@@ -1019,6 +1043,59 @@ export function TimKiemView() {
           </div>
         </div>
       </div>
+
+      {/* Tấm trượt Bộ lọc (N) trên điện thoại */}
+      {mobileFilterOpen && (
+        <div
+          className="mobile-sheet-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Bộ lọc tìm kiếm"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setMobileFilterOpen(false);
+          }}
+        >
+          <div className="mobile-sheet mobile-filter-sheet">
+            <div className="mobile-sheet-header">
+              <div>
+                <div className="mobile-sheet-title">
+                  Bộ lọc ({formatNumber(soBoLoc)})
+                </div>
+                <div className="mobile-sheet-sub">
+                  Chọn điều kiện để thu hẹp kết quả tìm kiếm
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={() => setMobileFilterOpen(false)}
+              >
+                Đóng
+              </button>
+            </div>
+            <div className="mobile-filter-sheet-body">
+              {renderFilterControls('timkiem-mobile')}
+            </div>
+            <div className="mobile-filter-sheet-footer">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleResetFilters}
+                disabled={soBoLoc === 0}
+              >
+                Xóa bộ lọc
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => setMobileFilterOpen(false)}
+              >
+                Xem kết quả ({formatNumber(tong)})
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {!duDieuKienTim && (
         <div className="state-box" role="status">
@@ -1073,7 +1150,7 @@ export function TimKiemView() {
             </p>
             <p className="state-desc">
               Không tìm thấy kết quả phù hợp — thử bỏ bớt điều kiện lọc, từ khóa
-              hoặc chọn Toàn bộ app.
+              hoặc chọn Toàn bộ DS.
             </p>
             <div className="state-actions">
               {phamVi !== 'tat_ca' && (
@@ -1082,7 +1159,7 @@ export function TimKiemView() {
                   className="btn btn-primary btn-sm"
                   onClick={() => setPhamVi('tat_ca')}
                 >
-                  Chuyển sang Toàn bộ app
+                  Chuyển sang Toàn bộ DS
                 </button>
               )}
               {soBoLoc > 0 && (
@@ -1120,7 +1197,127 @@ export function TimKiemView() {
             )}
           </div>
 
-          <div className="table-wrap">
+          {/* Kết quả dạng THẺ có tô vàng trên điện thoại */}
+          <div className="mobile-only-cards timkiem-card-list">
+            {ketQua.map((h, idx) => {
+              const viTriLabel = formatViTriKetQua(h);
+              const canOpenSession =
+                h.co_quyen_sua && h.vi_tri === 'buoi' && h.buoi !== null;
+              const isOtherUserSession =
+                !h.co_quyen_sua && h.vi_tri === 'buoi' && h.buoi !== null;
+              const danhDau =
+                tokensKhop.length > 0
+                  ? khopHoSo(tokensKhop, h).danhDau
+                  : undefined;
+
+              return (
+                <div
+                  key={h.id}
+                  className={`mobile-data-card timkiem-mobile-card ${h.da_xac_nhan ? 'hoso-row-confirmed' : ''}`}
+                >
+                  <div className="mobile-data-card-head">
+                    <div>
+                      <span className="text-muted text-xs num">#{idx + 1}</span>{' '}
+                      <strong className="hoten-text">
+                        <ToVang text={h.ho_ten} ranges={danhDau?.ho_ten} />
+                      </strong>{' '}
+                      <span className="num">
+                        (
+                        {h.nam_sinh ? (
+                          <ToVang
+                            text={String(h.nam_sinh)}
+                            ranges={danhDau?.nam_sinh}
+                          />
+                        ) : (
+                          '—'
+                        )}
+                        )
+                      </span>
+                    </div>
+                    {h.da_xac_nhan ? (
+                      <span className="badge badge-success">✓ Đã XN</span>
+                    ) : (
+                      <span className="badge badge-neutral">Chưa XN</span>
+                    )}
+                  </div>
+
+                  <div className="text-muted text-xs num">
+                    {h.gioi_tinh || 'Chưa rõ'} · CCCD:{' '}
+                    {h.cccd ? (
+                      <ToVang text={h.cccd} ranges={danhDau?.cccd} />
+                    ) : (
+                      '—'
+                    )}{' '}
+                    · Mã KCB:{' '}
+                    {h.ma_kcb ? (
+                      <ToVang text={h.ma_kcb} ranges={danhDau?.ma_kcb} />
+                    ) : (
+                      '—'
+                    )}
+                  </div>
+
+                  {h.ghi_chu && (
+                    <div className="timkiem-mobile-ghichu">
+                      Ghi chú:{' '}
+                      <ToVang text={h.ghi_chu} ranges={danhDau?.ghi_chu} />
+                    </div>
+                  )}
+
+                  <div className="timkiem-mobile-cls">
+                    {CLS.map((c) => {
+                      const val = h.cls[c.key] === 1 ? 1 : 0;
+                      return (
+                        <span
+                          key={c.key}
+                          className={`cls-ro-cell ${val === 1 ? 'cls-ro-on' : 'cls-ro-off'}`}
+                        >
+                          {c.ngan}: {val === 1 ? 'Có' : '—'}
+                        </span>
+                      );
+                    })}
+                  </div>
+
+                  <div className="timkiem-mobile-footer">
+                    <span className="text-xs font-semibold">{viTriLabel}</span>
+                    <div>
+                      {canOpenSession && h.buoi ? (
+                        <Link
+                          href={`/ra-soat/${encodeURIComponent(h.buoi.ma_buoi)}?chon=${h.id}`}
+                          className="btn btn-primary btn-xs"
+                        >
+                          Mở trong danh sách
+                        </Link>
+                      ) : isOtherUserSession ? (
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-xs"
+                          onClick={() => setDeNghiTarget(h)}
+                        >
+                          Chuyển về buổi của tôi
+                        </button>
+                      ) : h.vi_tri === 'kho_chung' ||
+                        (h.vi_tri === 'kho_ca_nhan' && h.co_quyen_sua) ? (
+                        <Link
+                          href={
+                            h.vi_tri === 'kho_chung'
+                              ? '/kho?tab=kho_chung'
+                              : '/kho?tab=kho_ca_nhan'
+                          }
+                          className="btn btn-secondary btn-xs"
+                        >
+                          Mở Kho chờ
+                        </Link>
+                      ) : (
+                        <span className="badge badge-neutral">Chỉ xem</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="table-wrap desktop-only-table">
             <table className="data-table rasoat-table timkiem-table">
               <thead>
                 <tr>
@@ -1294,7 +1491,7 @@ export function TimKiemView() {
                               className="btn btn-secondary btn-xs"
                               onClick={() => setDeNghiTarget(h)}
                             >
-                              Đề nghị chuyển về buổi của tôi
+                              Chuyển về buổi của tôi
                             </button>
                           </div>
                         ) : h.vi_tri === 'kho_chung' ||

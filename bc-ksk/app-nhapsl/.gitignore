@@ -1,7 +1,7 @@
 # --- BẮT BUỘC (CLAUDE.md): không đưa dữ liệu người dân vào git ---
 data/
 handoff/
-db/
+/db/
 *.csv
 *.xlsx
 .env*

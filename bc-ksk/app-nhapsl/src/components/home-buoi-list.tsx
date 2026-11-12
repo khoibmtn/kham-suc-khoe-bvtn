@@ -14,13 +14,17 @@ import { DON_VI, NHAN } from '@/lib/cls';
 import { khongDau } from '@/lib/text';
 import { apiRequest, downloadFile } from '@/lib/client/api';
 import {
+  docTuyChonAmBao,
+  NHAC_THONG_BAO_STORAGE_KEY,
+} from '@/lib/client/am-bao';
+import {
   formatChenhLech,
   formatDate,
   formatNumber,
   formatPercent,
   TRANG_THAI_BUOI_NHAN,
 } from '@/lib/client/format';
-import type { ShellUser } from './app-shell';
+import { openThongBaoAmBaoModal, type ShellUser } from './app-shell';
 import {
   DuaVaoKhoChungTuKhoModal,
   KhoTable,
@@ -184,6 +188,7 @@ export function HomeBuoiList({
 
   const [hoSoJumpQuery, setHoSoJumpQuery] = useState<string>('');
   const [users, setUsers] = useState<UserQuanLy[]>([]);
+  const [hienNhacThongBao, setHienNhacThongBao] = useState<boolean>(false);
 
   // Xuất báo cáo Excel (nhân viên)
   const [chiDaXacNhan, setChiDaXacNhan] = useState<'1' | '0'>('1');
@@ -194,6 +199,35 @@ export function HomeBuoiList({
   const [nhanVeTarget, setNhanVeTarget] = useState<KetQuaTimKiem | null>(null);
   const [moveToChungTarget, setMoveToChungTarget] =
     useState<KetQuaTimKiem | null>(null);
+
+  // Kiểm tra hiển thị lời nhắc nhẹ lần đầu về thông báo & âm báo
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const t = window.setTimeout(() => {
+      try {
+        const daDong = window.localStorage.getItem(NHAC_THONG_BAO_STORAGE_KEY);
+        if (daDong === '1') return;
+        const pushGranted =
+          'Notification' in window && Notification.permission === 'granted';
+        const amBaoOn = docTuyChonAmBao();
+        if (!pushGranted || !amBaoOn) {
+          setHienNhacThongBao(true);
+        }
+      } catch {
+        // ignore
+      }
+    }, 0);
+    return () => window.clearTimeout(t);
+  }, []);
+
+  function handleDongNhacThongBao() {
+    setHienNhacThongBao(false);
+    try {
+      window.localStorage.setItem(NHAC_THONG_BAO_STORAGE_KEY, '1');
+    } catch {
+      // ignore
+    }
+  }
 
   const reloadBuoi = useCallback(async () => {
     setLoading(true);
@@ -340,6 +374,33 @@ export function HomeBuoiList({
 
   return (
     <div className="page-container">
+      {hienNhacThongBao && (
+        <div className="home-notif-reminder" role="region" aria-label="Lời nhắc thông báo">
+          <div className="home-notif-reminder-text">
+            <strong>Bật âm báo và thông báo để không bỏ lỡ đề nghị chuyển</strong>
+            <span className="text-muted text-xs">
+              Nhận tiếng chuông hoặc thông báo trên điện thoại ngay khi đồng nghiệp xin chuyển hồ sơ.
+            </span>
+          </div>
+          <div className="home-notif-reminder-actions">
+            <button
+              type="button"
+              className="btn btn-primary btn-xs"
+              onClick={() => openThongBaoAmBaoModal()}
+            >
+              Cài đặt thông báo
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-xs"
+              onClick={handleDongNhacThongBao}
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="page-header-row">
         <div>
           <h1 className="page-title">
@@ -355,7 +416,7 @@ export function HomeBuoiList({
         </div>
         <div className="page-header-actions">
           <Link
-            href="/kho"
+            href="/kho?tab=de_nghi"
             className={`badge ${deNghiChoToi > 0 ? 'badge-warning' : 'badge-neutral'}`}
             title="Xem danh sách đề nghị chuyển hồ sơ trong Kho chờ"
           >
@@ -760,135 +821,213 @@ export function HomeBuoiList({
       )}
 
       {filteredBuoi.length > 0 && (
-        <div className="table-wrap">
-          <table className="data-table buoi-table">
-            <thead>
-              <tr>
-                <th>Đơn vị</th>
-                <th>Ngày</th>
-                <th>Điểm khám</th>
-                {isAdmin && <th>Người phụ trách</th>}
-                <th className="num-col">{NHAN.SO_DOAN}</th>
-                <th className="num-col">Trong DS</th>
-                <th className="num-col">Đã xác nhận</th>
-                <th className="num-col">Chưa xác nhận</th>
-                <th className="num-col">Thừa</th>
-                <th className="num-col">Thiếu</th>
-                <th className="num-col">Bổ sung</th>
-                <th>Trạng thái</th>
-                <th className="num-col">Tiến độ %</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredBuoi.map((b) => (
-                <tr
-                  key={b.id}
-                  className="clickable-row"
-                  onClick={() => router.push(`/ra-soat/${b.ma_buoi}`)}
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      router.push(`/ra-soat/${b.ma_buoi}`);
-                    }
-                  }}
-                >
-                  <td className="col-text" title={b.ten_don_vi}>
-                    <span className="font-semibold">
-                      {b.ten_don_vi.replace(/^(Phường|Xã) /, '')}
+        <>
+          {/* Danh sách buổi khám dạng THẺ trên điện thoại */}
+          <div className="mobile-only-cards buoi-card-list">
+            {filteredBuoi.map((b) => (
+              <Link
+                key={b.id}
+                href={`/ra-soat/${b.ma_buoi}`}
+                className="mobile-data-card buoi-mobile-card"
+              >
+                <div className="mobile-data-card-head">
+                  <div>
+                    <span className="font-bold">{formatDate(b.ngay_kham)}</span>{' '}
+                    <span className="font-semibold text-primary">
+                      · {b.ten_don_vi.replace(/^(Phường|Xã) /, '')}
                     </span>
-                  </td>
-                  <td className="nowrap">
-                    <Link
-                      href={`/ra-soat/${b.ma_buoi}`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="row-primary-link font-semibold"
-                    >
-                      {formatDate(b.ngay_kham)}
-                    </Link>
-                  </td>
-                  <td className="col-text">
-                    <div>{b.diem_kham || '—'}</div>
-                    {b.doan_kham && (
-                      <div className="sub-text">{b.doan_kham}</div>
-                    )}
-                  </td>
-                  {isAdmin && (
+                    <div className="text-muted text-xs">{b.ma_buoi}</div>
+                  </div>
+                  {renderTrangThaiBadge(b.trang_thai)}
+                </div>
+
+                <div className="buoi-mobile-card-place">
+                  {b.diem_kham || '—'}
+                  {b.doan_kham ? ` · ${b.doan_kham}` : ''}
+                </div>
+
+                {isAdmin && (
+                  <div className="text-muted text-xs">
+                    Phụ trách:{' '}
+                    <strong>{b.phu_trach ? b.phu_trach.ho_ten : 'Chưa phân công'}</strong>
+                  </div>
+                )}
+
+                <div className="mobile-data-card-metrics num">
+                  <span>
+                    {NHAN.SO_DOAN}: <strong>{formatNumber(b.so_doan_tong)}</strong>
+                  </span>
+                  <span>
+                    Trong DS: <strong>{formatNumber(b.hien_co)}</strong>
+                  </span>
+                  <span>
+                    Đã XN:{' '}
+                    <strong className="text-success">{formatNumber(b.da_xac_nhan)}</strong>
+                  </span>
+                  <span>
+                    Chưa: <strong>{formatNumber(b.chua_xac_nhan)}</strong>
+                  </span>
+                  {(b.thua > 0 || b.thieu > 0) && (
+                    <span>
+                      Thừa/Thiếu: +{formatNumber(b.thua)} / −{formatNumber(b.thieu)}
+                    </span>
+                  )}
+                </div>
+
+                <div className="buoi-mobile-card-progress">
+                  <div className="progress-track progress-track-sm">
+                    <div
+                      className="progress-fill"
+                      style={{
+                        width: `${Math.min(100, Math.max(0, b.tien_do))}%`,
+                      }}
+                    />
+                  </div>
+                  <span className="font-semibold num text-xs">
+                    {formatPercent(b.tien_do)}
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {/* Bảng đầy đủ trên máy tính */}
+          <div className="table-wrap desktop-only-table">
+            <table className="data-table buoi-table">
+              <thead>
+                <tr>
+                  <th>Đơn vị</th>
+                  <th>Ngày</th>
+                  <th>Điểm khám</th>
+                  {isAdmin && <th>Người phụ trách</th>}
+                  <th className="num-col">{NHAN.SO_DOAN}</th>
+                  <th className="num-col">Trong DS</th>
+                  <th className="num-col">Đã xác nhận</th>
+                  <th className="num-col">Chưa xác nhận</th>
+                  <th className="num-col">Thừa</th>
+                  <th className="num-col">Thiếu</th>
+                  <th className="num-col">Bổ sung</th>
+                  <th>Trạng thái</th>
+                  <th className="num-col">Tiến độ %</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredBuoi.map((b) => (
+                  <tr
+                    key={b.id}
+                    className="clickable-row"
+                    onClick={() => router.push(`/ra-soat/${b.ma_buoi}`)}
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        router.push(`/ra-soat/${b.ma_buoi}`);
+                      }
+                    }}
+                  >
+                    <td className="col-text" title={b.ten_don_vi}>
+                      <span className="font-semibold">
+                        {b.ten_don_vi.replace(/^(Phường|Xã) /, '')}
+                      </span>
+                    </td>
+                    <td className="nowrap">
+                      <Link
+                        href={`/ra-soat/${b.ma_buoi}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="row-primary-link font-semibold"
+                      >
+                        {formatDate(b.ngay_kham)}
+                      </Link>
+                    </td>
                     <td className="col-text">
-                      {b.phu_trach ? (
-                        <span title={b.phu_trach.username}>{b.phu_trach.ho_ten}</span>
-                      ) : (
-                        <span className="badge badge-warning">
-                          Chưa phân công
-                        </span>
+                      <div>{b.diem_kham || '—'}</div>
+                      {b.doan_kham && (
+                        <div className="sub-text">{b.doan_kham}</div>
                       )}
                     </td>
-                  )}
-                  <td className="num-col">{formatNumber(b.so_doan_tong)}</td>
-                  <td className="num-col">{formatNumber(b.hien_co)}</td>
-                  <td className="num-col font-semibold text-success">
-                    {formatNumber(b.da_xac_nhan)}
-                  </td>
-                  <td className="num-col">
-                    {b.chua_xac_nhan > 0 ? (
-                      <span className="font-semibold">
-                        {formatNumber(b.chua_xac_nhan)}
-                      </span>
-                    ) : (
-                      <span className="text-muted">0</span>
+                    {isAdmin && (
+                      <td className="col-text">
+                        {b.phu_trach ? (
+                          <span title={b.phu_trach.username}>{b.phu_trach.ho_ten}</span>
+                        ) : (
+                          <span className="badge badge-warning">
+                            Chưa phân công
+                          </span>
+                        )}
+                      </td>
                     )}
-                  </td>
-                  <td className="num-col">
-                    {b.thua > 0 ? (
-                      <span className="badge badge-warning" title={`Thừa ${b.thua} hồ sơ so với ${NHAN.SO_DOAN}`}>
-                        +{formatNumber(b.thua)}
-                      </span>
-                    ) : (
-                      <span className="text-muted">0</span>
-                    )}
-                  </td>
-                  <td className="num-col">
-                    {b.thieu > 0 ? (
-                      <span className="badge badge-warning" title={`Thiếu ${b.thieu} hồ sơ so với ${NHAN.SO_DOAN}`}>
-                        −{formatNumber(b.thieu)}
-                      </span>
-                    ) : (
-                      <span className="text-muted">0</span>
-                    )}
-                  </td>
-                  <td className="num-col">
-                    {b.bo_sung > 0 ? (
-                      <span className="font-semibold">
-                        {formatNumber(b.bo_sung)}
-                      </span>
-                    ) : (
-                      <span className="text-muted">0</span>
-                    )}
-                  </td>
-                  <td className="nowrap">{renderTrangThaiBadge(b.trang_thai)}</td>
-                  <td className="num-col">
-                    <div className="table-progress-cell">
-                      <div
-                        className="progress-track progress-track-sm"
-                        aria-hidden="true"
-                      >
+                    <td className="num-col">{formatNumber(b.so_doan_tong)}</td>
+                    <td className="num-col">{formatNumber(b.hien_co)}</td>
+                    <td className="num-col font-semibold text-success">
+                      {formatNumber(b.da_xac_nhan)}
+                    </td>
+                    <td className="num-col">
+                      {b.chua_xac_nhan > 0 ? (
+                        <span className="font-semibold">
+                          {formatNumber(b.chua_xac_nhan)}
+                        </span>
+                      ) : (
+                        <span className="text-muted">0</span>
+                      )}
+                    </td>
+                    <td className="num-col">
+                      {b.thua > 0 ? (
+                        <span
+                          className="badge badge-warning"
+                          title={`Thừa ${b.thua} hồ sơ so với ${NHAN.SO_DOAN}`}
+                        >
+                          +{formatNumber(b.thua)}
+                        </span>
+                      ) : (
+                        <span className="text-muted">0</span>
+                      )}
+                    </td>
+                    <td className="num-col">
+                      {b.thieu > 0 ? (
+                        <span
+                          className="badge badge-warning"
+                          title={`Thiếu ${b.thieu} hồ sơ so với ${NHAN.SO_DOAN}`}
+                        >
+                          −{formatNumber(b.thieu)}
+                        </span>
+                      ) : (
+                        <span className="text-muted">0</span>
+                      )}
+                    </td>
+                    <td className="num-col">
+                      {b.bo_sung > 0 ? (
+                        <span className="font-semibold">
+                          {formatNumber(b.bo_sung)}
+                        </span>
+                      ) : (
+                        <span className="text-muted">0</span>
+                      )}
+                    </td>
+                    <td className="nowrap">{renderTrangThaiBadge(b.trang_thai)}</td>
+                    <td className="num-col">
+                      <div className="table-progress-cell">
                         <div
-                          className="progress-fill"
-                          style={{
-                            width: `${Math.min(100, Math.max(0, b.tien_do))}%`,
-                          }}
-                        />
+                          className="progress-track progress-track-sm"
+                          aria-hidden="true"
+                        >
+                          <div
+                            className="progress-fill"
+                            style={{
+                              width: `${Math.min(100, Math.max(0, b.tien_do))}%`,
+                            }}
+                          />
+                        </div>
+                        <span className="font-semibold num">
+                          {formatPercent(b.tien_do)}
+                        </span>
                       </div>
-                      <span className="font-semibold num">
-                        {formatPercent(b.tien_do)}
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {nhanVeTarget && (

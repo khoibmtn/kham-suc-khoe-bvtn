@@ -44,7 +44,7 @@ export async function giaiBuoi(sql: Sql, ref: number | string): Promise<number> 
 export async function diChuyenTrongTx(
   sql: Sql,
   user: AuthUser,
-  p: { id: number; version: number | null; dich: Dich; lyDo: string; che: 'chuyen' | 'nhan_ve' },
+  p: { id: number; version: number | null; dich: Dich; lyDo: string; che: 'chuyen' | 'nhan_ve'; ghiVet?: { userId: number | null; tienTo: string } },
 ): Promise<{ buoiCuId: number | null; buoiMoiId: number | null }> {
   if (p.che === 'chuyen' && p.dich.loai === 'buoi' && p.lyDo.trim() === '') {
     throw new LoiNghiepVu(400, 'Chuyển sang buổi khám khác cần ghi lý do');
@@ -118,8 +118,9 @@ export async function diChuyenTrongTx(
       nhan_tu_kho_chung = ${nhanMoi}, version = ${h.version + 1}, updated_by = ${user.id}, updated_at = now()
     WHERE id = ${p.id}`;
   await ghiNhatKy({
-    userId: user.id, hanhDong: p.che, doiTuong: 'ho_so', doiTuongId: p.id,
-    truong: 'vi_tri', giaTriCu: nhanNguon, giaTriMoi: nhanDich, ghiChu: p.lyDo || null,
+    userId: p.ghiVet ? p.ghiVet.userId : user.id, hanhDong: p.che, doiTuong: 'ho_so', doiTuongId: p.id,
+    truong: 'vi_tri', giaTriCu: nhanNguon, giaTriMoi: nhanDich,
+    ghiChu: p.ghiVet ? `${p.ghiVet.tienTo} ${p.lyDo}`.trim() : p.lyDo || null,
   }, sql);
   for (const b of new Set([h.buoi_id, buoiIdMoi])) if (b !== null) await dongBoTrangThaiBuoi(sql, b);
   return { buoiCuId: h.buoi_id, buoiMoiId: buoiIdMoi };

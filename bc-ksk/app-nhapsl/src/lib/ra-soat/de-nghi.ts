@@ -6,12 +6,15 @@ import { ghiNhatKy } from '@/lib/nhat-ky';
 import { LoiNghiepVu } from './loi';
 import { LOI_KHONG_QUYEN_BUOI, coQuyenBuoi, iso, laAdmin } from './quyen';
 import { diChuyenTrongTx, giaiBuoi } from './chuyen';
+import { docTuDuyet } from './cai-dat';
+import { quetTuDuyet } from './tu-duyet';
+import { chayNen, thongBaoDaXuLy, thongBaoDeNghiMoi } from '@/lib/push';
 
 type Sql = postgres.Sql;
 type Frag = postgres.PendingQuery<postgres.Row[]>;
 
 type Row = {
-  id: number; ly_do: string; trang_thai: DeNghiChuyen['trang_thai']; created_at: Date; xu_ly_at: Date | null; xu_ly_ghi_chu: string;
+  id: number; ly_do: string; trang_thai: DeNghiChuyen['trang_thai']; created_at: Date; xu_ly_at: Date | null; xu_ly_ghi_chu: string; tu_dong: boolean; tu_dong_loi: string;
   hs_id: number; ho_ten: string; nam_sinh: number; cccd: string; ma_kcb: string;
   tb_ma: string | null; tpt_id: number | null; tpt_username: string | null; tpt_ho_ten: string | null;
   den_buoi_id: number; db_ma: string;
@@ -23,7 +26,7 @@ const un = (id: number | null, u: string | null, h: string | null): UserNgan | n
 
 async function truyVanDeNghi(sql: Sql, where: Frag): Promise<DeNghiChuyen[]> {
   const rows = await sql<Row[]>`
-    SELECT d.id, d.ly_do, d.trang_thai, d.created_at, d.xu_ly_at, d.xu_ly_ghi_chu,
+    SELECT d.id, d.ly_do, d.trang_thai, d.created_at, d.xu_ly_at, d.xu_ly_ghi_chu, d.tu_dong, d.tu_dong_loi,
            h.id AS hs_id, h.ho_ten, h.nam_sinh, h.cccd, h.ma_kcb,
            tb.ma_buoi AS tb_ma, tpt.id AS tpt_id, tpt.username AS tpt_username, tpt.ho_ten AS tpt_ho_ten,
            d.den_buoi_id, db.ma_buoi AS db_ma,
@@ -38,6 +41,7 @@ async function truyVanDeNghi(sql: Sql, where: Frag): Promise<DeNghiChuyen[]> {
     LEFT JOIN users xl ON xl.id = d.xu_ly_by
     WHERE ${where}
     ORDER BY (d.trang_thai <> 'cho_xu_ly'), d.id DESC`;
+  const cd = await docTuDuyet(sql);
   return rows.map((r) => ({
     id: r.id,
     ho_so: { id: r.hs_id, ho_ten: r.ho_ten, nam_sinh: r.nam_sinh, cccd: r.cccd, ma_kcb: r.ma_kcb },
@@ -50,6 +54,12 @@ async function truyVanDeNghi(sql: Sql, where: Frag): Promise<DeNghiChuyen[]> {
     xu_ly_by: un(r.xl_id, r.xl_username, r.xl_ho_ten),
     xu_ly_at: iso(r.xu_ly_at),
     xu_ly_ghi_chu: r.xu_ly_ghi_chu,
+    tu_dong: r.tu_dong,
+    tu_dong_loi: r.tu_dong_loi,
+    han_tu_duyet:
+      r.trang_thai === 'cho_xu_ly' && cd.che_do === 'sau_phut' && r.tu_dong_loi === ''
+        ? new Date(r.created_at.getTime() + cd.sau_phut * 60_000).toISOString()
+        : null,
   }));
 }
 
@@ -62,7 +72,7 @@ async function layMot(sql: Sql, id: number): Promise<DeNghiChuyen> {
 export async function taoDeNghi(user: AuthUser, body: { ho_so_id: number; den_buoi: number | string; ly_do?: string }): Promise<{ de_nghi: DeNghiChuyen }> {
   const lyDo = (body.ly_do ?? '').trim();
   if (!lyDo) throw new LoiNghiepVu(400, 'Cần ghi lý do đề nghị chuyển');
-  return (await getSql().begin(async (tx) => {
+  const tao = (await getSql().begin(async (tx) => {
     const sql = tx as unknown as Sql;
     const [h] = await sql<{ id: number; vi_tri: string; buoi_id: number | null }[]>`
       SELECT id, vi_tri, buoi_id FROM ho_so WHERE id = ${body.ho_so_id} FOR UPDATE`;
@@ -86,9 +96,15 @@ export async function taoDeNghi(user: AuthUser, body: { ho_so_id: number; den_bu
     }, sql);
     return { de_nghi: await layMot(sql, moi.id) };
   })) as { de_nghi: DeNghiChuyen };
+  // Sau commit: quét tự duyệt (bắt buộc) rồi trả bản mới nhất; chỉ báo "đề nghị mới" nếu vẫn đang chờ.
+  await quetTuDuyet({ batBuoc: true });
+  const moiNhat = await layMot(getSql(), tao.de_nghi.id);
+  if (moiNhat.trang_thai === 'cho_xu_ly') chayNen(() => thongBaoDeNghiMoi(moiNhat.id));
+  return { de_nghi: moiNhat };
 }
 
 export async function danhSachDeNghi(user: AuthUser, trangThai?: string | null): Promise<{ de_nghi: DeNghiChuyen[] }> {
+  await quetTuDuyet();
   const sql = getSql();
   if (trangThai && !['cho_xu_ly', 'dong_y', 'tu_choi'].includes(trangThai)) throw new LoiNghiepVu(400, 'Trạng thái không hợp lệ');
   const tt = trangThai ? sql`d.trang_thai = ${trangThai}` : sql`TRUE`;
@@ -98,7 +114,7 @@ export async function danhSachDeNghi(user: AuthUser, trangThai?: string | null):
 
 export async function xuLyDeNghi(user: AuthUser, id: number, body: { dong_y: boolean; ghi_chu?: string }): Promise<{ de_nghi: DeNghiChuyen }> {
   const ghiChu = (body.ghi_chu ?? '').trim();
-  return (await getSql().begin(async (tx) => {
+  const kq = (await getSql().begin(async (tx) => {
     const sql = tx as unknown as Sql;
     const [d] = await sql<{ id: number; ho_so_id: number; den_buoi_id: number; ly_do: string; trang_thai: string }[]>`
       SELECT id, ho_so_id, den_buoi_id, ly_do, trang_thai FROM de_nghi_chuyen WHERE id = ${id} FOR UPDATE`;
@@ -126,4 +142,6 @@ export async function xuLyDeNghi(user: AuthUser, id: number, body: { dong_y: boo
     }, sql);
     return { de_nghi: await layMot(sql, id) };
   })) as { de_nghi: DeNghiChuyen };
+  chayNen(() => thongBaoDaXuLy(id, user.id));
+  return kq;
 }

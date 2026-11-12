@@ -21,6 +21,8 @@ function isPublicPath(pathname: string): boolean {
     pathname === '/api/auth/login' ||
     pathname === '/api/auth/ds-dang-nhap' ||
     pathname === '/robots.txt' ||
+    pathname === '/manifest.webmanifest' ||
+    pathname === '/sw.js' ||
     pathname === '/favicon.ico' ||
     pathname.startsWith('/_next/')
   ) {

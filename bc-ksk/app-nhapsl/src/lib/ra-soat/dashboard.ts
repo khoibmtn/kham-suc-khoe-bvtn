@@ -83,17 +83,16 @@ export async function dashboardAdmin(): Promise<{
       SELECT (SELECT count(*) FROM ho_so WHERE vi_tri = 'kho_chung')::int AS kho_chung,
              (SELECT count(*) FROM ho_so WHERE vi_tri = 'kho_ca_nhan')::int AS kho_ca_nhan,
              (SELECT count(*) FROM de_nghi_chuyen WHERE trang_thai = 'cho_xu_ly')::int AS de_nghi_cho`,
-    // Người từng xác nhận / chuyển hồ sơ — để giữ lại admin có phát sinh trong bảng theo người.
+    // Người từng xác nhận hồ sơ — admin chỉ hiện trong bảng theo người khi có phụ trách buổi hoặc có xác nhận.
     sql<{ uid: number }[]>`
-      SELECT DISTINCT xac_nhan_by AS uid FROM ho_so WHERE xac_nhan_by IS NOT NULL
-      UNION SELECT DISTINCT chuyen_boi FROM ho_so WHERE chuyen_boi IS NOT NULL`,
+      SELECT DISTINCT xac_nhan_by AS uid FROM ho_so WHERE xac_nhan_by IS NOT NULL`,
   ]);
   const coHoSo = new Set(hoSoUser.map((r) => r.uid));
 
   const khoMap = new Map(khoUser.map((r) => [r.kho_user_id, r.n]));
   const hdMap = new Map(hoatDong.map((r) => [r.user_id, r.luc]));
   const coPhatSinh = (u: { id: number; role: string }) =>
-    u.role !== 'admin' || buoi.some((b) => b.phu_trach?.id === u.id) || (khoMap.get(u.id) ?? 0) > 0 || coHoSo.has(u.id);
+    u.role !== 'admin' || buoi.some((b) => b.phu_trach?.id === u.id) || coHoSo.has(u.id);
   const theo_user: DongTheoUser[] = users.filter(coPhatSinh).map((u) => ({
     ...tongHopTuBuoi(buoi.filter((b) => b.phu_trach?.id === u.id), khoMap.get(u.id) ?? 0),
     user: { id: u.id, username: u.username, ho_ten: u.ho_ten },
@@ -101,6 +100,9 @@ export async function dashboardAdmin(): Promise<{
     last_seen_at: iso(u.last_seen_at),
     lan_hoat_dong_cuoi: iso(hdMap.get(u.id) ?? null),
   }));
+  // Owner 12/11/2026: sort by progress (confirmed / current) descending; ties by name (stable from SQL order).
+  const tienDo = (r: DongTheoUser) => (r.hien_co === 0 ? 0 : r.da_xac_nhan / r.hien_co);
+  theo_user.sort((a, b) => tienDo(b) - tienDo(a));
 
   const clsMap = new Map(clsDv.map((r) => [r.don_vi, r]));
   const dongDonVi = (dv: 'TN' | 'LK' | 'VK' | 'TONG', ten: string): DongTheoDonVi => {

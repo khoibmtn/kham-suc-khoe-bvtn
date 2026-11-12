@@ -1,18 +1,25 @@
 'use client';
 
-// Incoming transfer-request notifications (owner request 11/11/2026):
+// Incoming transfer-request notifications (owner request 11/11/2026 + T20 12/11/2026):
 //  - a banner right under the top bar while any request addressed to me is pending;
-//  - a floating card (top-right) for each NEW request, fading out after ~10 s.
-// "Addressed to me" = pending requests about records in sessions I am in charge of
-// (admin: every pending request), excluding the ones I created myself.
+//  - a floating card for each NEW request, fading out after ~10 s;
+//  - 2-note Web Audio chime when new request arrives (even in background tab) + 2-min repeat
+//    while pending requests remain and user is not on the Đề nghị tab;
+//  - listens to Service Worker postMessage({ type: 'de-nghi-moi' }) to reload immediately;
+//  - shows "Tự duyệt sau N phút" in popup when auto-approve countdown applies.
 import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { DeNghiChuyen } from '@/lib/api-types';
+import type { CaiDatTuDuyet, DeNghiChuyen, DeNghiChuyenTuDuyet } from '@/lib/api-types';
+import { formatPhutTuDuyetPopup, phatChuongThongBao } from '@/lib/client/am-bao';
 import styles from './de-nghi-thong-bao.module.css';
 
 const POLL_MS = 30_000;
 const POPUP_MS = 10_000;
+const REMIND_MS = 120_000; // 2 phút nhắc lại âm báo
 const MAX_POPUPS = 3;
+
+export type DeNghiChuyenCoTuDuyet = DeNghiChuyen & Partial<DeNghiChuyenTuDuyet>;
 
 type Props = { userId: number; isAdmin: boolean };
 
@@ -40,10 +47,25 @@ function writeSeen(userId: number, ids: Set<number>): void {
   }
 }
 
+function dangOManDeNghi(): boolean {
+  if (typeof window === 'undefined') return false;
+  if (window.location.pathname !== '/kho') return false;
+  const sp = new URLSearchParams(window.location.search);
+  return sp.get('tab') === 'de_nghi';
+}
+
 export function DeNghiThongBao({ userId, isAdmin }: Props) {
-  const [pending, setPending] = useState<DeNghiChuyen[]>([]);
-  const [popups, setPopups] = useState<DeNghiChuyen[]>([]);
+  const router = useRouter();
+  const pathname = usePathname();
+  const [pending, setPending] = useState<DeNghiChuyenCoTuDuyet[]>([]);
+  const [popups, setPopups] = useState<DeNghiChuyenCoTuDuyet[]>([]);
+  const [tuDuyet, setTuDuyet] = useState<CaiDatTuDuyet | null>(null);
   const timers = useRef(new Map<number, ReturnType<typeof setTimeout>>());
+  const pendingRef = useRef<DeNghiChuyenCoTuDuyet[]>([]);
+
+  useEffect(() => {
+    pendingRef.current = pending;
+  }, [pending]);
 
   const dismiss = useCallback((id: number) => {
     setPopups((list) => list.filter((d) => d.id !== id));
@@ -52,11 +74,22 @@ export function DeNghiThongBao({ userId, isAdmin }: Props) {
     timers.current.delete(id);
   }, []);
 
+  const loadTuDuyet = useCallback(async () => {
+    try {
+      const res = await fetch('/api/cai-dat/tu-duyet', { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = (await res.json()) as { tu_duyet?: CaiDatTuDuyet };
+      if (data.tu_duyet) setTuDuyet(data.tu_duyet);
+    } catch {
+      // ignore if offline or route not available
+    }
+  }, []);
+
   const load = useCallback(async () => {
     try {
       const res = await fetch('/api/de-nghi-chuyen?trang_thai=cho_xu_ly', { cache: 'no-store' });
       if (!res.ok) return;
-      const data = (await res.json()) as { de_nghi?: DeNghiChuyen[] };
+      const data = (await res.json()) as { de_nghi?: DeNghiChuyenCoTuDuyet[] };
       const mine = (data.de_nghi ?? []).filter((d) => denToi(d, userId, isAdmin));
       setPending(mine);
 
@@ -65,6 +98,10 @@ export function DeNghiThongBao({ userId, isAdmin }: Props) {
       if (fresh.length === 0) return;
       fresh.forEach((d) => seen.add(d.id));
       writeSeen(userId, seen);
+
+      // Phát chuông âm báo ngay khi có đề nghị mới gửi đến mình (kể cả khi tab đang ẩn)
+      phatChuongThongBao();
+
       setPopups((list) => [...fresh, ...list].slice(0, MAX_POPUPS));
       for (const d of fresh) {
         timers.current.set(d.id, setTimeout(() => dismiss(d.id), POPUP_MS));
@@ -75,28 +112,63 @@ export function DeNghiThongBao({ userId, isAdmin }: Props) {
   }, [userId, isAdmin, dismiss]);
 
   useEffect(() => {
-    // Initial fetch is deferred one tick so state updates happen outside the effect body.
-    const first = setTimeout(load, 0);
+    const first = setTimeout(() => {
+      void load();
+      void loadTuDuyet();
+    }, 0);
     const timer = setInterval(load, POLL_MS);
-    const onFocus = () => void load();
+    const onFocus = () => {
+      void load();
+      void loadTuDuyet();
+    };
     window.addEventListener('focus', onFocus);
     window.addEventListener('nhapsl:pool-changed', onFocus);
-    const pending = timers.current;
+
+    // Lắng nghe message từ Service Worker (push 'de-nghi-moi' hoặc click điều hướng)
+    const onSwMessage = (event: MessageEvent) => {
+      const msg = event.data as { type?: string; url?: string } | null;
+      if (!msg || typeof msg !== 'object') return;
+      if (msg.type === 'de-nghi-moi') {
+        void load();
+        window.dispatchEvent(new Event('nhapsl:pool-changed'));
+      } else if (msg.type === 'dieu-huong' && typeof msg.url === 'string') {
+        router.push(msg.url);
+      }
+    };
+    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', onSwMessage);
+    }
+
+    const activeTimers = timers.current;
     return () => {
       clearTimeout(first);
       clearInterval(timer);
       window.removeEventListener('focus', onFocus);
       window.removeEventListener('nhapsl:pool-changed', onFocus);
-      pending.forEach((t) => clearTimeout(t));
+      if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('message', onSwMessage);
+      }
+      activeTimers.forEach((t) => clearTimeout(t));
     };
-  }, [load]);
+  }, [load, loadTuDuyet, router]);
+
+  // Nhắc lại âm báo mỗi 2 phút khi còn đề nghị chờ mình và chưa mở tab Đề nghị
+  useEffect(() => {
+    if (pending.length === 0) return;
+    const remindTimer = setInterval(() => {
+      if (pendingRef.current.length > 0 && !dangOManDeNghi()) {
+        phatChuongThongBao();
+      }
+    }, REMIND_MS);
+    return () => clearInterval(remindTimer);
+  }, [pending.length, pathname]);
 
   return (
     <>
       {pending.length > 0 && (
         <div className={styles.banner} role="status" aria-live="polite">
           <span className={styles.bannerIcon} aria-hidden="true">!</span>
-          <span>
+          <span className={styles.bannerText}>
             Bạn có <strong>{pending.length.toLocaleString('vi-VN')} đề nghị chuyển hồ sơ</strong> đang chờ
             xử lý
             {pending[0] && (
@@ -113,24 +185,44 @@ export function DeNghiThongBao({ userId, isAdmin }: Props) {
 
       {popups.length > 0 && (
         <div className={styles.popupStack} aria-live="assertive">
-          {popups.map((d) => (
-            <div key={d.id} className={styles.popup} role="alert">
-              <div className={styles.popupHead}>
-                <strong>Đề nghị chuyển hồ sơ mới</strong>
-                <button type="button" className={styles.close} onClick={() => dismiss(d.id)} aria-label="Đóng thông báo">
-                  ×
-                </button>
+          {popups.map((d) => {
+            const dongTuDuyet =
+              !d.tu_dong_loi
+                ? formatPhutTuDuyetPopup(
+                    d.han_tu_duyet,
+                    tuDuyet?.che_do === 'sau_phut' ? tuDuyet.sau_phut : null,
+                  )
+                : null;
+            return (
+              <div key={d.id} className={styles.popup} role="alert">
+                <div className={styles.popupHead}>
+                  <strong>Đề nghị chuyển hồ sơ mới</strong>
+                  <button
+                    type="button"
+                    className={styles.close}
+                    onClick={() => dismiss(d.id)}
+                    aria-label="Đóng thông báo"
+                  >
+                    ×
+                  </button>
+                </div>
+                <p className={styles.popupBody}>
+                  <strong>{d.nguoi_de_nghi.ho_ten}</strong> đề nghị chuyển hồ sơ{' '}
+                  <strong>{d.ho_so.ho_ten}</strong> ({d.ho_so.nam_sinh}) từ buổi{' '}
+                  {d.tu_buoi?.ma_buoi ?? '—'} về buổi <strong>{d.den_buoi.ma_buoi}</strong>.
+                </p>
+                {d.ly_do && <p className={styles.popupReason}>Lý do: {d.ly_do}</p>}
+                {dongTuDuyet && <p className={styles.popupAutoApprove}>{dongTuDuyet}</p>}
+                <Link
+                  href="/kho?tab=de_nghi"
+                  className={styles.popupLink}
+                  onClick={() => dismiss(d.id)}
+                >
+                  Xem và xử lý
+                </Link>
               </div>
-              <p className={styles.popupBody}>
-                <strong>{d.nguoi_de_nghi.ho_ten}</strong> đề nghị chuyển hồ sơ <strong>{d.ho_so.ho_ten}</strong> (
-                {d.ho_so.nam_sinh}) từ buổi {d.tu_buoi?.ma_buoi ?? '—'} về buổi <strong>{d.den_buoi.ma_buoi}</strong>.
-              </p>
-              {d.ly_do && <p className={styles.popupReason}>Lý do: {d.ly_do}</p>}
-              <Link href="/kho?tab=de_nghi" className={styles.popupLink} onClick={() => dismiss(d.id)}>
-                Xem và xử lý
-              </Link>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </>

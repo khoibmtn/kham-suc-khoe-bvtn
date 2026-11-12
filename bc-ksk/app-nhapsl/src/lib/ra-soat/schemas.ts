@@ -101,3 +101,21 @@ export const xuLyDeNghiSchema = z.strictObject({
   dong_y: z.boolean({ error: 'Thiếu quyết định đồng ý hoặc từ chối' }),
   ghi_chu: z.string().trim().max(1000, 'Ghi chú quá dài').optional(),
 });
+
+export const tuDuyetSchema = z.strictObject({
+  che_do: z.enum(['tat', 'ngay', 'sau_phut'], { error: 'Chế độ tự duyệt không hợp lệ' }),
+  sau_phut: z.number({ error: 'Số phút không hợp lệ' }).int('Số phút phải là số nguyên').min(1, 'Số phút từ 1 đến 120').max(120, 'Số phút từ 1 đến 120').optional(),
+});
+
+export const pushDangKySchema = z.strictObject({
+  endpoint: z.string().trim().max(2000, 'Endpoint quá dài').url('Endpoint không hợp lệ').startsWith('https://', 'Endpoint phải là https'),
+  keys: z.strictObject({
+    p256dh: z.string().trim().min(1, 'Thiếu khóa p256dh').max(500, 'Khóa quá dài'),
+    auth: z.string().trim().min(1, 'Thiếu khóa auth').max(500, 'Khóa quá dài'),
+  }),
+  thiet_bi: z.string().trim().max(200, 'Tên thiết bị quá dài').optional(),
+});
+
+export const pushHuySchema = z.strictObject({
+  endpoint: z.string().trim().min(1, 'Thiếu endpoint').max(2000, 'Endpoint quá dài'),
+});

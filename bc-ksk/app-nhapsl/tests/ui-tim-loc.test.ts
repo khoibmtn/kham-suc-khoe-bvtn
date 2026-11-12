@@ -278,8 +278,20 @@ describe('UI tìm kiếm & bộ lọc helpers', () => {
       },
     ];
     expect(taoDanhSachNgayKhamOption(buoiList, 'TN')).toEqual([
-      { ngay: '2026-09-07', label: '07/09/2026 · Thủy Nguyên · Trạm A' },
+      { value: '2026-09-07', don_vi: 'TN', ngay: '2026-09-07', label: '07/09/2026' },
     ]);
+    const tatCa = taoDanhSachNgayKhamOption(
+      [
+        { ...buoiList[0], don_vi: 'VK', ten_don_vi: 'Xã Việt Khê', ngay_kham: '2026-09-01' },
+        { ...buoiList[0], don_vi: 'TN', ngay_kham: '2026-09-09' },
+        ...buoiList,
+      ],
+      '',
+    );
+    // đơn vị trước (TN, LK, VK) rồi ngày tăng dần; không có nơi khám
+    expect(tatCa.map((o) => o.value)).toEqual(['TN|2026-09-07', 'TN|2026-09-09', 'VK|2026-09-01']);
+    expect(tatCa[2].label).toBe('Xã Việt Khê · 01/09/2026');
+    expect(tatCa.every((o) => !o.label.includes('Trạm'))).toBe(true);
     expect(taoDanhSachPhuTrachOption(buoiList)).toEqual([
       { id: 2, username: 'ngan', ho_ten: 'Ngân' },
     ]);

@@ -183,7 +183,7 @@ export type DeNghiChuyen = {
   xu_ly_by: UserNgan | null;
   xu_ly_at: string | null;
   xu_ly_ghi_chu: string;
-};
+} & DeNghiChuyenTuDuyet;   // Phase 10: tu_dong, tu_dong_loi, han_tu_duyet
 
 export type HoSoSuaBody = {
   version: number;
@@ -238,6 +238,7 @@ export const HANH_DONG_NHAN: Record<string, string> = {
   mo_khoa_buoi: 'Mở khóa danh sách',
   de_nghi_chuyen: 'Đề nghị chuyển',
   xu_ly_de_nghi: 'Xử lý đề nghị chuyển',
+  cai_dat: 'Đổi cài đặt',
   xuat_bao_cao: 'Xuất báo cáo Excel',
   xuat_cowork: 'Xuất dữ liệu cho Cowork',
   dang_nhap: 'Đăng nhập',
@@ -349,4 +350,64 @@ export type KeHoachNap = {
 // GET /api/app-version (any logged-in user) → { version: string }  — equals process.env.NEXT_PUBLIC_APP_VERSION
 //   baked at build time (next.config.ts sets it to the build timestamp). Client compares with its own baked
 //   value every 60 s; different → "Có bản cập nhật mới, trang sẽ tự tải lại sau 03:00 · Cập nhật ngay".
-// GET /api/dashboard/admin: theo_user omits users with role admin that have 0 sessions, 0 records and 0 pool items.
+// GET /api/dashboard/admin: theo_user omits admins with no assigned session and no confirmed record;
+//   rows sorted by progress (da_xac_nhan / hien_co) descending, ties by name.
+
+// ---- Phase 10 (owner request 12/11/2026): mobile/PWA, sound + push for transfer requests, auto-approve ----
+// Migration 0004_tu_duyet_push.sql:
+//   CREATE TABLE cai_dat (khoa TEXT PRIMARY KEY, gia_tri JSONB NOT NULL,
+//                         updated_by INT REFERENCES users(id), updated_at TIMESTAMPTZ NOT NULL DEFAULT now());
+//   ALTER TABLE de_nghi_chuyen ADD COLUMN tu_dong BOOLEAN NOT NULL DEFAULT false,
+//                              ADD COLUMN tu_dong_loi TEXT NOT NULL DEFAULT '';
+//   CREATE TABLE push_dang_ky (id SERIAL PRIMARY KEY, user_id INT NOT NULL REFERENCES users(id),
+//     endpoint TEXT NOT NULL UNIQUE, p256dh TEXT NOT NULL, auth TEXT NOT NULL, thiet_bi TEXT NOT NULL DEFAULT '',
+//     created_at TIMESTAMPTZ NOT NULL DEFAULT now(), last_ok_at TIMESTAMPTZ);
+//
+// Auto-approve (setting key 'tu_duyet'; default when absent: { che_do: 'tat', sau_phut: 5 }):
+//   'tat'      → never.
+//   'ngay'     → right after a request is created (same request, after commit).
+//   'sau_phut' → when a pending request is older than sau_phut minutes.
+//   Executed by a sweep `quetTuDuyet()` run from GET /api/de-nghi-chuyen, GET /api/dashboard/* and after
+//   POST /api/de-nghi-chuyen and PUT /api/cai-dat/tu-duyet (throttled ≥ 15 s per server instance, except the
+//   explicit calls after create/settings change). Each request in its own tx, `FOR UPDATE SKIP LOCKED`.
+//   Performs exactly what "Đồng ý" does (same move rules). On a business error (record confirmed, session
+//   locked, record no longer in a session…) the request STAYS pending with tu_dong_loi = error message and is
+//   never retried automatically (a person handles it). Success: trang_thai='dong_y', tu_dong=true,
+//   xu_ly_by = the holder (assignee of the record's session; if none: lowest-id active admin),
+//   xu_ly_ghi_chu = 'Tự động duyệt' | 'Tự động duyệt sau N phút'. Audit rows written by the auto-approval have
+//   user_id = NULL (hệ thống) and ghi_chu starting with '[Tự động]'.
+export type CheDoTuDuyet = 'tat' | 'ngay' | 'sau_phut';
+export type CaiDatTuDuyet = {
+  che_do: CheDoTuDuyet;
+  sau_phut: number;               // integer 1..120
+  updated_by: UserNgan | null;
+  updated_at: string | null;
+};
+// GET /api/cai-dat/tu-duyet (any logged-in user) → { tu_duyet: CaiDatTuDuyet }
+// PUT /api/cai-dat/tu-duyet (admin) body { che_do, sau_phut } → { tu_duyet: CaiDatTuDuyet }; 400 on bad input;
+//   audit hanh_dong 'cai_dat', doi_tuong 'cai_dat', truong 'tu_duyet', old → new JSON. Runs a sweep right after.
+//
+// DeNghiChuyen gains (all list/detail responses):
+//   tu_dong: boolean;          tu_dong_loi: string ('' = none)
+//   han_tu_duyet: string | null  — ISO time it will be auto-approved (pending + mode 'sau_phut' + no tu_dong_loi),
+//                                   else null.
+export type DeNghiChuyenTuDuyet = { tu_dong: boolean; tu_dong_loi: string; han_tu_duyet: string | null };
+//
+// Web Push (library web-push@3.6.7; env VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT — all missing ⇒
+// push is disabled and every send is a silent no-op):
+// GET  /api/push/khoa (logged-in) → { public_key: string | null }
+// POST /api/push/dang-ky body { endpoint, keys: { p256dh, auth }, thiet_bi? } → { ok: true }
+//   upsert by endpoint (endpoint must be https; a re-login on the same device moves it to the current user).
+// POST /api/push/huy body { endpoint } → { ok: true }   (only own rows)
+// POST /api/push/thu → { gui: number }  — test notification to all my devices; number of devices sent OK.
+// Push payload (JSON, what public/sw.js receives): { title, body, url, tag }
+//   NEVER include patient name, CCCD, birth year, ly_do or ghi_chu (shown on lock screens).
+//   New request → holder of the record's session + every admin, minus the requester:
+//     title 'Đề nghị chuyển hồ sơ', body '<Họ tên người đề nghị> xin chuyển 1 hồ sơ từ <ma_buoi nguồn> về <ma_buoi đích>',
+//     url '/kho?tab=de_nghi', tag 'de-nghi-<id>'.
+//   Processed (manual or auto) → requester: title 'Đề nghị chuyển đã được đồng ý' | '… bị từ chối'
+//     (+ ' (tự động)' when tu_dong), body 'Hồ sơ đã về buổi <ma_buoi đích>' | 'Lý do từ chối xem trong app',
+//     url '/kho?tab=de_nghi', tag 'de-nghi-<id>'.
+//   Sends happen after the DB commit, never delay/fail the API response (next/server `after()`), 5 s timeout,
+//   404/410 from the push service ⇒ delete that subscription. Never log endpoints or payloads.
+// Public (no login) paths added to src/proxy.ts: /manifest.webmanifest, /sw.js, /icons/*.

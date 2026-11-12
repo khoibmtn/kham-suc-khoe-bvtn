@@ -27,10 +27,18 @@ import {
   TRANG_THAI_BUOI_NHAN,
 } from '@/lib/client/format';
 import { tinhTheTongHopTuBuoi } from '@/components/home-buoi-list';
+import { MUC } from '@/components/huong-dan-noi-dung';
 import {
   TOAST_ACTION_DURATION_MS,
   TOAST_DURATION_MS,
 } from '@/components/toast';
+import {
+  formatDemNguocTuDuyet,
+  formatPhutTuDuyetPopup,
+  moTaCaiDatTuDuyet,
+  parseAmBaoStorage,
+  urlBase64ToUint8Array,
+} from '@/lib/client/am-bao';
 
 describe('UI client format helpers', () => {
   it('formats Vietnamese numbers with dot thousands separator', () => {
@@ -247,5 +255,47 @@ describe('UI client format helpers', () => {
         ho_so_go_khoi_nguon_giu: 1,
       }),
     ).toContain('Thêm: 12 hồ sơ · Cập nhật: 34');
+  });
+
+  it('Phase 10 / T20: âm báo, tự duyệt đếm ngược và hướng dẫn di động', () => {
+    expect(parseAmBaoStorage(null)).toBe(true);
+    expect(parseAmBaoStorage('')).toBe(true);
+    expect(parseAmBaoStorage('1')).toBe(true);
+    expect(parseAmBaoStorage('0')).toBe(false);
+    expect(parseAmBaoStorage('false')).toBe(false);
+
+    expect(moTaCaiDatTuDuyet(null)).toBe('Tự duyệt đang tắt');
+    expect(moTaCaiDatTuDuyet({ che_do: 'tat', sau_phut: 5 })).toBe(
+      'Tự duyệt đang tắt',
+    );
+    expect(moTaCaiDatTuDuyet({ che_do: 'ngay', sau_phut: 5 })).toBe(
+      'Đang bật tự duyệt ngay khi có đề nghị',
+    );
+    expect(moTaCaiDatTuDuyet({ che_do: 'sau_phut', sau_phut: 5 })).toBe(
+      'Đang bật tự duyệt sau 5 phút nếu người giữ chưa xử lý',
+    );
+
+    const now = Date.parse('2026-11-12T10:00:00Z');
+    expect(formatDemNguocTuDuyet('2026-11-12T10:04:35Z', now)).toBe(
+      'Tự duyệt sau 04:35',
+    );
+    expect(formatDemNguocTuDuyet('2026-11-12T09:59:00Z', now)).toBe(
+      'Tự duyệt sau 00:00',
+    );
+    expect(formatDemNguocTuDuyet(null, now)).toBeNull();
+
+    expect(formatPhutTuDuyetPopup('2026-11-12T10:04:35Z', null, now)).toBe(
+      'Tự duyệt sau 5 phút',
+    );
+    expect(formatPhutTuDuyetPopup(null, 5, now)).toBe('Tự duyệt sau 5 phút');
+
+    const bytes = urlBase64ToUint8Array('AQID');
+    expect(Array.from(bytes)).toEqual([1, 2, 3]);
+
+    const mucDienThoai = MUC.find(
+      (m) => m.id === 'dien-thoai-thong-bao',
+    );
+    expect(mucDienThoai).toBeDefined();
+    expect(mucDienThoai?.tieuDe).toBe('Dùng trên điện thoại & thông báo');
   });
 });
