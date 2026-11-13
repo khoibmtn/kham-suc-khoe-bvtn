@@ -6,6 +6,7 @@ import {
   formatDate,
   formatDateTime,
   formatDateTimeSeconds,
+  formatDongXemLaiSo,
   formatFileSizeKB,
   formatFileSizeMB,
   formatHisTimestamp,
@@ -23,6 +24,8 @@ import {
   getTruongNhan,
   GIOI_HAN_GOI_WEB_BYTES,
   isTuChoiDoPhienBanCu,
+  laySoDtHoSo,
+  phanLoaiCanhBaoSoTheoTruong,
   TEN_FILE_GOI_NAP,
   TRANG_THAI_BUOI_NHAN,
 } from '@/lib/client/format';
@@ -374,5 +377,30 @@ describe('UI client format helpers', () => {
 
     const mucTimKiem = MUC.find((m) => m.id === 'tim-toan-app');
     expect(mucTimKiem?.tieuDe).toContain('hai chiều');
+  });
+
+  it('Phase 12 / T24: phân loại cảnh báo số theo trường, dòng Xem lại và hướng dẫn kiểm số', () => {
+    expect(getTruongNhan('so_dt')).toBe('SĐT');
+    expect(laySoDtHoSo({ so_dt: '0' })).toBe('');
+    expect(laySoDtHoSo({ so_dt: '0912.345.678' })).toBe('0912345678');
+
+    const cb = [
+      'Mã KCB có dạng số CCCD',
+      'CCCD ứng với năm sinh 1959, hồ sơ ghi 1994',
+      'SĐT di động phải 10 số, bắt đầu bằng 03/05/07/08/09',
+    ];
+    expect(phanLoaiCanhBaoSoTheoTruong(cb)).toEqual({
+      ma_kcb: ['Mã KCB có dạng số CCCD'],
+      cccd: ['CCCD ứng với năm sinh 1959, hồ sơ ghi 1994'],
+      so_dt: ['SĐT di động phải 10 số, bắt đầu bằng 03/05/07/08/09'],
+    });
+    expect(formatDongXemLaiSo(cb)).toBe(
+      '⚠ Xem lại: Mã KCB có dạng số CCCD; CCCD ứng với năm sinh 1959, hồ sơ ghi 1994; SĐT di động phải 10 số, bắt đầu bằng 03/05/07/08/09',
+    );
+    expect(formatDongXemLaiSo([])).toBe('');
+
+    const mucKiemSo = MUC.find((m) => m.id === 'kiem-tra-so');
+    expect(mucKiemSo).toBeDefined();
+    expect(mucKiemSo?.tieuDe).toBe('Kiểm tra số CCCD, mã KCB, SĐT');
   });
 });

@@ -21,16 +21,19 @@ import type {
 } from '@/lib/api-types';
 import type { AuthUser } from '@/lib/auth/guard';
 import { CANH_BAO_NHAN, CLS, DON_VI, NHAN } from '@/lib/cls';
+import { layCanhBaoSo } from '@/lib/loc-ho-so';
 import { apiRequest } from '@/lib/client/api';
 import { formatDemNguocTuDuyet, moTaCaiDatTuDuyet } from '@/lib/client/am-bao';
 import {
   formatDate,
   formatDateTime,
+  formatDongXemLaiSo,
   formatHisTimestamp,
   formatMaViTri,
   formatNguonGocChuyen,
   formatNumber,
   getCanhBaoTooltip,
+  phanLoaiCanhBaoSoTheoTruong,
 } from '@/lib/client/format';
 import { notifyPoolChanged } from './app-shell';
 import {
@@ -515,6 +518,9 @@ export function KhoTable({
           {items.map((h, idx) => {
             const hisTimeShort = formatHisTimestamp(h.ngay_gio_dang_ky_his);
             const nguonGocText = formatNguonGocChuyen(h.chuyen, h.don_vi_goi_y);
+            const canhBaoSo = layCanhBaoSo(h);
+            const canhBaoTheoTruong = phanLoaiCanhBaoSoTheoTruong(canhBaoSo);
+            const dongXemLaiSo = formatDongXemLaiSo(canhBaoSo);
 
             return (
               <tr key={h.id}>
@@ -538,6 +544,14 @@ export function KhoTable({
                     <span>
                       {NHAN.TT_KSK}: {h.co_tt_ksk === 1 ? 'Có' : 'Không'}
                     </span>
+                    {canhBaoSo.length > 0 && (
+                      <span
+                        className="chip chip-warning"
+                        title={canhBaoSo.join(' · ')}
+                      >
+                        Xem lại số
+                      </span>
+                    )}
                     {h.canh_bao &&
                       h.canh_bao.length > 0 &&
                       h.canh_bao.map((code) => (
@@ -550,11 +564,46 @@ export function KhoTable({
                         </span>
                       ))}
                   </div>
+                  {dongXemLaiSo && (
+                    <div className="ghichu-xem-lai-so" title={dongXemLaiSo}>
+                      {dongXemLaiSo}
+                    </div>
+                  )}
                 </td>
                 <td className="col-gt">{h.gioi_tinh || 'Chưa rõ'}</td>
                 <td className="num-col col-namsinh">{h.nam_sinh || '—'}</td>
-                <td className="col-cccd num">{h.cccd || '—'}</td>
-                <td className="col-makcb num">{h.ma_kcb || '—'}</td>
+                <td className="col-cccd num">
+                  <span
+                    className={
+                      canhBaoTheoTruong.cccd.length > 0
+                        ? 'so-canh-bao'
+                        : undefined
+                    }
+                    title={
+                      canhBaoTheoTruong.cccd.length > 0
+                        ? canhBaoTheoTruong.cccd.join('; ')
+                        : undefined
+                    }
+                  >
+                    {h.cccd || '—'}
+                  </span>
+                </td>
+                <td className="col-makcb num">
+                  <span
+                    className={
+                      canhBaoTheoTruong.ma_kcb.length > 0
+                        ? 'so-canh-bao'
+                        : undefined
+                    }
+                    title={
+                      canhBaoTheoTruong.ma_kcb.length > 0
+                        ? canhBaoTheoTruong.ma_kcb.join('; ')
+                        : undefined
+                    }
+                  >
+                    {h.ma_kcb || '—'}
+                  </span>
+                </td>
 
                 {CLS.map((c) => {
                   const val = h.cls[c.key] === 1 ? 1 : 0;

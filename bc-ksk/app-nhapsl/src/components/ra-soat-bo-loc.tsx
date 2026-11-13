@@ -6,6 +6,8 @@ import { CANH_BAO_NHAN, CLS, CLS_KEYS, NHAN, type ClsKey } from '@/lib/cls';
 import {
   BO_LOC_MAC_DINH,
   khacGoc,
+  coGhiChu,
+  layCanhBaoSo,
   locHoSo,
   soBoLocDangBat,
   type BaTrangThai,
@@ -138,6 +140,14 @@ export function chuanHoaBoLoc(raw: unknown): BoLoc {
     base.canh_bao = obj.canh_bao;
   }
 
+  if (isBaTrangThai(obj.nghi_nham_so)) {
+    base.nghi_nham_so = obj.nghi_nham_so;
+  }
+
+  if (isBaTrangThai(obj.co_ghi_chu)) {
+    base.co_ghi_chu = obj.co_ghi_chu;
+  }
+
   return base;
 }
 
@@ -223,6 +233,8 @@ export function RaSoatBoLoc({
     let khongTtKsk = 0;
     let khongBangChung = 0;
     let nghiSaoChep = 0;
+    let nghiNhamSo = 0;
+    let coGhiChuDem = 0;
 
     for (const h of hoSoList) {
       if (h.da_xac_nhan) da++;
@@ -232,6 +244,8 @@ export function RaSoatBoLoc({
       if (h.co_tt_ksk === 0) khongTtKsk++;
       if (h.canh_bao?.includes('KHONG_BANG_CHUNG')) khongBangChung++;
       if (h.canh_bao?.includes('NGHI_SAO_CHEP_XN')) nghiSaoChep++;
+      if (layCanhBaoSo(h).length > 0) nghiNhamSo++;
+      if (coGhiChu(h)) coGhiChuDem++;
     }
 
     return {
@@ -242,6 +256,8 @@ export function RaSoatBoLoc({
       khongTtKsk,
       khongBangChung,
       nghiSaoChep,
+      nghiNhamSo,
+      coGhiChu: coGhiChuDem,
     };
   }, [hoSoList]);
 
@@ -307,6 +323,20 @@ export function RaSoatBoLoc({
 
         <button
           type="button"
+          className={`quick-chip-btn ${boLoc.nghi_nham_so === 'co' ? 'active' : ''}`}
+          aria-pressed={boLoc.nghi_nham_so === 'co'}
+          onClick={() =>
+            onChangeBoLoc({
+              ...boLoc,
+              nghi_nham_so: boLoc.nghi_nham_so === 'co' ? 'tat_ca' : 'co',
+            })
+          }
+        >
+          Nghi nhầm số ({formatNumber(quickCounts.nghiNhamSo)})
+        </button>
+
+        <button
+          type="button"
           className={`quick-chip-btn ${boLoc.da_sua === 'co' ? 'active' : ''}`}
           aria-pressed={boLoc.da_sua === 'co'}
           onClick={() =>
@@ -361,6 +391,20 @@ export function RaSoatBoLoc({
           }
         >
           {CANH_BAO_NHAN.NGHI_SAO_CHEP_XN} ({formatNumber(quickCounts.nghiSaoChep)})
+        </button>
+
+        <button
+          type="button"
+          className={`quick-chip-btn ${boLoc.co_ghi_chu === 'co' ? 'active' : ''}`}
+          aria-pressed={boLoc.co_ghi_chu === 'co'}
+          onClick={() =>
+            onChangeBoLoc({
+              ...boLoc,
+              co_ghi_chu: boLoc.co_ghi_chu === 'co' ? 'tat_ca' : 'co',
+            })
+          }
+        >
+          Có ghi chú ({formatNumber(quickCounts.coGhiChu)})
         </button>
       </div>
 
@@ -497,6 +541,48 @@ export function RaSoatBoLoc({
                 <option value="tat_ca">Tất cả</option>
                 <option value="co">Có</option>
                 <option value="khong">Không</option>
+              </select>
+            </div>
+
+            <div className="rasoat-filter-item">
+              <label htmlFor="loc-nghi-nham-so" className="rasoat-filter-label">
+                Nghi nhầm số:
+              </label>
+              <select
+                id="loc-nghi-nham-so"
+                className="form-select rasoat-filter-select"
+                value={boLoc.nghi_nham_so ?? 'tat_ca'}
+                onChange={(e) =>
+                  onChangeBoLoc({
+                    ...boLoc,
+                    nghi_nham_so: e.target.value as BaTrangThai,
+                  })
+                }
+              >
+                <option value="tat_ca">Tất cả</option>
+                <option value="co">Có</option>
+                <option value="khong">Không</option>
+              </select>
+            </div>
+
+            <div className="rasoat-filter-item">
+              <label htmlFor="loc-co-ghi-chu" className="rasoat-filter-label">
+                Ghi chú:
+              </label>
+              <select
+                id="loc-co-ghi-chu"
+                className="form-select rasoat-filter-select"
+                value={boLoc.co_ghi_chu ?? 'tat_ca'}
+                onChange={(e) =>
+                  onChangeBoLoc({
+                    ...boLoc,
+                    co_ghi_chu: e.target.value as BaTrangThai,
+                  })
+                }
+              >
+                <option value="tat_ca">Tất cả</option>
+                <option value="co">Có ghi chú</option>
+                <option value="khong">Không có</option>
               </select>
             </div>
 

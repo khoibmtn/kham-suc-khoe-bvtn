@@ -11,6 +11,7 @@
     "import": "tsx scripts/import.ts",
     "users:create": "tsx scripts/users-create.ts",
     "export:cowork": "tsx scripts/export-cowork.ts",
+    "kiem-so": "tsx scripts/kiem-so.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

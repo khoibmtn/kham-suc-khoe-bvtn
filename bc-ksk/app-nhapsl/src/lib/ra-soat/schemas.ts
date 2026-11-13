@@ -10,7 +10,9 @@ export const hoSoSuaSchema = z.strictObject({
   ho_ten: z.string().trim().min(1, 'Họ tên không được để trống').max(200, 'Họ tên quá dài').optional(),
   gioi_tinh: z.enum(['Nam', 'Nữ'], { error: 'Giới tính phải là Nam hoặc Nữ' }).optional(),
   nam_sinh: z.number().int('Năm sinh không hợp lệ').min(1900, 'Năm sinh phải từ 1900 đến 2026').max(2026, 'Năm sinh phải từ 1900 đến 2026').optional(),
-  cccd: z.string().trim().regex(/^(\d{9}|\d{12})?$/, 'CCCD phải để trống hoặc gồm 9 hoặc 12 chữ số').optional(),
+  cccd: z.string().trim().max(30, 'CCCD quá dài').optional(), // định dạng kiểm ở máy chủ bằng kiem-so.ts (400 + van_de_so)
+  so_dt: z.string().trim().max(30, 'SĐT quá dài').optional(),
+  bo_qua_canh_bao_so: z.boolean({ error: 'bo_qua_canh_bao_so phải là true hoặc false' }).optional(),
   dia_chi_chi_tiet: z.string().trim().max(500, 'Địa chỉ quá dài').optional(),
   ghi_chu: z.string().trim().max(2000, 'Ghi chú quá dài').optional(),
   cls: z.strictObject(Object.fromEntries(CLS_KEYS.map((k) => [k, cls01.optional()]))).optional(),
@@ -81,7 +83,9 @@ export const themHoSoSchema = z.strictObject({
   ho_ten: z.string().trim().min(1, 'Họ tên không được để trống').max(200, 'Họ tên quá dài'),
   gioi_tinh: z.enum(['Nam', 'Nữ'], { error: 'Giới tính phải là Nam hoặc Nữ' }),
   nam_sinh: z.number().int('Năm sinh không hợp lệ').min(1900, 'Năm sinh phải từ 1900 đến 2026').max(2026, 'Năm sinh phải từ 1900 đến 2026'),
-  cccd: z.string().trim().regex(/^(\d{9}|\d{12})?$/, 'CCCD phải để trống hoặc gồm 9 hoặc 12 chữ số').optional(),
+  cccd: z.string().trim().max(30, 'CCCD quá dài').optional(), // định dạng kiểm ở máy chủ bằng kiem-so.ts (400 + van_de_so)
+  so_dt: z.string().trim().max(30, 'SĐT quá dài').optional(),
+  bo_qua_canh_bao_so: z.boolean({ error: 'bo_qua_canh_bao_so phải là true hoặc false' }).optional(),
   dia_chi_chi_tiet: z.string().trim().max(500, 'Địa chỉ quá dài').optional(),
   cls: z.strictObject(Object.fromEntries(CLS_KEYS.map((k) => [k, cls01])) as Record<ClsKey, typeof cls01>),
   ghi_chu: z.string().trim().max(2000, 'Ghi chú quá dài').optional(),

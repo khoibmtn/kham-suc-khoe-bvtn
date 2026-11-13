@@ -8,8 +8,10 @@ import type {
   HoSoDong,
   KetQuaTimKiem,
   ThemHoSoBody,
+  VanDeSo,
 } from '@/lib/api-types';
 import { CLS, CLS_KEYS, DON_VI, NHAN, type ClsKey } from '@/lib/cls';
+import { kiemTraSo, NHAN_TRUONG_SO } from '@/lib/kiem-so';
 import { apiRequest } from '@/lib/client/api';
 import { formatDate, formatNumber } from '@/lib/client/format';
 import { formatViTriKetQua } from './tim-kiem-view';
@@ -453,6 +455,7 @@ export function ThemHoSoModal({
   const [gioiTinh, setGioiTinh] = useState<'Nam' | 'Nữ'>('Nam');
   const [namSinh, setNamSinh] = useState('');
   const [cccd, setCccd] = useState('');
+  const [soDt, setSoDt] = useState('');
   const [diaChi, setDiaChi] = useState('');
   const [cls, setCls] = useState<ClsMap>({ ...MAC_DINH_CLS });
   const [ghiChu, setGhiChu] = useState('');
@@ -468,6 +471,87 @@ export function ThemHoSoModal({
 
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
+  const [serverVanDeSo, setServerVanDeSo] = useState<VanDeSo[]>([]);
+  const [canhBaoConfirm, setCanhBaoConfirm] = useState<VanDeSo[] | null>(null);
+
+  const parsedNamSinhLive = useMemo(() => {
+    const n = Number(namSinh);
+    return namSinh.trim() !== '' && Number.isInteger(n) ? n : null;
+  }, [namSinh]);
+
+  const liveVanDeSo = useMemo(
+    () =>
+      kiemTraSo({
+        cccd,
+        ma_kcb: maKcb,
+        so_dt: soDt,
+        nam_sinh: parsedNamSinhLive,
+        gioi_tinh: gioiTinh,
+      }),
+    [cccd, maKcb, soDt, parsedNamSinhLive, gioiTinh],
+  );
+
+  const mergedVanDeSo = useMemo(() => {
+    const map = new Map<string, VanDeSo>();
+    for (const v of liveVanDeSo) {
+      map.set(`${v.truong}:${v.ma}:${v.thong_diep}`, v);
+    }
+    for (const v of serverVanDeSo) {
+      map.set(`${v.truong}:${v.ma}:${v.thong_diep}`, v);
+    }
+    return Array.from(map.values());
+  }, [liveVanDeSo, serverVanDeSo]);
+
+  const loiHienTai = useMemo(
+    () => mergedVanDeSo.filter((v) => v.muc === 'loi'),
+    [mergedVanDeSo],
+  );
+
+  const lyDoKhoaThem =
+    loiHienTai.length > 0
+      ? `Không thể thêm: ${loiHienTai.map((v) => v.thong_diep).join('; ')}`
+      : '';
+
+  const maKcbIssues = useMemo(
+    () => mergedVanDeSo.filter((v) => v.truong === 'ma_kcb'),
+    [mergedVanDeSo],
+  );
+  const cccdIssues = useMemo(
+    () => mergedVanDeSo.filter((v) => v.truong === 'cccd'),
+    [mergedVanDeSo],
+  );
+  const soDtIssues = useMemo(
+    () => mergedVanDeSo.filter((v) => v.truong === 'so_dt'),
+    [mergedVanDeSo],
+  );
+
+  function inputStatusClass(issues: VanDeSo[]): string {
+    if (issues.some((v) => v.muc === 'loi')) return 'form-input-error';
+    if (issues.some((v) => v.muc === 'canh_bao')) return 'form-input-warning';
+    return '';
+  }
+
+  function renderFieldMessages(issues: VanDeSo[]) {
+    if (issues.length === 0) return null;
+    return (
+      <div className="field-msg-list">
+        {issues.map((v, idx) => (
+          <div
+            key={`${v.ma}-${idx}`}
+            className={
+              v.muc === 'loi'
+                ? 'field-msg field-msg-error'
+                : 'field-msg field-msg-warning'
+            }
+            role={v.muc === 'loi' ? 'alert' : 'status'}
+          >
+            <span aria-hidden="true">{v.muc === 'loi' ? '✕ ' : '⚠ '}</span>
+            <span>{v.thong_diep}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -600,8 +684,7 @@ export function ThemHoSoModal({
     onClose();
   }
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
+  async function submitThemHoSo(boQuaCanhBaoSo: boolean) {
     setFormError('');
 
     const cleanHoTen = hoTen.trim();
@@ -620,9 +703,8 @@ export function ThemHoSoModal({
       return;
     }
 
-    const cleanCccd = cccd.trim();
-    if (cleanCccd !== '' && !/^(?:\d{9}|\d{12})$/.test(cleanCccd)) {
-      setFormError('CCCD/CMND phải để trống hoặc gồm đúng 9 hoặc 12 chữ số.');
+    if (loiHienTai.length > 0) {
+      setFormError(loiHienTai[0].thong_diep);
       return;
     }
 
@@ -646,12 +728,14 @@ export function ThemHoSoModal({
       ho_ten: cleanHoTen,
       gioi_tinh: gioiTinh,
       nam_sinh: parsedNamSinh,
-      cccd: cleanCccd || undefined,
+      cccd: cccd.trim() || undefined,
+      so_dt: soDt.trim() || undefined,
       dia_chi_chi_tiet: diaChi.trim() || undefined,
       cls,
       ghi_chu: ghiChu.trim() || undefined,
       ly_do_tao_moi:
         trungList.length > 0 && vanTaoMoi ? lyDoTaoMoi.trim() : undefined,
+      ...(boQuaCanhBaoSo ? { bo_qua_canh_bao_so: true } : {}),
     };
 
     setSubmitting(true);
@@ -665,6 +749,17 @@ export function ThemHoSoModal({
     setSubmitting(false);
 
     if (!res.ok) {
+      if (res.status === 422 && res.vanDeSo && res.vanDeSo.length > 0) {
+        setServerVanDeSo(res.vanDeSo);
+        setCanhBaoConfirm(res.vanDeSo);
+        return;
+      }
+      if (res.status === 400 && res.vanDeSo && res.vanDeSo.length > 0) {
+        setServerVanDeSo(res.vanDeSo);
+        setCanhBaoConfirm(null);
+        return;
+      }
+      setCanhBaoConfirm(null);
       if (res.status === 409 && res.conflictTrung) {
         setTrungList(res.conflictTrung);
         setFormError(
@@ -676,8 +771,30 @@ export function ThemHoSoModal({
       return;
     }
 
+    setCanhBaoConfirm(null);
+    setServerVanDeSo([]);
     showToast('Đã thêm hồ sơ mới (tự động xác nhận có giấy)', 'success');
     onAdded(res.data.ho_so, res.data.buoi);
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    await submitThemHoSo(false);
+  }
+
+  function handleSuaLaiCanhBao() {
+    const first = canhBaoConfirm?.[0];
+    setCanhBaoConfirm(null);
+    if (!first) return;
+    const idMap: Record<VanDeSo['truong'], string> = {
+      ma_kcb: 'them-ma-kcb',
+      cccd: 'them-cccd',
+      so_dt: 'them-so-dt',
+    };
+    const el = document.getElementById(idMap[first.truong]);
+    if (el instanceof HTMLElement) {
+      el.focus();
+    }
   }
 
   return (
@@ -705,7 +822,7 @@ export function ThemHoSoModal({
               </div>
             )}
 
-            <div className="detail-row-2col">
+            <div className="detail-row-3col">
               <div className="form-field">
                 <label htmlFor="them-ma-kcb" className="form-label">
                   Mã KCB (không bắt buộc)
@@ -713,13 +830,19 @@ export function ThemHoSoModal({
                 <input
                   id="them-ma-kcb"
                   type="text"
-                  className="form-input form-input-sm num"
+                  inputMode="numeric"
+                  className={`form-input form-input-sm num ${inputStatusClass(maKcbIssues)}`}
+                  aria-invalid={maKcbIssues.some((v) => v.muc === 'loi') || undefined}
                   placeholder="Để trống nếu chưa có"
                   value={maKcb}
-                  onChange={(e) => setMaKcb(e.target.value)}
+                  onChange={(e) => {
+                    setServerVanDeSo((prev) => prev.filter((v) => v.truong !== 'ma_kcb'));
+                    setMaKcb(e.target.value);
+                  }}
                   onBlur={() => void runKiemTrung()}
                   disabled={submitting}
                 />
+                {renderFieldMessages(maKcbIssues)}
               </div>
 
               <div className="form-field">
@@ -730,13 +853,39 @@ export function ThemHoSoModal({
                   id="them-cccd"
                   type="text"
                   inputMode="numeric"
-                  className="form-input form-input-sm num"
+                  className={`form-input form-input-sm num ${inputStatusClass(cccdIssues)}`}
+                  aria-invalid={cccdIssues.some((v) => v.muc === 'loi') || undefined}
                   placeholder="Nhập 9 hoặc 12 chữ số"
                   value={cccd}
-                  onChange={(e) => setCccd(e.target.value)}
+                  onChange={(e) => {
+                    setServerVanDeSo((prev) => prev.filter((v) => v.truong !== 'cccd'));
+                    setCccd(e.target.value);
+                  }}
                   onBlur={() => void runKiemTrung()}
                   disabled={submitting}
                 />
+                {renderFieldMessages(cccdIssues)}
+              </div>
+
+              <div className="form-field">
+                <label htmlFor="them-so-dt" className="form-label">
+                  Số điện thoại (SĐT)
+                </label>
+                <input
+                  id="them-so-dt"
+                  type="text"
+                  inputMode="numeric"
+                  className={`form-input form-input-sm num ${inputStatusClass(soDtIssues)}`}
+                  aria-invalid={soDtIssues.some((v) => v.muc === 'loi') || undefined}
+                  placeholder="Nhập 10 chữ số bắt đầu bằng 0"
+                  value={soDt}
+                  onChange={(e) => {
+                    setServerVanDeSo((prev) => prev.filter((v) => v.truong !== 'so_dt'));
+                    setSoDt(e.target.value);
+                  }}
+                  disabled={submitting}
+                />
+                {renderFieldMessages(soDtIssues)}
               </div>
             </div>
 
@@ -981,6 +1130,12 @@ export function ThemHoSoModal({
             )}
           </div>
 
+          {lyDoKhoaThem && (
+            <div className="save-disabled-reason modal-save-disabled-reason" role="status">
+              {lyDoKhoaThem}
+            </div>
+          )}
+
           <div className="modal-footer">
             <button
               type="button"
@@ -995,14 +1150,67 @@ export function ThemHoSoModal({
               className="btn btn-primary"
               disabled={
                 submitting ||
+                loiHienTai.length > 0 ||
                 (trungList.length > 0 && (!vanTaoMoi || !lyDoTaoMoi.trim()))
               }
+              title={lyDoKhoaThem || undefined}
             >
               {submitting ? 'Đang tạo…' : 'Thêm hồ sơ'}
             </button>
           </div>
         </form>
       </div>
+
+      {canhBaoConfirm && canhBaoConfirm.length > 0 && (
+        <div
+          className="modal-backdrop"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="modal-them-canh-bao-so-title"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="modal-card">
+            <div className="modal-header">
+              <h2 id="modal-them-canh-bao-so-title" className="modal-title">
+                Cảnh báo số có thể bị nhập nhầm
+              </h2>
+            </div>
+            <div className="modal-body">
+              <p className="modal-text">
+                Hệ thống phát hiện một số điểm bất thường ở số vừa nhập:
+              </p>
+              <ul className="canh-bao-so-confirm-list">
+                {canhBaoConfirm.map((v, idx) => (
+                  <li key={`${v.ma}-${idx}`} className="canh-bao-so-confirm-item">
+                    <strong>{NHAN_TRUONG_SO[v.truong]}:</strong> {v.thong_diep}
+                  </li>
+                ))}
+              </ul>
+              <p className="text-muted text-xs mt-2">
+                Nếu trên hồ sơ giấy đúng là như vậy, bấm <strong>&quot;Vẫn lưu&quot;</strong> để lưu và ghi nhận vào nhật ký. Nếu gõ nhầm, bấm <strong>&quot;Sửa lại&quot;</strong>.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={handleSuaLaiCanhBao}
+                disabled={submitting}
+              >
+                Sửa lại
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => void submitThemHoSo(true)}
+                disabled={submitting}
+              >
+                {submitting ? 'Đang lưu…' : 'Vẫn lưu'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

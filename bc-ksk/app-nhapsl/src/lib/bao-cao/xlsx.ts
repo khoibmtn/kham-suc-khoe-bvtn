@@ -111,7 +111,7 @@ export async function taoBaoCaoXlsx(d: DuLieuBaoCao, meta: MetaBaoCao): Promise<
     ...CLS.map((c) => ({ tieu_de: c.nhan, chu: true })),
     { tieu_de: `Có trong ${NHAN.TT_KSK}`, chu: true }, { tieu_de: 'Đã xác nhận', chu: true },
     { tieu_de: 'Người xác nhận', chu: true }, { tieu_de: 'Thời điểm xác nhận', chu: true },
-    { tieu_de: 'Nguồn hồ sơ', chu: true }, { tieu_de: 'Ghi chú', chu: true },
+    { tieu_de: 'Nguồn hồ sơ', chu: true }, { tieu_de: 'Ghi chú', chu: true }, { tieu_de: 'Xem lại số', chu: true },
   ];
   for (const dv of THU_TU_DON_VI) {
     const ws = dungSheet(wb, TEN_SHEET_DON_VI[dv], cotCT, meta, d.chiDaXacNhan);
@@ -124,7 +124,7 @@ export async function taoBaoCaoXlsx(d: DuLieuBaoCao, meta: MetaBaoCao): Promise<
         stt, ngayVN(h.ngay_kham), h.ma_kcb, h.ho_ten, h.gioi_tinh, h.nam_sinh, h.cccd, h.dia_chi_chi_tiet,
         ...CLS.map((c) => (h.cls[c.key] === 1 ? 'x' : '')),
         h.co_tt_ksk === 1 ? 'Có' : 'Không', h.da_xac_nhan ? 'Có' : 'Không', h.nguoi_xac_nhan, ddmmyyyyHHmm(h.xac_nhan_at),
-        nguon, h.ghi_chu,
+        nguon, h.ghi_chu, h.canh_bao_so.join('; '),
       ]);
     }
     chinhDoRong(ws, cotCT);

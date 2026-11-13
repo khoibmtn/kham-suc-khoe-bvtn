@@ -182,7 +182,7 @@ describe('kịch bản F — thêm hồ sơ, kiểm trùng', () => {
 
   it('trùng CCCD với hồ sơ kho chung → 409 có trung; nhận về không sinh hồ sơ mới', async () => {
     const truoc = await demHoSo();
-    const body = { ho_ten: 'Người Khác Tên', gioi_tinh: 'Nam' as const, nam_sinh: 1980, cccd: '031066014509', cls: { ...cls0 } };
+    const body = { ho_ten: 'Người Khác Tên', gioi_tinh: 'Nam' as const, nam_sinh: 1966, cccd: '031066014509', cls: { ...cls0 } };
     const kt = await kiemTrung(ngan, { cccd: '031066014509' });
     expect(kt.trung).toHaveLength(1);
     expect(kt.trung[0].vi_tri).toBe('kho_chung');
@@ -226,7 +226,7 @@ describe('kịch bản F — thêm hồ sơ, kiểm trùng', () => {
     expect((await loi(themHoSo(ngan, B8, body))).status).toBe(403);
     await sql()`UPDATE buoi_kham SET trang_thai = 'da_xac_nhan' WHERE ma_buoi = ${B7}`;
     expect((await loi(themHoSo(ngan, B7, body))).status).toBe(423);
-    expect(themHoSoSchema.safeParse({ ...body, cccd: '123' }).success).toBe(false);
+    expect(themHoSoSchema.safeParse({ ...body, cccd: '1'.repeat(31) }).success).toBe(false);
     expect(themHoSoSchema.safeParse({ ...body, nam_sinh: 1800 }).success).toBe(false);
     expect(themHoSoSchema.safeParse({ ...body, gioi_tinh: 'X' }).success).toBe(false);
     expect(themHoSoSchema.safeParse({ ...body, cls: { ...cls0, ctm: 2 } }).success).toBe(false);

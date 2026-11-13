@@ -4,11 +4,13 @@ import type { BuoiTomTat, HoSoDong, KetQuaTimKiem, ThemHoSoBody } from '@/lib/ap
 import { getSql } from '@/db/client';
 import { CLS_KEYS } from '@/lib/cls';
 import { ghiNhatKy } from '@/lib/nhat-ky';
+import { chiSo, coSdt } from '@/lib/kiem-so';
 import { khongDau } from '@/lib/text';
 import { LoiNghiepVu } from './loi';
 import { LOI_BUOI_KHOA } from './quyen';
 import { dongBoTrangThaiBuoi, layBuoiCoQuyen, truyVanBuoi } from './buoi';
 import { layHoSoDong } from './ho-so';
+import { canhBaoSoCuaHoSo, ganCanhBao, ghiChuBoQua, sdtHieuLuc, vanDeLanSua } from './kiem-so-ghi';
 import { truyVanKetQua } from './tim-kiem';
 
 type Sql = postgres.Sql;
@@ -45,15 +47,26 @@ export async function themHoSo(user: AuthUser, key: string, body: ThemHoSoBody):
     if (b.trang_thai === 'da_xac_nhan') throw new LoiNghiepVu(423, LOI_BUOI_KHOA);
 
     const lyDo = (body.ly_do_tao_moi ?? '').trim();
-    const trung = await timTrung(sql, user, { ma_kcb: body.ma_kcb, cccd: body.cccd, ho_ten: body.ho_ten, nam_sinh: body.nam_sinh });
+    // Chuẩn hóa số; kiểm số: lỗi chắc chắn → 400 (trước cả kiểm trùng).
+    const cccd = chiSo(body.cccd);
+    const maKcb = chiSo(body.ma_kcb);
+    const soDt = sdtHieuLuc(body.so_dt);
+    const truongCoGiaTri = ['nam_sinh', 'gioi_tinh', ...(cccd ? ['cccd'] : []), ...(maKcb ? ['ma_kcb'] : []), ...(coSdt(soDt) ? ['so_dt'] : [])];
+    const soKiem = { cccd, ma_kcb: maKcb, so_dt: soDt, nam_sinh: body.nam_sinh, gioi_tinh: body.gioi_tinh };
+    const vs = vanDeLanSua(soKiem, truongCoGiaTri);
+    if (vs.some((v) => v.muc === 'loi')) ganCanhBao(vs, false);
+
+    const trung = await timTrung(sql, user, { ma_kcb: maKcb, cccd, ho_ten: body.ho_ten, nam_sinh: body.nam_sinh });
     if (trung.length > 0 && !lyDo) throw new LoiNghiepVu(409, 'Có hồ sơ trùng', { trung });
+    // Trùng CCCD / mã KCB đã được luồng 409 + lý do tạo mới ở trên xử lý, nên không kiểm TRUNG_HO_SO lần nữa ở đây.
+    const daBoQua = ganCanhBao(vs, body.bo_qua_canh_bao_so === true);
 
     const cls = Object.fromEntries(CLS_KEYS.map((k) => [k, body.cls[k]]));
     const [moi] = await sql<{ id: number }[]>`
       INSERT INTO ho_so ${sql({
         nguon: 'them_tay', ma_ho_so: null, version: 1,
-        ma_kcb: (body.ma_kcb ?? '').trim(), ho_ten: body.ho_ten.trim(), ho_ten_kd: khongDau(body.ho_ten),
-        gioi_tinh: body.gioi_tinh, nam_sinh: body.nam_sinh, cccd: body.cccd ?? '',
+        ma_kcb: maKcb, ho_ten: body.ho_ten.trim(), ho_ten_kd: khongDau(body.ho_ten),
+        gioi_tinh: body.gioi_tinh, nam_sinh: body.nam_sinh, cccd, so_dt: soDt, canh_bao_so: canhBaoSoCuaHoSo(soKiem),
         dia_chi_chi_tiet: body.dia_chi_chi_tiet ?? '', ghi_chu: body.ghi_chu ?? '', ...cls,
         don_vi_goi_y: b.don_vi, vi_tri: 'buoi', buoi_id: b.id, ma_buoi_ban_dau: b.ma_buoi,
         da_xac_nhan: true, xac_nhan_by: user.id, created_by: user.id, updated_by: user.id,
@@ -62,7 +75,8 @@ export async function themHoSo(user: AuthUser, key: string, body: ThemHoSoBody):
       RETURNING id`;
     await ghiNhatKy({
       userId: user.id, hanhDong: 'them_ho_so', doiTuong: 'ho_so', doiTuongId: moi.id,
-      truong: 'vi_tri', giaTriMoi: b.ma_buoi, ghiChu: lyDo || null,
+      truong: 'vi_tri', giaTriMoi: b.ma_buoi,
+      ghiChu: [lyDo, ghiChuBoQua(daBoQua)].filter(Boolean).join(' ') || null,
     }, sql);
     await dongBoTrangThaiBuoi(sql, b.id);
     return { ho_so: await layHoSoDong(sql, moi.id), buoi: (await truyVanBuoi(sql, user, { id: b.id }))[0] };

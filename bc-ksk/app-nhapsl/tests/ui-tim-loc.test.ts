@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { BuoiTomTat, HoSoDong, KetQuaTimKiem } from '@/lib/api-types';
-import { locHoSo, soBoLocDangBat } from '@/lib/loc-ho-so';
+import { layCanhBaoSo, locHoSo, soBoLocDangBat } from '@/lib/loc-ho-so';
 import {
   chuanHoaBoLoc,
   cloneBoLocMacDinh,
@@ -45,6 +45,8 @@ function taoHoSoMau(overrides: Partial<HoSoDong> = {}): HoSoDong {
     gioi_tinh: 'Nữ',
     nam_sinh: 1960,
     cccd: '031160001234',
+    so_dt: '',
+    canh_bao_so: [],
     dia_chi_chi_tiet: 'TDP 1',
     cls: { ...clsMacDinh },
     src: {
@@ -354,5 +356,56 @@ describe('UI tìm kiếm & bộ lọc helpers', () => {
     expect(tong.tien_do).toBe(50);
     expect(tong.kho_ca_nhan).toBe(2);
     expect(tong.hoat_dong_gan_nhat).toBe('2026-11-12T09:30:00Z');
+  });
+
+  it('Phase 12 / T24: lọc nghi_nham_so ở màn rà soát và trang tìm kiếm, tự tính canh_bao_so khi thiếu', () => {
+    const hOk = taoHoSoMau({
+      id: 101,
+      ma_kcb: '2602083219',
+      cccd: '031160001234',
+      nam_sinh: 1960,
+      gioi_tinh: 'Nữ',
+      canh_bao_so: [],
+    });
+    const hNham = taoHoSoMau({
+      id: 102,
+      ma_kcb: '031142006754',
+      cccd: '031142006754',
+      nam_sinh: 1942,
+      gioi_tinh: 'Nữ',
+      canh_bao_so: ['Mã KCB có dạng số CCCD'],
+    });
+    // Khi canh_bao_so chưa có từ backend -> tự tính qua kiemTraSo
+    const hThieuTruong = {
+      ...taoHoSoMau({
+        id: 103,
+        ma_kcb: '031142006754',
+        cccd: '',
+        nam_sinh: 1942,
+        gioi_tinh: 'Nữ',
+      }),
+      canh_bao_so: undefined as unknown as string[],
+    };
+    expect(layCanhBaoSo(hThieuTruong)).toContain('Mã KCB có dạng số CCCD');
+
+    const boLocCo = chuanHoaBoLoc({ nghi_nham_so: 'co' });
+    expect(soBoLocDangBat(boLocCo)).toBe(1);
+    expect(
+      locHoSo([hOk, hNham, hThieuTruong], boLocCo, null).map((h) => h.id),
+    ).toEqual([102, 103]);
+
+    const boLocKhong = chuanHoaBoLoc({ nghi_nham_so: 'khong' });
+    expect(
+      locHoSo([hOk, hNham, hThieuTruong], boLocKhong, null).map((h) => h.id),
+    ).toEqual([101]);
+
+    // Đồng bộ URL trang Tìm kiếm
+    const tkLoc = cloneBoLocTimKiemMacDinh();
+    tkLoc.nghi_nham_so = '1';
+    expect(demSoBoLocTimKiem(tkLoc)).toBe(1);
+    const params = taoUrlSearchParamsTimKiem('', 'tat_ca', tkLoc, true);
+    expect(params.get('nghi_nham_so')).toBe('1');
+    const parsed = docBoLocTimKiemTuUrl(params);
+    expect(parsed.boLoc.nghi_nham_so).toBe('1');
   });
 });

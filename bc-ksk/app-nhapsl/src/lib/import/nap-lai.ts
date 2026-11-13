@@ -13,6 +13,7 @@
 import type postgres from 'postgres';
 import type { TomTatNapLai, TongDonVi } from '@/lib/api-types';
 import { CLS } from '@/lib/cls';
+import { canhBaoSoCuaHoSo } from '@/lib/ra-soat/kiem-so-ghi';
 import { ghiNhatKy } from '@/lib/nhat-ky';
 import { khongDau } from '@/lib/text';
 import type { BuoiGoi, HoSoGoi, NguoiDungGoi, Goi } from './goi';
@@ -76,7 +77,7 @@ const COT_THAM_CHIEU = [
 ] as const;
 const COT_CLS = CLS.map((c) => c.col);
 const COT_DOC = [
-  'id', 'ma_ho_so', 'version', 'ho_ten_kd', ...KHOA_NHAN_THAN, ...COT_CLS, 'src', ...COT_THAM_CHIEU, 'canh_bao',
+  'id', 'ma_ho_so', 'version', 'ho_ten_kd', ...KHOA_NHAN_THAN, ...COT_CLS, 'src', ...COT_THAM_CHIEU, 'canh_bao', 'canh_bao_so',
   'sua_nhan_than', 'sua_cls', 'da_di_chuyen', 'vi_tri', 'buoi_id', 'kho_user_id', 'ma_buoi_ban_dau', 'da_xac_nhan',
   'trang_thai_nguon',
 ].join(', ');
@@ -223,6 +224,9 @@ export async function tinhNapLai(sql: Sql, goi: Goi, opts: { khoa?: boolean } = 
     if (!chanNhanThan) tgt.ho_ten_kd = moiGoi.ho_ten_kd;
     for (const c of COT_CLS) if (!chanCls) tgt[c] = moiGoi[c];
     for (const k of COT_THAM_CHIEU) tgt[k] = (g as unknown as Cot)[k] ?? (k === 'ky_so' ? null : '');
+    // Phase 12: SĐT do người rà soát sửa (sua_nhan_than) hoặc buổi đã khóa → giữ giá trị hiện hành như các trường nhân thân.
+    if (chanNhanThan) tgt.so_dt = cur.so_dt;
+    tgt.canh_bao_so = canhBaoSoCuaHoSo(tgt as Parameters<typeof canhBaoSoCuaHoSo>[0]);
     tgt.src = srcMoi;
     tgt.ma_buoi_ban_dau = g.ma_buoi;
     tgt.trang_thai_nguon = 'co_trong_goi';
@@ -346,7 +350,7 @@ export async function tinhNapLai(sql: Sql, goi: Goi, opts: { khoa?: boolean } = 
 /** Các cột hiện có của hồ sơ (chỉ những cột nạp lại có thể ghi). */
 function cur2(h: HsDb): Cot {
   const c: Cot = {};
-  for (const k of [...KHOA_NHAN_THAN, 'ho_ten_kd', ...COT_CLS, ...COT_THAM_CHIEU, 'src', 'canh_bao', 'ma_buoi_ban_dau', 'trang_thai_nguon']) c[k] = h[k];
+  for (const k of [...KHOA_NHAN_THAN, 'ho_ten_kd', ...COT_CLS, ...COT_THAM_CHIEU, 'src', 'canh_bao', 'canh_bao_so', 'ma_buoi_ban_dau', 'trang_thai_nguon']) c[k] = h[k];
   return c;
 }
 
@@ -365,7 +369,7 @@ export async function keHoachNapLai(sql: Sql, goi: Goi): Promise<ChiTietNapLai> 
 }
 
 const COT_BANG_GHI = [
-  ...KHOA_NHAN_THAN, 'ho_ten_kd', ...COT_CLS, 'src', ...COT_THAM_CHIEU, 'canh_bao', 'ma_buoi_ban_dau', 'trang_thai_nguon',
+  ...KHOA_NHAN_THAN, 'ho_ten_kd', ...COT_CLS, 'src', ...COT_THAM_CHIEU, 'canh_bao', 'canh_bao_so', 'ma_buoi_ban_dau', 'trang_thai_nguon',
 ];
 
 /** Ghi kết quả so khớp trong transaction của người gọi (đã khóa bảng import_batches). */
@@ -431,6 +435,7 @@ export async function apDungNapLai(
         src = v.src, so_the_bhyt = v.so_the_bhyt, so_dt = v.so_dt, dia_chi_the = v.dia_chi_the,
         ngay_gio_dang_ky_his = v.ngay_gio_dang_ky_his, cls_ghi_chu = v.cls_ghi_chu, co_tt_ksk = v.co_tt_ksk,
         so_ksk = v.so_ksk, ky_so = v.ky_so, ket_luan_phan_loai = v.ket_luan_phan_loai, canh_bao = v.canh_bao,
+        canh_bao_so = v.canh_bao_so,
         ghi_chu_cowork = v.ghi_chu_cowork, don_vi_goi_y = v.don_vi_goi_y,
         vi_tri = v.vi_tri, buoi_id = v.buoi_id, kho_user_id = v.kho_user_id, ma_buoi_ban_dau = v.ma_buoi_ban_dau,
         trang_thai_nguon = v.trang_thai_nguon,
@@ -444,7 +449,7 @@ export async function apDungNapLai(
         ctm smallint, glucose smallint, ure smallint, creatinin smallint, got smallint, gpt smallint,
         tpt_nuoc_tieu smallint, sieu_am smallint, src jsonb, so_the_bhyt text, so_dt text, dia_chi_the text,
         ngay_gio_dang_ky_his text, cls_ghi_chu text, co_tt_ksk smallint, so_ksk text, ky_so smallint,
-        ket_luan_phan_loai text, canh_bao text[], ghi_chu_cowork text, don_vi_goi_y text,
+        ket_luan_phan_loai text, canh_bao text[], canh_bao_so text[], ghi_chu_cowork text, don_vi_goi_y text,
         vi_tri text, buoi_id int, kho_user_id int, ma_buoi_ban_dau text, trang_thai_nguon text,
         ch boolean, chuyen_tu text, chuyen_ly_do text)
       WHERE h.id = v.id`;

@@ -354,6 +354,38 @@ export const MUC: Muc[] = [
     luuY: ['Danh sách đã khóa thì không sửa, thêm hay chuyển hồ sơ được nữa. Cần sửa: báo admin **mở khóa**.'],
   },
   {
+    id: 'kiem-tra-so',
+    tieuDe: 'Kiểm tra số CCCD, mã KCB, SĐT',
+    khiNao:
+      'Khi nhập mới, sửa thông tin hồ sơ hoặc rà soát các hồ sơ có nhãn "Xem lại số".',
+    khoi: [
+      {
+        tieuDe: '1. Quy tắc nhận diện 3 loại số',
+        ds: [
+          '**Mã KCB**: chuẩn HIS gồm **10 chữ số, bắt đầu bằng `26`** (ví dụ `2602083219`). Nếu ô Mã KCB có 12 số bắt đầu bằng `0` thì thường là gõ nhầm số CCCD sang.',
+          '**Số CCCD / CMND**: gồm **12 chữ số** (hoặc CMND 9 số cũ). Với CCCD 12 số: 3 số đầu là mã tỉnh/thành (`001`–`096`), **số thứ 4** cho biết thế kỷ và giới tính (`0, 2` = Nam/Nữ sinh thế kỷ 20; `1, 3` = Nữ/Nam...), **số thứ 5–6** là 2 số cuối của năm sinh.',
+          '**Số điện thoại (SĐT)**: gồm **10 chữ số, bắt đầu bằng `0`** (đầu `03, 05, 07, 08, 09` hoặc cố định `02`).',
+        ],
+      },
+      {
+        tieuDe: '2. Ý nghĩa thông báo Đỏ (lỗi) và Cam (cảnh báo)',
+        ds: [
+          '**Màu đỏ (Lỗi chắc chắn)**: gõ nhầm loại số sang ô khác (ví dụ gõ số CCCD hoặc SĐT vào ô Mã KCB), sai độ dài hoặc có ký tự lạ. Khi ô đang sửa có lỗi đỏ, **nút Lưu / Thêm hồ sơ sẽ tự khóa** kèm lý do để tránh lưu nhầm.',
+          '**Màu cam (Cảnh báo cần xem lại)**: số có điểm bất thường như **CCCD lệch năm sinh / giới tính**, mã KCB khác mẫu 10 số đầu `26`, hoặc trùng số với hồ sơ khác.',
+          '**Khi nào bấm "Vẫn lưu"?** Nếu bấm Lưu khi có cảnh báo cam, hộp thoại xác nhận sẽ hiện ra. Hãy đối chiếu lại tờ giấy: nếu gõ nhầm thì bấm **Sửa lại**; nếu trên giấy tờ thực tế đúng là như vậy thì bấm **Vẫn lưu** (hệ thống vẫn cho lưu và ghi chú vào lịch sử).',
+        ],
+      },
+      {
+        tieuDe: '3. Tự rà soát và lọc "Nghi nhầm số"',
+        ds: [
+          'Hồ sơ có sẵn bị nghi nhầm số sẽ hiện nhãn cam **Xem lại số** ở cột Họ tên, gạch chân cam ở số cần kiểm và dòng tự động **`⚠ Xem lại: ...`** ở cột Ghi chú.',
+          'Trên màn **Rà soát**, bấm chip lọc nhanh **Nghi nhầm số (N)** (hoặc chọn trong Bộ lọc chi tiết) để lọc riêng các hồ sơ cần kiểm tra lại số.',
+          'Trên trang **Tìm kiếm**, chọn bộ lọc **Nghi nhầm số: Có** để tra cứu toàn bộ hồ sơ có cảnh báo số trong phạm vi đang chọn.',
+        ],
+      },
+    ],
+  },
+  {
     id: 'dien-thoai-thong-bao',
     tieuDe: 'Dùng trên điện thoại & thông báo',
     khiNao:

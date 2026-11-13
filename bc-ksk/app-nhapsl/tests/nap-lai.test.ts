@@ -256,18 +256,18 @@ describe('quy tắc nạp lại khác', () => {
   it('thêm tay trùng CCCD / mã KCB với hồ sơ mới trong gói → liệt kê, không động vào hồ sơ thêm tay', async () => {
     const b = await layBuoiCoQuyen(sql(), admin, 'TN-20260907');
     const t = await themHoSo(admin, b.ma_buoi, {
-      ho_ten: 'THÊM TAY A', gioi_tinh: 'Nam', nam_sinh: 1960, cccd: '031066014599', ma_kcb: '',
+      ho_ten: 'THÊM TAY A', gioi_tinh: 'Nam', nam_sinh: 1966, cccd: '031066014599', ma_kcb: '',
       cls: { ctm: 0, glucose: 0, ure: 0, creatinin: 0, got: 0, gpt: 0, tpt_nuoc_tieu: 0, sieu_am: 0 },
     });
     const t2 = await themHoSo(admin, b.ma_buoi, {
-      ho_ten: 'THÊM TAY B', gioi_tinh: 'Nữ', nam_sinh: 1961, cccd: '', ma_kcb: 'KCB777',
+      ho_ten: 'THÊM TAY B', gioi_tinh: 'Nữ', nam_sinh: 1961, cccd: '', ma_kcb: '2600000777',
       cls: { ctm: 0, glucose: 0, ure: 0, creatinin: 0, got: 0, gpt: 0, tpt_nuoc_tieu: 0, sieu_am: 0 },
     });
     const truoc = (await sql()`SELECT * FROM ho_so WHERE id = ANY(${[t.ho_so.id, t2.ho_so.id]})`).map((x) => JSON.stringify(x));
     const g = v0b({
       hoSo: (r) => [...r,
         { ...hoSoMacDinh()[8], ma_ho_so: 'H013', ma_kcb: '013', cccd: '031066014599' },
-        { ...hoSoMacDinh()[9], ma_ho_so: 'H014', ma_kcb: 'KCB777', cccd: '031066014514' }],
+        { ...hoSoMacDinh()[9], ma_ho_so: 'H014', ma_kcb: '2600000777', cccd: '031066014514' }],
     });
     const kh = await apDung(sql(), g.goi, 'cli:test');
     expect(kh.napLai!.them_tay_trung_goi).toEqual([

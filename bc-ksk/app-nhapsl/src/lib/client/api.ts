@@ -1,4 +1,4 @@
-import type { HoSoDong, KetQuaTimKiem } from '@/lib/api-types';
+import type { HoSoDong, KetQuaTimKiem, VanDeSo } from '@/lib/api-types';
 
 export type ApiResult<T> =
   | {
@@ -13,6 +13,7 @@ export type ApiResult<T> =
       isNetworkError: boolean;
       conflictHoSo?: HoSoDong;
       conflictTrung?: KetQuaTimKiem[];
+      vanDeSo?: VanDeSo[];
     };
 
 export async function apiRequest<T>(
@@ -64,6 +65,10 @@ export async function apiRequest<T>(
           ? (body.trung as KetQuaTimKiem[])
           : undefined;
 
+      const vanDeSo = Array.isArray(body.van_de_so)
+        ? (body.van_de_so as VanDeSo[])
+        : undefined;
+
       return {
         ok: false,
         status: response.status,
@@ -71,6 +76,7 @@ export async function apiRequest<T>(
         isNetworkError: false,
         conflictHoSo,
         conflictTrung,
+        vanDeSo,
       };
     }
 

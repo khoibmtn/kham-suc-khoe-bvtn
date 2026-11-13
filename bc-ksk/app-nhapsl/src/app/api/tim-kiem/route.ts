@@ -25,12 +25,13 @@ const locSchema = z.object({
   tt_ksk: z.enum(['co', 'khong']).optional(),
   nguon: z.enum(['his', 'them_tay', 'kho_chung']).optional(),
   vi_tri: z.enum(['buoi', 'kho_ca_nhan', 'kho_chung', 'da_loai']).optional(),
+  nghi_nham_so: z.enum(['1', '0']).optional(),
 });
 const clsSchema = z.enum(['co', 'khong']);
 
 const TEN_LOC: Record<string, string> = {
   don_vi: 'đơn vị', ngay: 'ngày khám', xac_nhan: 'xác nhận', phu_trach: 'người phụ trách',
-  co_ghi_chu: 'ghi chú', tt_ksk: 'thông tin KSK', nguon: 'nguồn', vi_tri: 'vị trí',
+  co_ghi_chu: 'ghi chú', tt_ksk: 'thông tin KSK', nguon: 'nguồn', vi_tri: 'vị trí', nghi_nham_so: 'nghi nhầm số',
 };
 
 function docBoLoc(p: URLSearchParams): BoLoc {
@@ -54,6 +55,7 @@ function docBoLoc(p: URLSearchParams): BoLoc {
     don_vi: d.don_vi, ngay: d.ngay, xac_nhan: d.xac_nhan, phu_trach: d.phu_trach,
     co_ghi_chu: d.co_ghi_chu === undefined ? undefined : d.co_ghi_chu === '1',
     tt_ksk: d.tt_ksk, nguon: d.nguon, vi_tri: d.vi_tri,
+    nghi_nham_so: d.nghi_nham_so === undefined ? undefined : d.nghi_nham_so === '1',
     cls: Object.keys(cls).length ? cls : undefined,
   };
 }

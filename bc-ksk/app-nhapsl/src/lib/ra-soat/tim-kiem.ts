@@ -34,6 +34,7 @@ export type BoLoc = {
   tt_ksk?: 'co' | 'khong';
   nguon?: 'his' | 'them_tay' | 'kho_chung';
   vi_tri?: 'buoi' | 'kho_ca_nhan' | 'kho_chung' | 'da_loai';
+  nghi_nham_so?: boolean;        // Phase 12: true = có canh_bao_so; false = không có
 };
 
 export function coBoLoc(l: BoLoc | undefined): boolean {
@@ -57,6 +58,7 @@ export function dieuKienBoLoc(sql: Sql, l: BoLoc): Frag {
   if (l.nguon === 'his') dk.push(sql`(h.nguon = 'cowork' AND NOT h.nhan_tu_kho_chung)`);
   else if (l.nguon === 'them_tay') dk.push(sql`h.nguon = 'them_tay'`);
   else if (l.nguon === 'kho_chung') dk.push(sql`h.nhan_tu_kho_chung`);
+  if (l.nghi_nham_so !== undefined) dk.push(l.nghi_nham_so ? sql`cardinality(h.canh_bao_so) > 0` : sql`cardinality(h.canh_bao_so) = 0`);
   if (l.vi_tri === 'da_loai') dk.push(sql`h.vi_tri IN ('kho_ca_nhan', 'kho_chung')`);
   else if (l.vi_tri) dk.push(sql`h.vi_tri = ${l.vi_tri}`);
   return dk.reduce<Frag>((a, f) => sql`${a} AND ${f}`, sql`TRUE`);

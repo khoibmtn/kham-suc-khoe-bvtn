@@ -1,6 +1,7 @@
 // Dựng "hàng" ghi vào DB từ bản ghi gói — dùng chung cho nạp lần đầu và nạp lại (không viết hai lần).
 import type postgres from 'postgres';
 import { CLS } from '@/lib/cls';
+import { tomTatSo, kiemTraSo } from '@/lib/kiem-so';
 import { khongDau } from '@/lib/text';
 import type { BuoiGoi, HoSoGoi } from './goi';
 
@@ -65,6 +66,7 @@ export function hangHoSoMoi(tx: Sql, h: HoSoGoi, vt: ViTriGhi) {
     ky_so: h.ky_so,
     ket_luan_phan_loai: h.ket_luan_phan_loai,
     canh_bao: h.canh_bao,
+    canh_bao_so: tomTatSo(kiemTraSo(h)),
     ghi_chu_cowork: h.ghi_chu_cowork,
     don_vi_goi_y: h.don_vi_goi_y,
     vi_tri: vt.vi_tri,

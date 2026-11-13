@@ -25,14 +25,16 @@ import {
   type ClsKey,
   type DonVi,
 } from '@/lib/cls';
-import type { BaTrangThai } from '@/lib/loc-ho-so';
+import { layCanhBaoSo, type BaTrangThai } from '@/lib/loc-ho-so';
 import { coTheTim, khopHoSo, tachTuKhoa } from '@/lib/tim-mo';
 import { apiRequest } from '@/lib/client/api';
 import {
   formatDate,
+  formatDongXemLaiSo,
   formatHisTimestamp,
   formatNumber,
   getCanhBaoTooltip,
+  phanLoaiCanhBaoSoTheoTruong,
 } from '@/lib/client/format';
 import { notifyPoolChanged } from './app-shell';
 import { nhanTrangThaiCls, xoayTrangThaiBa } from './ra-soat-bo-loc';
@@ -51,6 +53,7 @@ export type BoLocTimKiem = {
   tt_ksk: BaTrangThai;
   nguon: 'tat_ca' | 'his' | 'them_tay' | 'kho_chung';
   vi_tri: 'tat_ca' | 'buoi' | 'kho_ca_nhan' | 'kho_chung' | 'da_loai';
+  nghi_nham_so?: 'tat_ca' | '1' | '0';
 };
 
 export function cloneBoLocTimKiemMacDinh(): BoLocTimKiem {
@@ -67,6 +70,7 @@ export function cloneBoLocTimKiemMacDinh(): BoLocTimKiem {
     tt_ksk: 'tat_ca',
     nguon: 'tat_ca',
     vi_tri: 'tat_ca',
+    nghi_nham_so: 'tat_ca',
   };
 }
 
@@ -83,6 +87,7 @@ export function demSoBoLocTimKiem(b: BoLocTimKiem): number {
   if (b.tt_ksk !== 'tat_ca') n++;
   if (b.nguon !== 'tat_ca') n++;
   if (b.vi_tri !== 'tat_ca') n++;
+  if (b.nghi_nham_so && b.nghi_nham_so !== 'tat_ca') n++;
   return n;
 }
 
@@ -153,6 +158,11 @@ export function docBoLocTimKiemTuUrl(params: {
     boLoc.vi_tri = vt;
   }
 
+  const nns = params.get('nghi_nham_so');
+  if (nns === '1' || nns === '0') {
+    boLoc.nghi_nham_so = nns;
+  }
+
   return { q, phamVi, boLoc };
 }
 
@@ -192,6 +202,9 @@ export function taoUrlSearchParamsTimKiem(
   if (boLoc.tt_ksk !== 'tat_ca') p.set('tt_ksk', boLoc.tt_ksk);
   if (boLoc.nguon !== 'tat_ca') p.set('nguon', boLoc.nguon);
   if (boLoc.vi_tri !== 'tat_ca') p.set('vi_tri', boLoc.vi_tri);
+  if (boLoc.nghi_nham_so && boLoc.nghi_nham_so !== 'tat_ca') {
+    p.set('nghi_nham_so', boLoc.nghi_nham_so);
+  }
 
   return p;
 }
@@ -1010,6 +1023,30 @@ export function TimKiemView() {
               <option value="kho_chung">Nhận từ kho chung</option>
             </select>
           </div>
+
+          <div className="rasoat-filter-item">
+            <label
+              htmlFor={`${idPrefix}-loc-nghi-nham-so`}
+              className="rasoat-filter-label"
+            >
+              Nghi nhầm số:
+            </label>
+            <select
+              id={`${idPrefix}-loc-nghi-nham-so`}
+              className="form-select rasoat-filter-select"
+              value={boLoc.nghi_nham_so ?? 'tat_ca'}
+              onChange={(e) =>
+                handleChangeBoLoc({
+                  ...boLoc,
+                  nghi_nham_so: e.target.value as 'tat_ca' | '1' | '0',
+                })
+              }
+            >
+              <option value="tat_ca">Tất cả</option>
+              <option value="1">Có</option>
+              <option value="0">Không</option>
+            </select>
+          </div>
         </div>
       </div>
     );
@@ -1319,6 +1356,9 @@ export function TimKiemView() {
                 tokensKhop.length > 0
                   ? khopHoSo(tokensKhop, h).danhDau
                   : undefined;
+              const canhBaoSo = layCanhBaoSo(h);
+              const canhBaoTheoTruong = phanLoaiCanhBaoSoTheoTruong(canhBaoSo);
+              const dongXemLaiSo = formatDongXemLaiSo(canhBaoSo);
 
               return (
                 <div
@@ -1343,6 +1383,14 @@ export function TimKiemView() {
                         )}
                         )
                       </span>
+                      {canhBaoSo.length > 0 && (
+                        <span
+                          className="chip chip-warning ml-1"
+                          title={canhBaoSo.join(' · ')}
+                        >
+                          Xem lại số
+                        </span>
+                      )}
                     </div>
                     {h.da_xac_nhan ? (
                       <span className="badge badge-success">✓ Đã XN</span>
@@ -1353,17 +1401,43 @@ export function TimKiemView() {
 
                   <div className="text-muted text-xs num">
                     {h.gioi_tinh || 'Chưa rõ'} · CCCD:{' '}
-                    {h.cccd ? (
-                      <ToVang text={h.cccd} ranges={danhDau?.cccd} />
-                    ) : (
-                      '—'
-                    )}{' '}
+                    <span
+                      className={
+                        canhBaoTheoTruong.cccd.length > 0
+                          ? 'so-canh-bao'
+                          : undefined
+                      }
+                      title={
+                        canhBaoTheoTruong.cccd.length > 0
+                          ? canhBaoTheoTruong.cccd.join('; ')
+                          : undefined
+                      }
+                    >
+                      {h.cccd ? (
+                        <ToVang text={h.cccd} ranges={danhDau?.cccd} />
+                      ) : (
+                        '—'
+                      )}
+                    </span>{' '}
                     · Mã KCB:{' '}
-                    {h.ma_kcb ? (
-                      <ToVang text={h.ma_kcb} ranges={danhDau?.ma_kcb} />
-                    ) : (
-                      '—'
-                    )}
+                    <span
+                      className={
+                        canhBaoTheoTruong.ma_kcb.length > 0
+                          ? 'so-canh-bao'
+                          : undefined
+                      }
+                      title={
+                        canhBaoTheoTruong.ma_kcb.length > 0
+                          ? canhBaoTheoTruong.ma_kcb.join('; ')
+                          : undefined
+                      }
+                    >
+                      {h.ma_kcb ? (
+                        <ToVang text={h.ma_kcb} ranges={danhDau?.ma_kcb} />
+                      ) : (
+                        '—'
+                      )}
+                    </span>
                   </div>
 
                   {h.ghi_chu && (
@@ -1371,6 +1445,9 @@ export function TimKiemView() {
                       Ghi chú:{' '}
                       <ToVang text={h.ghi_chu} ranges={danhDau?.ghi_chu} />
                     </div>
+                  )}
+                  {dongXemLaiSo && (
+                    <div className="ghichu-xem-lai-so">{dongXemLaiSo}</div>
                   )}
 
                   <div className="timkiem-mobile-cls">
@@ -1471,6 +1548,10 @@ export function TimKiemView() {
                     tokensKhop.length > 0
                       ? khopHoSo(tokensKhop, h).danhDau
                       : undefined;
+                  const canhBaoSo = layCanhBaoSo(h);
+                  const canhBaoTheoTruong =
+                    phanLoaiCanhBaoSoTheoTruong(canhBaoSo);
+                  const dongXemLaiSo = formatDongXemLaiSo(canhBaoSo);
 
                   return (
                     <tr
@@ -1503,6 +1584,14 @@ export function TimKiemView() {
                             ĐK HIS {hisTimeShort || '—'} · {NHAN.TT_KSK}:{' '}
                             {h.co_tt_ksk === 1 ? 'Có' : 'Không'}
                           </span>
+                          {canhBaoSo.length > 0 && (
+                            <span
+                              className="chip chip-warning"
+                              title={canhBaoSo.join(' · ')}
+                            >
+                              Xem lại số
+                            </span>
+                          )}
                           {h.canh_bao &&
                             h.canh_bao.length > 0 &&
                             h.canh_bao.map((code) => (
@@ -1528,22 +1617,52 @@ export function TimKiemView() {
                         )}
                       </td>
                       <td className="col-cccd num">
-                        {h.cccd ? (
-                          <ToVang text={h.cccd} ranges={danhDau?.cccd} />
-                        ) : (
-                          '—'
-                        )}
+                        <span
+                          className={
+                            canhBaoTheoTruong.cccd.length > 0
+                              ? 'so-canh-bao'
+                              : undefined
+                          }
+                          title={
+                            canhBaoTheoTruong.cccd.length > 0
+                              ? canhBaoTheoTruong.cccd.join('; ')
+                              : undefined
+                          }
+                        >
+                          {h.cccd ? (
+                            <ToVang text={h.cccd} ranges={danhDau?.cccd} />
+                          ) : (
+                            '—'
+                          )}
+                        </span>
                       </td>
                       <td className="col-makcb num">
-                        {h.ma_kcb ? (
-                          <ToVang text={h.ma_kcb} ranges={danhDau?.ma_kcb} />
-                        ) : (
-                          '—'
-                        )}
+                        <span
+                          className={
+                            canhBaoTheoTruong.ma_kcb.length > 0
+                              ? 'so-canh-bao'
+                              : undefined
+                          }
+                          title={
+                            canhBaoTheoTruong.ma_kcb.length > 0
+                              ? canhBaoTheoTruong.ma_kcb.join('; ')
+                              : undefined
+                          }
+                        >
+                          {h.ma_kcb ? (
+                            <ToVang text={h.ma_kcb} ranges={danhDau?.ma_kcb} />
+                          ) : (
+                            '—'
+                          )}
+                        </span>
                       </td>
                       <td
                         className="col-ghichu"
-                        title={h.ghi_chu || undefined}
+                        title={
+                          [h.ghi_chu, dongXemLaiSo]
+                            .filter(Boolean)
+                            .join('\n') || undefined
+                        }
                       >
                         {h.ghi_chu ? (
                           <div className="ghichu-clamp">
@@ -1552,8 +1671,16 @@ export function TimKiemView() {
                               ranges={danhDau?.ghi_chu}
                             />
                           </div>
-                        ) : (
+                        ) : !dongXemLaiSo ? (
                           '—'
+                        ) : null}
+                        {dongXemLaiSo && (
+                          <div
+                            className="ghichu-xem-lai-so"
+                            title={dongXemLaiSo}
+                          >
+                            {dongXemLaiSo}
+                          </div>
                         )}
                       </td>
 

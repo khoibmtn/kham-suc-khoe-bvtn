@@ -97,6 +97,7 @@ export const hoSo = pgTable('ho_so', {
   kySo: smallint('ky_so'),
   ketLuanPhanLoai: text('ket_luan_phan_loai').notNull().default(''),
   canhBao: text('canh_bao').array().notNull().default([]),
+  canhBaoSo: text('canh_bao_so').array().notNull().default([]), // phase 12: derived from kiem-so.ts
   ghiChuCowork: text('ghi_chu_cowork').notNull().default(''),
   donViGoiY: text('don_vi_goi_y').notNull().default(''),
 

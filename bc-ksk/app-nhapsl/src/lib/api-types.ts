@@ -51,6 +51,8 @@ export type HoSoDong = {
   gioi_tinh: 'Nam' | 'Nữ' | '';
   nam_sinh: number;
   cccd: string;
+  so_dt: string;                // Phase 12: '' when stored value is '0' or empty
+  canh_bao_so: string[];        // Phase 12: messages from kiem-so.ts (e.g. 'Mã KCB có dạng số CCCD')
   dia_chi_chi_tiet: string;
   cls: ClsMap;
   src: HoSoSrc | null;
@@ -169,6 +171,8 @@ export type ThemHoSoBody = {
   cls: ClsMap;
   ghi_chu?: string;
   ly_do_tao_moi?: string;       // required when duplicates exist
+  so_dt?: string;               // Phase 12
+  bo_qua_canh_bao_so?: boolean; // Phase 12: save despite 'canh_bao' level number problems
 };
 
 export type DeNghiChuyen = {
@@ -196,6 +200,8 @@ export type HoSoSuaBody = {
   dia_chi_chi_tiet?: string;
   ghi_chu?: string;
   cls?: Partial<ClsMap>;
+  so_dt?: string;               // Phase 12
+  bo_qua_canh_bao_so?: boolean; // Phase 12
 };
 
 export type NhatKyDong = {
@@ -449,3 +455,26 @@ export type DeNghiChuyenHaiChieu = {
 // POST /api/ho-so/:id/chuyen with den='buoi': a NON-admin may now only move directly into a session they are
 //   assigned to; another person's session → 403 'Buổi đích của người khác: hãy gửi đề nghị để người đó chấp nhận'
 //   (UI sends POST /api/de-nghi-chuyen loai='gui_di' instead). Admin unchanged (direct move anywhere).
+
+// ---- Phase 12 (owner request 13/11/2026): mix-up control for CCCD / mã KCB / SĐT ----
+// Rules: src/lib/kiem-so.ts (kiemTraSo / vanDeKhiSua / chiSo / coSdt) — single source for UI and server.
+// Migration 0006_canh_bao_so.sql: ALTER TABLE ho_so ADD COLUMN canh_bao_so TEXT[] NOT NULL DEFAULT '{}';
+//   = tomTatSo(kiemTraSo(record)) — derived, recomputed on every write of the record (sua, them, import/reload)
+//   and by `npm run kiem-so` (backfill all records; idempotent; no audit rows since it is derived data).
+// HoSoDong and KetQuaTimKiem gain:  so_dt: string ('' when the stored value is '0' or empty);
+//                                    canh_bao_so: string[]  (messages, e.g. 'Mã KCB có dạng số CCCD').
+// HoSoSuaBody / ThemHoSoBody gain:   so_dt?: string; bo_qua_canh_bao_so?: boolean
+// Writes (PATCH /api/ho-so/:id, POST /api/buoi/:key/ho-so):
+//   - cccd / ma_kcb / so_dt are normalised with chiSo() (spaces, dots, dashes removed) before checks/storage.
+//   - problems = vanDeKhiSua(new values, changed fields) + (when cccd/ma_kcb changes) duplicate check:
+//       another non-hidden record with the same cccd (or ma_kcb) and a different khongDau(ho_ten)
+//       → { truong, muc: 'canh_bao', ma: 'TRUNG_HO_SO', thong_diep: 'CCCD trùng hồ sơ #<id> (<don_vi> · dd/mm)' }
+//       (never put the other person's name in the message).
+//   - any 'loi'  → 400 { error: '<first message>', van_de_so: VanDeSo[] }
+//   - else any 'canh_bao' and !bo_qua_canh_bao_so → 422 { error: 'Số có thể bị nhập nhầm', van_de_so: VanDeSo[] }
+//   - saved with bo_qua_canh_bao_so → audit ghi_chu gets '[Vẫn lưu dù cảnh báo: <messages>]'.
+//   - Editing so_dt counts as a personal-info edit (sua_nhan_than) and survives package reloads like other
+//     personal fields.
+// GET /api/tim-kiem: extra filter nghi_nham_so=1|0 (cardinality(canh_bao_so) > 0 / = 0).
+// Re-export so the UI can import the problem type from the contract file.
+export type { VanDeSo } from './kiem-so';

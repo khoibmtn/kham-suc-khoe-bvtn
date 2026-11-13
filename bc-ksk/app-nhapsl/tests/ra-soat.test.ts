@@ -121,7 +121,7 @@ describe('validate', () => {
     const { docBody } = await import('@/lib/ra-soat/loi');
     const th = (b: unknown) => docBody(new Request('http://x', { method: 'POST', body: JSON.stringify(b) }), hoSoSuaSchema);
     for (const b of [
-      { version: 1, cccd: '12345' }, { version: 1, cccd: '03106601459a' }, { version: 1, nam_sinh: 1899 },
+      { version: 1, cccd: 'x'.repeat(31) }, { version: 1, so_dt: 'x'.repeat(31) }, { version: 1, bo_qua_canh_bao_so: 'có' }, { version: 1, nam_sinh: 1899 },
       { version: 1, nam_sinh: 2027 }, { version: 1, gioi_tinh: 'Khác' }, { version: 1, ho_ten: '  ' },
       { version: 1, cls: { ctm: 2 } }, { version: 1, cls: { abc: 1 } },
     ]) {

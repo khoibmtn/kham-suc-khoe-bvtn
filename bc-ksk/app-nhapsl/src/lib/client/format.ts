@@ -238,6 +238,7 @@ export const TRUONG_NHAN: Record<string, string> = {
   gioi_tinh: 'Giới tính',
   nam_sinh: 'Năm sinh',
   cccd: 'CCCD',
+  so_dt: 'SĐT',
   dia_chi_chi_tiet: 'Địa chỉ chi tiết',
   ghi_chu: 'Ghi chú',
   da_xac_nhan: 'Xác nhận hồ sơ giấy',
@@ -501,4 +502,43 @@ export function formatTomTatLichSuNap(
     parts.push(`${formatNumber(userThem)} tài khoản`);
   }
   return parts.join(' · ');
+}
+
+export function laySoDtHoSo(h: { so_dt?: string | null }): string {
+  const raw = typeof h.so_dt === 'string' ? h.so_dt.replace(/[\s.\-]/g, '') : '';
+  return raw !== '' && raw !== '0' ? raw : '';
+}
+
+export function phanLoaiCanhBaoSoTheoTruong(canhBaoSo: string[]): {
+  cccd: string[];
+  ma_kcb: string[];
+  so_dt: string[];
+} {
+  const cccd: string[] = [];
+  const ma_kcb: string[] = [];
+  const so_dt: string[] = [];
+
+  for (const msg of canhBaoSo) {
+    if (msg.startsWith('Mã KCB') || msg.includes('trùng với Mã KCB')) {
+      ma_kcb.push(msg);
+    }
+    if (
+      msg.startsWith('CCCD') ||
+      msg.startsWith('3 số đầu CCCD') ||
+      msg.startsWith('Số thứ 4 của CCCD') ||
+      msg.includes('trùng với CCCD')
+    ) {
+      cccd.push(msg);
+    }
+    if (msg.startsWith('SĐT')) {
+      so_dt.push(msg);
+    }
+  }
+
+  return { cccd, ma_kcb, so_dt };
+}
+
+export function formatDongXemLaiSo(canhBaoSo: string[]): string {
+  if (!canhBaoSo || canhBaoSo.length === 0) return '';
+  return `⚠ Xem lại: ${canhBaoSo.join('; ')}`;
 }

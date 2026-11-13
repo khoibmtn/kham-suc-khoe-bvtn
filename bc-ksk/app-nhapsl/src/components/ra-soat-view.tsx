@@ -21,6 +21,7 @@ import {
   type KetQuaTimKiem,
   type LoaiDeNghi,
   type NhatKyDong,
+  type VanDeSo,
 } from '@/lib/api-types';
 import {
   CANH_BAO_MO_TA,
@@ -29,7 +30,14 @@ import {
   NHAN,
   type ClsKey,
 } from '@/lib/cls';
-import { khopBoLoc, type BoLoc } from '@/lib/loc-ho-so';
+import {
+  chiSo,
+  coSdt,
+  kiemTraSo,
+  NHAN_TRUONG_SO,
+  vanDeKhiSua,
+} from '@/lib/kiem-so';
+import { khopBoLoc, layCanhBaoSo, type BoLoc } from '@/lib/loc-ho-so';
 import {
   coTheTim,
   khopHoSo,
@@ -40,11 +48,14 @@ import { apiRequest } from '@/lib/client/api';
 import {
   formatDate,
   formatDateTime,
+  formatDongXemLaiSo,
   formatHisTimestamp,
   formatNumber,
   formatPercent,
   getCanhBaoTooltip,
   getTruongNhan,
+  laySoDtHoSo,
+  phanLoaiCanhBaoSoTheoTruong,
   TRANG_THAI_BUOI_NHAN,
 } from '@/lib/client/format';
 import { notifyPoolChanged } from './app-shell';
@@ -129,6 +140,9 @@ const HoSoRow = memo(function HoSoRow({
     .join(' ');
 
   const hisTimeShort = formatHisTimestamp(hoSo.ngay_gio_dang_ky_his);
+  const canhBaoSo = layCanhBaoSo(hoSo);
+  const canhBaoTheoTruong = phanLoaiCanhBaoSoTheoTruong(canhBaoSo);
+  const dongXemLaiSo = formatDongXemLaiSo(canhBaoSo);
 
   return (
     <tr
@@ -140,7 +154,14 @@ const HoSoRow = memo(function HoSoRow({
     >
       <td className="num-col col-stt">{stt}</td>
       <td className="col-makcb">
-        <span className="num">
+        <span
+          className={`num ${canhBaoTheoTruong.ma_kcb.length > 0 ? 'so-canh-bao' : ''}`}
+          title={
+            canhBaoTheoTruong.ma_kcb.length > 0
+              ? canhBaoTheoTruong.ma_kcb.join('; ')
+              : undefined
+          }
+        >
           {hoSo.ma_kcb ? (
             <ToVang text={hoSo.ma_kcb} ranges={danhDau?.ma_kcb} />
           ) : (
@@ -180,6 +201,14 @@ const HoSoRow = memo(function HoSoRow({
             ĐK HIS {hisTimeShort || '—'} · {NHAN.TT_KSK}:{' '}
             {hoSo.co_tt_ksk === 1 ? 'Có' : 'Không'}
           </span>
+          {canhBaoSo.length > 0 && (
+            <span
+              className="chip chip-warning"
+              title={canhBaoSo.join(' · ')}
+            >
+              Xem lại số
+            </span>
+          )}
           {hoSo.canh_bao &&
             hoSo.canh_bao.length > 0 &&
             hoSo.canh_bao.map((code) => (
@@ -202,21 +231,40 @@ const HoSoRow = memo(function HoSoRow({
         )}
       </td>
       <td className="col-cccd num">
-        {hoSo.cccd ? (
-          <ToVang text={hoSo.cccd} ranges={danhDau?.cccd} />
-        ) : (
-          '—'
-        )}
+        <span
+          className={canhBaoTheoTruong.cccd.length > 0 ? 'so-canh-bao' : undefined}
+          title={
+            canhBaoTheoTruong.cccd.length > 0
+              ? canhBaoTheoTruong.cccd.join('; ')
+              : undefined
+          }
+        >
+          {hoSo.cccd ? (
+            <ToVang text={hoSo.cccd} ranges={danhDau?.cccd} />
+          ) : (
+            '—'
+          )}
+        </span>
       </td>
       <td className="col-diachi">{hoSo.dia_chi_chi_tiet || '—'}</td>
-      <td className="col-ghichu" title={hoSo.ghi_chu || undefined}>
+      <td
+        className="col-ghichu"
+        title={
+          [hoSo.ghi_chu, dongXemLaiSo].filter(Boolean).join('\n') || undefined
+        }
+      >
         {hoSo.ghi_chu ? (
           // Show the whole note while it contains a search match, so the highlight is never clipped.
           <div className={danhDau?.ghi_chu?.length ? undefined : 'ghichu-clamp'}>
             <ToVang text={hoSo.ghi_chu} ranges={danhDau?.ghi_chu} />
           </div>
-        ) : (
+        ) : !dongXemLaiSo ? (
           '—'
+        ) : null}
+        {dongXemLaiSo && (
+          <div className="ghichu-xem-lai-so" title={dongXemLaiSo}>
+            {dongXemLaiSo}
+          </div>
         )}
       </td>
 
@@ -316,6 +364,10 @@ const HoSoMobileCard = memo(function HoSoMobileCard({
     .filter(Boolean)
     .join(' ');
 
+  const canhBaoSo = layCanhBaoSo(hoSo);
+  const canhBaoTheoTruong = phanLoaiCanhBaoSoTheoTruong(canhBaoSo);
+  const dongXemLaiSo = formatDongXemLaiSo(canhBaoSo);
+
   return (
     <div
       data-hoso-id={hoSo.id}
@@ -351,6 +403,14 @@ const HoSoMobileCard = memo(function HoSoMobileCard({
           {hoSo.nguon === 'them_tay' && (
             <span className="chip chip-manual ml-1">Thêm tay</span>
           )}
+          {canhBaoSo.length > 0 && (
+            <span
+              className="chip chip-warning ml-1"
+              title={canhBaoSo.join(' · ')}
+            >
+              Xem lại số
+            </span>
+          )}
           {dangChoChuyen && (
             <span className="chip chip-pending-transfer ml-1">
               Đang chờ chuyển
@@ -375,15 +435,38 @@ const HoSoMobileCard = memo(function HoSoMobileCard({
         <span>{hoSo.gioi_tinh || 'Chưa rõ'}</span>
         <span>
           CCCD:{' '}
-          {hoSo.cccd ? (
-            <ToVang text={hoSo.cccd} ranges={danhDau?.cccd} />
-          ) : (
-            '—'
-          )}
+          <span
+            className={
+              canhBaoTheoTruong.cccd.length > 0 ? 'so-canh-bao' : undefined
+            }
+            title={
+              canhBaoTheoTruong.cccd.length > 0
+                ? canhBaoTheoTruong.cccd.join('; ')
+                : undefined
+            }
+          >
+            {hoSo.cccd ? (
+              <ToVang text={hoSo.cccd} ranges={danhDau?.cccd} />
+            ) : (
+              '—'
+            )}
+          </span>
         </span>
         {hoSo.ma_kcb && (
           <span>
-            Mã KCB: <ToVang text={hoSo.ma_kcb} ranges={danhDau?.ma_kcb} />
+            Mã KCB:{' '}
+            <span
+              className={
+                canhBaoTheoTruong.ma_kcb.length > 0 ? 'so-canh-bao' : undefined
+              }
+              title={
+                canhBaoTheoTruong.ma_kcb.length > 0
+                  ? canhBaoTheoTruong.ma_kcb.join('; ')
+                  : undefined
+              }
+            >
+              <ToVang text={hoSo.ma_kcb} ranges={danhDau?.ma_kcb} />
+            </span>
           </span>
         )}
       </div>
@@ -392,6 +475,9 @@ const HoSoMobileCard = memo(function HoSoMobileCard({
         <div className="rasoat-mobile-card-note">
           Ghi chú: <ToVang text={hoSo.ghi_chu} ranges={danhDau?.ghi_chu} />
         </div>
+      )}
+      {dongXemLaiSo && (
+        <div className="ghichu-xem-lai-so">{dongXemLaiSo}</div>
       )}
 
       {hoSo.canh_bao && hoSo.canh_bao.length > 0 && (
@@ -483,13 +569,164 @@ function HoSoThongTinForm({
     hoSo.nam_sinh ? String(hoSo.nam_sinh) : '',
   );
   const [formCccd, setFormCccd] = useState(hoSo.cccd ?? '');
+  const [formSoDt, setFormSoDt] = useState(() => laySoDtHoSo(hoSo));
   const [formDiaChi, setFormDiaChi] = useState(hoSo.dia_chi_chi_tiet ?? '');
   const [formGhiChu, setFormGhiChu] = useState(hoSo.ghi_chu ?? '');
   const [formError, setFormError] = useState('');
   const [savingForm, setSavingForm] = useState(false);
+  const [touchedSoFields, setTouchedSoFields] = useState<
+    Set<'cccd' | 'ma_kcb' | 'so_dt' | 'nam_sinh' | 'gioi_tinh'>
+  >(() => new Set());
+  const [serverVanDeSo, setServerVanDeSo] = useState<VanDeSo[]>([]);
+  const [canhBaoConfirm, setCanhBaoConfirm] = useState<VanDeSo[] | null>(null);
 
-  async function handleSaveNhanThan(e: FormEvent) {
-    e.preventDefault();
+  function markTouchedField(
+    field: 'cccd' | 'ma_kcb' | 'so_dt' | 'nam_sinh' | 'gioi_tinh',
+  ) {
+    setTouchedSoFields((prev) => {
+      if (prev.has(field)) return prev;
+      const next = new Set(prev);
+      next.add(field);
+      return next;
+    });
+    if (field === 'cccd' || field === 'ma_kcb' || field === 'so_dt') {
+      setServerVanDeSo((prev) => prev.filter((v) => v.truong !== field));
+    } else if (field === 'nam_sinh' || field === 'gioi_tinh') {
+      setServerVanDeSo((prev) => prev.filter((v) => v.truong !== 'cccd'));
+    }
+  }
+
+  const parsedNamSinhLive = useMemo(() => {
+    const n = Number(formNamSinh);
+    return formNamSinh.trim() !== '' && Number.isInteger(n) ? n : null;
+  }, [formNamSinh]);
+
+  const liveVanDeSo = useMemo(
+    () =>
+      kiemTraSo({
+        cccd: formCccd,
+        ma_kcb: formMaKcb,
+        so_dt: formSoDt,
+        nam_sinh: parsedNamSinhLive,
+        gioi_tinh: formGioiTinh,
+      }),
+    [formCccd, formMaKcb, formSoDt, parsedNamSinhLive, formGioiTinh],
+  );
+
+  const mergedVanDeSo = useMemo(() => {
+    const map = new Map<string, VanDeSo>();
+    for (const v of liveVanDeSo) {
+      map.set(`${v.truong}:${v.ma}:${v.thong_diep}`, v);
+    }
+    for (const v of serverVanDeSo) {
+      map.set(`${v.truong}:${v.ma}:${v.thong_diep}`, v);
+    }
+    return Array.from(map.values());
+  }, [liveVanDeSo, serverVanDeSo]);
+
+  const truongDangSua = useMemo(() => {
+    const set = new Set<'cccd' | 'ma_kcb' | 'so_dt' | 'nam_sinh' | 'gioi_tinh'>(
+      touchedSoFields,
+    );
+    if (chiSo(formMaKcb) !== chiSo(hoSo.ma_kcb)) set.add('ma_kcb');
+    if (chiSo(formCccd) !== chiSo(hoSo.cccd)) set.add('cccd');
+    const sdtMoi = coSdt(formSoDt) ? chiSo(formSoDt) : '';
+    const sdtCu = laySoDtHoSo(hoSo);
+    if (sdtMoi !== sdtCu || formSoDt.trim() !== sdtCu) set.add('so_dt');
+    if (parsedNamSinhLive !== null && parsedNamSinhLive !== hoSo.nam_sinh) {
+      set.add('nam_sinh');
+    }
+    if (formGioiTinh !== hoSo.gioi_tinh) set.add('gioi_tinh');
+    return set;
+  }, [
+    touchedSoFields,
+    formMaKcb,
+    hoSo,
+    formCccd,
+    formSoDt,
+    parsedNamSinhLive,
+    formGioiTinh,
+  ]);
+
+  const vanDeCuaLanSua = useMemo(
+    () =>
+      vanDeKhiSua(
+        {
+          cccd: formCccd,
+          ma_kcb: formMaKcb,
+          so_dt: formSoDt,
+          nam_sinh: parsedNamSinhLive,
+          gioi_tinh: formGioiTinh,
+        },
+        truongDangSua,
+      ),
+    [
+      formCccd,
+      formMaKcb,
+      formSoDt,
+      parsedNamSinhLive,
+      formGioiTinh,
+      truongDangSua,
+    ],
+  );
+
+  const loiKhiSua = useMemo(() => {
+    const fromLive = vanDeCuaLanSua.filter((v) => v.muc === 'loi');
+    const fromServer = serverVanDeSo.filter((v) => v.muc === 'loi');
+    const map = new Map<string, VanDeSo>();
+    for (const v of [...fromLive, ...fromServer]) {
+      map.set(`${v.truong}:${v.ma}:${v.thong_diep}`, v);
+    }
+    return Array.from(map.values());
+  }, [vanDeCuaLanSua, serverVanDeSo]);
+
+  const lyDoKhoaLuu =
+    loiKhiSua.length > 0
+      ? `Không thể lưu: ${loiKhiSua.map((v) => v.thong_diep).join('; ')}`
+      : '';
+
+  const maKcbIssues = useMemo(
+    () => mergedVanDeSo.filter((v) => v.truong === 'ma_kcb'),
+    [mergedVanDeSo],
+  );
+  const cccdIssues = useMemo(
+    () => mergedVanDeSo.filter((v) => v.truong === 'cccd'),
+    [mergedVanDeSo],
+  );
+  const soDtIssues = useMemo(
+    () => mergedVanDeSo.filter((v) => v.truong === 'so_dt'),
+    [mergedVanDeSo],
+  );
+
+  function inputStatusClass(issues: VanDeSo[]): string {
+    if (issues.some((v) => v.muc === 'loi')) return 'form-input-error';
+    if (issues.some((v) => v.muc === 'canh_bao')) return 'form-input-warning';
+    return '';
+  }
+
+  function renderFieldMessages(issues: VanDeSo[]) {
+    if (issues.length === 0) return null;
+    return (
+      <div className="field-msg-list">
+        {issues.map((v, idx) => (
+          <div
+            key={`${v.ma}-${idx}`}
+            className={
+              v.muc === 'loi'
+                ? 'field-msg field-msg-error'
+                : 'field-msg field-msg-warning'
+            }
+            role={v.muc === 'loi' ? 'alert' : 'status'}
+          >
+            <span aria-hidden="true">{v.muc === 'loi' ? '✕ ' : '⚠ '}</span>
+            <span>{v.thong_diep}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  async function submitSaveNhanThan(boQuaCanhBaoSo: boolean) {
     if (!canEdit) return;
     setFormError('');
 
@@ -514,9 +751,8 @@ function HoSoThongTinForm({
       return;
     }
 
-    const trimmedCccd = formCccd.trim();
-    if (trimmedCccd !== '' && !/^(?:\d{9}|\d{12})$/.test(trimmedCccd)) {
-      setFormError('CCCD/CMND phải để trống hoặc gồm đúng 9 hoặc 12 chữ số.');
+    if (loiKhiSua.length > 0) {
+      setFormError(loiKhiSua[0].thong_diep);
       return;
     }
 
@@ -526,9 +762,11 @@ function HoSoThongTinForm({
       ho_ten: trimmedHoTen,
       gioi_tinh: formGioiTinh,
       nam_sinh: parsedNamSinh,
-      cccd: trimmedCccd,
+      cccd: formCccd.trim(),
+      so_dt: formSoDt.trim(),
       dia_chi_chi_tiet: formDiaChi.trim(),
       ghi_chu: formGhiChu.trim(),
+      ...(boQuaCanhBaoSo ? { bo_qua_canh_bao_so: true } : {}),
     };
 
     setSavingForm(true);
@@ -539,6 +777,17 @@ function HoSoThongTinForm({
     setSavingForm(false);
 
     if (!res.ok) {
+      if (res.status === 422 && res.vanDeSo && res.vanDeSo.length > 0) {
+        setServerVanDeSo(res.vanDeSo);
+        setCanhBaoConfirm(res.vanDeSo);
+        return;
+      }
+      if (res.status === 400 && res.vanDeSo && res.vanDeSo.length > 0) {
+        setServerVanDeSo(res.vanDeSo);
+        setCanhBaoConfirm(null);
+        return;
+      }
+      setCanhBaoConfirm(null);
       if (
         res.status === 409 ||
         res.status === 423 ||
@@ -552,8 +801,30 @@ function HoSoThongTinForm({
       return;
     }
 
+    setCanhBaoConfirm(null);
+    setServerVanDeSo([]);
     onSuccess(res.data.ho_so);
     showToast('Đã lưu thay đổi thông tin hồ sơ', 'success');
+  }
+
+  async function handleSaveNhanThan(e: FormEvent) {
+    e.preventDefault();
+    await submitSaveNhanThan(false);
+  }
+
+  function handleSuaLaiCanhBao() {
+    const first = canhBaoConfirm?.[0];
+    setCanhBaoConfirm(null);
+    if (!first) return;
+    const idMap: Record<VanDeSo['truong'], string> = {
+      ma_kcb: 'detail-ma-kcb',
+      cccd: 'detail-cccd',
+      so_dt: 'detail-so-dt',
+    };
+    const el = document.getElementById(idMap[first.truong]);
+    if (el instanceof HTMLElement) {
+      el.focus();
+    }
   }
 
   const disableMove = !canEdit || hoSo.da_xac_nhan || movingHoSo;
@@ -607,11 +878,17 @@ function HoSoThongTinForm({
         <input
           id="detail-ma-kcb"
           type="text"
-          className="form-input form-input-sm"
+          inputMode="numeric"
+          className={`form-input form-input-sm num ${inputStatusClass(maKcbIssues)}`}
+          aria-invalid={maKcbIssues.some((v) => v.muc === 'loi') || undefined}
           value={formMaKcb}
-          onChange={(e) => setFormMaKcb(e.target.value)}
+          onChange={(e) => {
+            markTouchedField('ma_kcb');
+            setFormMaKcb(e.target.value);
+          }}
           disabled={!canEdit || savingForm}
         />
+        {renderFieldMessages(maKcbIssues)}
         {hoSo.src && hoSo.src.ma_kcb !== hoSo.ma_kcb && (
           <span className="src-diff-note">
             Gốc: {hoSo.src.ma_kcb || '(trống)'}
@@ -648,9 +925,10 @@ function HoSoThongTinForm({
             id="detail-gioi-tinh"
             className="form-input form-input-sm"
             value={formGioiTinh}
-            onChange={(e) =>
-              setFormGioiTinh(e.target.value as 'Nam' | 'Nữ' | '')
-            }
+            onChange={(e) => {
+              markTouchedField('gioi_tinh');
+              setFormGioiTinh(e.target.value as 'Nam' | 'Nữ' | '');
+            }}
             disabled={!canEdit || savingForm}
           >
             <option value="" disabled>
@@ -678,7 +956,10 @@ function HoSoThongTinForm({
             className="form-input form-input-sm num"
             required
             value={formNamSinh}
-            onChange={(e) => setFormNamSinh(e.target.value)}
+            onChange={(e) => {
+              markTouchedField('nam_sinh');
+              setFormNamSinh(e.target.value);
+            }}
             disabled={!canEdit || savingForm}
           />
           {hoSo.src && hoSo.src.nam_sinh !== hoSo.nam_sinh && (
@@ -697,16 +978,42 @@ function HoSoThongTinForm({
           id="detail-cccd"
           type="text"
           inputMode="numeric"
-          className="form-input form-input-sm num"
+          className={`form-input form-input-sm num ${inputStatusClass(cccdIssues)}`}
+          aria-invalid={cccdIssues.some((v) => v.muc === 'loi') || undefined}
           value={formCccd}
-          onChange={(e) => setFormCccd(e.target.value)}
+          onChange={(e) => {
+            markTouchedField('cccd');
+            setFormCccd(e.target.value);
+          }}
           disabled={!canEdit || savingForm}
         />
+        {renderFieldMessages(cccdIssues)}
         {hoSo.src && hoSo.src.cccd !== hoSo.cccd && (
           <span className="src-diff-note">
             Gốc: {hoSo.src.cccd || '(trống)'}
           </span>
         )}
+      </div>
+
+      <div className="form-field">
+        <label htmlFor="detail-so-dt" className="form-label">
+          Số điện thoại (SĐT)
+        </label>
+        <input
+          id="detail-so-dt"
+          type="text"
+          inputMode="numeric"
+          className={`form-input form-input-sm num ${inputStatusClass(soDtIssues)}`}
+          aria-invalid={soDtIssues.some((v) => v.muc === 'loi') || undefined}
+          placeholder="Nhập 10 chữ số bắt đầu bằng 0"
+          value={formSoDt}
+          onChange={(e) => {
+            markTouchedField('so_dt');
+            setFormSoDt(e.target.value);
+          }}
+          disabled={!canEdit || savingForm}
+        />
+        {renderFieldMessages(soDtIssues)}
       </div>
 
       <div className="form-field">
@@ -742,10 +1049,17 @@ function HoSoThongTinForm({
         />
       </div>
 
+      {lyDoKhoaLuu && (
+        <div className="save-disabled-reason" role="status">
+          {lyDoKhoaLuu}
+        </div>
+      )}
+
       <button
         type="submit"
         className="btn btn-primary btn-block desktop-only-save-btn"
-        disabled={!canEdit || savingForm}
+        disabled={!canEdit || savingForm || loiKhiSua.length > 0}
+        title={lyDoKhoaLuu || undefined}
       >
         {savingForm ? 'Đang lưu…' : 'Lưu thay đổi'}
       </button>
@@ -871,11 +1185,62 @@ function HoSoThongTinForm({
         <button
           type="submit"
           className="btn btn-primary detail-mobile-btn"
-          disabled={!canEdit || savingForm}
+          disabled={!canEdit || savingForm || loiKhiSua.length > 0}
+          title={lyDoKhoaLuu || undefined}
         >
           {savingForm ? 'Đang lưu…' : 'Lưu thay đổi'}
         </button>
       </div>
+
+      {canhBaoConfirm && canhBaoConfirm.length > 0 && (
+        <div
+          className="modal-backdrop"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="modal-canh-bao-so-title"
+        >
+          <div className="modal-card">
+            <div className="modal-header">
+              <h2 id="modal-canh-bao-so-title" className="modal-title">
+                Cảnh báo số có thể bị nhập nhầm
+              </h2>
+            </div>
+            <div className="modal-body">
+              <p className="modal-text">
+                Hệ thống phát hiện một số điểm bất thường ở số vừa nhập:
+              </p>
+              <ul className="canh-bao-so-confirm-list">
+                {canhBaoConfirm.map((v, idx) => (
+                  <li key={`${v.ma}-${idx}`} className="canh-bao-so-confirm-item">
+                    <strong>{NHAN_TRUONG_SO[v.truong]}:</strong> {v.thong_diep}
+                  </li>
+                ))}
+              </ul>
+              <p className="text-muted text-xs mt-2">
+                Nếu trên hồ sơ giấy đúng là như vậy, bấm <strong>&quot;Vẫn lưu&quot;</strong> để lưu và ghi nhận vào nhật ký. Nếu gõ nhầm, bấm <strong>&quot;Sửa lại&quot;</strong>.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={handleSuaLaiCanhBao}
+                disabled={savingForm}
+              >
+                Sửa lại
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => void submitSaveNhanThan(true)}
+                disabled={savingForm}
+              >
+                {savingForm ? 'Đang lưu…' : 'Vẫn lưu'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

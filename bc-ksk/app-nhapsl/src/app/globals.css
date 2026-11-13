@@ -4009,3 +4009,114 @@ input[type="search"]::-webkit-search-decoration {
 .tu-duyet-info-strip .badge {
   white-space: normal;
 }
+
+/* T24: Kiểm soát chống nhập nhầm CCCD / mã KCB / SĐT & ghi chú "Xem lại số" */
+.form-input-error {
+  border-color: var(--danger-strong) !important;
+  background-color: #fffafb;
+}
+
+.form-input-error:focus {
+  border-color: var(--danger-strong) !important;
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
+}
+
+.form-input-warning {
+  border-color: var(--warning-strong) !important;
+  background-color: #fffdf5;
+}
+
+.form-input-warning:focus {
+  border-color: var(--warning-strong) !important;
+  box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.2);
+}
+
+.field-msg-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 4px;
+}
+
+.field-msg {
+  font-size: 0.78125rem;
+  line-height: 1.35;
+  font-weight: 500;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.field-msg-error {
+  color: var(--danger);
+}
+
+.field-msg-warning {
+  color: var(--warning);
+}
+
+.so-canh-bao {
+  display: inline-block;
+  border-bottom: 2px dashed var(--warning-strong);
+  background-color: var(--warning-bg);
+  color: var(--warning);
+  padding: 0 3px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.ghichu-xem-lai-so {
+  margin-top: 3px;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--warning);
+  background-color: var(--warning-bg);
+  border-left: 3px solid var(--warning-strong);
+  padding: 2px 6px;
+  border-radius: 2px;
+  font-weight: 500;
+}
+
+.col-ghichu .ghichu-xem-lai-so,
+.col-hoten .ghichu-xem-lai-so {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.save-disabled-reason {
+  margin-top: 4px;
+  margin-bottom: 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background-color: var(--danger-bg);
+  border: 1px solid #fecaca;
+  color: var(--danger);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.modal-save-disabled-reason {
+  margin: 0 18px 8px;
+}
+
+.canh-bao-so-confirm-list {
+  margin: 8px 0 0;
+  padding-left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.canh-bao-so-confirm-item {
+  font-size: 0.875rem;
+  color: var(--warning);
+  background-color: var(--warning-bg);
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  padding: 6px 10px;
+  list-style: none;
+}

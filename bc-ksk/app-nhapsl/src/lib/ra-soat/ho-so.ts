@@ -3,23 +3,26 @@ import type { AuthUser } from '@/lib/auth/guard';
 import type { BuoiTomTat, ClsMap, HoSoDong, HoSoSrc, HoSoSuaBody, NhatKyDong, UserNgan } from '@/lib/api-types';
 import { CLS_KEYS } from '@/lib/cls';
 import { ghiNhatKy, type NhatKyEntry } from '@/lib/nhat-ky';
+import { chiSo, coSdt } from '@/lib/kiem-so';
 import { khongDau } from '@/lib/text';
 import { getSql } from '@/db/client';
 import { LoiNghiepVu } from './loi';
 import { LOI_BUOI_KHOA, LOI_KHONG_QUYEN_BUOI, iso, laAdmin } from './quyen';
 import { truyVanBuoi } from './buoi';
+import { canhBaoSoCuaHoSo, ganCanhBao, ghiChuBoQua, kiemTrungSo, sdtHieuLuc, vanDeLanSua } from './kiem-so-ghi';
 
 type Sql = postgres.Sql;
 
 export const COT_HO_SO = `h.id, h.version, h.ma_ho_so, h.nguon, h.ma_kcb, h.ho_ten, h.gioi_tinh, h.nam_sinh, h.cccd,
-  h.dia_chi_chi_tiet, h.ctm, h.glucose, h.ure, h.creatinin, h.got, h.gpt, h.tpt_nuoc_tieu, h.sieu_am, h.src,
+  h.so_dt, h.canh_bao_so, h.dia_chi_chi_tiet, h.ctm, h.glucose, h.ure, h.creatinin, h.got, h.gpt, h.tpt_nuoc_tieu, h.sieu_am, h.src,
   h.dia_chi_the, h.ngay_gio_dang_ky_his, h.cls_ghi_chu, h.co_tt_ksk, h.canh_bao, h.ghi_chu, h.ghi_chu_cowork,
   h.sua_nhan_than, h.sua_cls, h.nhan_tu_kho_chung, h.da_xac_nhan, h.xac_nhan_at, h.updated_at,
   h.xac_nhan_by, xn.username AS xn_username, xn.ho_ten AS xn_ho_ten`;
 
 export type Row = Record<string, unknown> & {
   id: number; version: number; ma_ho_so: string | null; nguon: 'cowork' | 'them_tay'; ma_kcb: string; ho_ten: string;
-  gioi_tinh: 'Nam' | 'Nữ' | ''; nam_sinh: number; cccd: string; dia_chi_chi_tiet: string; src: HoSoSrc | null;
+  gioi_tinh: 'Nam' | 'Nữ' | ''; nam_sinh: number; cccd: string; so_dt: string; canh_bao_so: string[];
+  dia_chi_chi_tiet: string; src: HoSoSrc | null;
   dia_chi_the: string; ngay_gio_dang_ky_his: string; cls_ghi_chu: string; co_tt_ksk: 0 | 1; canh_bao: string[];
   ghi_chu: string; ghi_chu_cowork: string; sua_nhan_than: boolean; sua_cls: boolean; nhan_tu_kho_chung: boolean;
   da_xac_nhan: boolean; xac_nhan_by: number | null; xn_username: string | null; xn_ho_ten: string | null;
@@ -33,6 +36,7 @@ export function mapHoSo(r: Row): HoSoDong {
   return {
     id: r.id, version: r.version, ma_ho_so: r.ma_ho_so, nguon: r.nguon,
     ma_kcb: r.ma_kcb, ho_ten: r.ho_ten, gioi_tinh: r.gioi_tinh, nam_sinh: r.nam_sinh, cccd: r.cccd,
+    so_dt: coSdt(r.so_dt) ? r.so_dt : '', canh_bao_so: r.canh_bao_so ?? [],
     dia_chi_chi_tiet: r.dia_chi_chi_tiet, cls, src: r.src ?? null,
     dia_chi_the: r.dia_chi_the, ngay_gio_dang_ky_his: r.ngay_gio_dang_ky_his, cls_ghi_chu: r.cls_ghi_chu,
     co_tt_ksk: r.co_tt_ksk, canh_bao: r.canh_bao ?? [], ghi_chu: r.ghi_chu, ghi_chu_cowork: r.ghi_chu_cowork,
@@ -62,14 +66,14 @@ export async function layHoSoDong(sql: Sql, id: number): Promise<HoSoDong> {
 
 type Khoa = {
   id: number; version: number; vi_tri: string; buoi_id: number | null; kho_user_id: number | null;
-  ma_kcb: string; ho_ten: string; gioi_tinh: string; nam_sinh: number; cccd: string; dia_chi_chi_tiet: string;
+  ma_kcb: string; ho_ten: string; gioi_tinh: string; nam_sinh: number; cccd: string; so_dt: string; dia_chi_chi_tiet: string;
   ghi_chu: string; da_xac_nhan: boolean; sua_nhan_than: boolean; sua_cls: boolean;
   ctm: number; glucose: number; ure: number; creatinin: number; got: number; gpt: number; tpt_nuoc_tieu: number; sieu_am: number;
 };
 
 /** Khóa hồ sơ (+ buổi) FOR UPDATE, kiểm quyền → 403, buổi khóa → 423, version lệch → 409. */
 async function khoaVaKiem(tx: Sql, user: AuthUser, id: number, version: number | null, ghi: boolean): Promise<{ h: Khoa; buoiId: number | null }> {
-  const [h] = await tx<Khoa[]>`SELECT id, version, vi_tri, buoi_id, kho_user_id, ma_kcb, ho_ten, gioi_tinh, nam_sinh, cccd,
+  const [h] = await tx<Khoa[]>`SELECT id, version, vi_tri, buoi_id, kho_user_id, ma_kcb, ho_ten, gioi_tinh, nam_sinh, cccd, so_dt,
       dia_chi_chi_tiet, ghi_chu, da_xac_nhan, sua_nhan_than, sua_cls,
       ctm, glucose, ure, creatinin, got, gpt, tpt_nuoc_tieu, sieu_am
     FROM ho_so WHERE id = ${id} FOR UPDATE`;
@@ -98,17 +102,55 @@ export async function suaHoSo(user: AuthUser, id: number, body: HoSoSuaBody): Pr
   return (await getSql().begin(async (tx) => {
     const { h } = await khoaVaKiem(tx as unknown as Sql, user, id, body.version, true);
     const sql = tx as unknown as Sql;
-    const upd: Record<string, string | number | boolean> = {};
+    const upd: Record<string, string | number | boolean | string[]> = {};
     const nk: NhatKyEntry[] = [];
     const log = (hanhDong: string, truong: string, cu: unknown, moi: unknown) =>
       nk.push({ userId: user.id, hanhDong, doiTuong: 'ho_so', doiTuongId: id, truong, giaTriCu: cu as string | number, giaTriMoi: moi as string | number });
 
-    let doiNhanThan = false;
+    // Chuẩn hóa số (bỏ khoảng trắng, dấu chấm, gạch ngang) trước khi so sánh / kiểm / lưu.
+    const moiNT: Record<string, string | number | undefined> = {
+      ma_kcb: body.ma_kcb === undefined ? undefined : chiSo(body.ma_kcb),
+      ho_ten: body.ho_ten, gioi_tinh: body.gioi_tinh, nam_sinh: body.nam_sinh,
+      cccd: body.cccd === undefined ? undefined : chiSo(body.cccd),
+      dia_chi_chi_tiet: body.dia_chi_chi_tiet,
+    };
+    const buoc: { t: string; moi: string | number }[] = [];
     for (const t of TRUONG_NHAN_THAN) {
-      const moi = body[t];
+      const moi = moiNT[t];
       if (moi === undefined || moi === h[t]) continue;
+      buoc.push({ t, moi });
+    }
+    // SĐT: "0" và "" cùng nghĩa "chưa có".
+    if (body.so_dt !== undefined) {
+      const moi = sdtHieuLuc(body.so_dt);
+      if (moi !== sdtHieuLuc(h.so_dt)) buoc.push({ t: 'so_dt', moi });
+    }
+
+    // Kiểm số: chỉ các trường đang đổi; trùng hồ sơ khác khi đổi CCCD / mã KCB.
+    let ghiChuCanhBao: string | null = null;
+    const truongDoi = buoc.map((b) => b.t);
+    const cuoi = {
+      cccd: (moiNT.cccd as string | undefined) ?? h.cccd, ma_kcb: (moiNT.ma_kcb as string | undefined) ?? h.ma_kcb,
+      so_dt: buoc.find((b) => b.t === 'so_dt') ? String(buoc.find((b) => b.t === 'so_dt')!.moi) : h.so_dt,
+      nam_sinh: (moiNT.nam_sinh as number | undefined) ?? h.nam_sinh, gioi_tinh: (moiNT.gioi_tinh as string | undefined) ?? h.gioi_tinh,
+    };
+    const soDoi = truongDoi.some((t) => ['cccd', 'ma_kcb', 'so_dt', 'nam_sinh', 'gioi_tinh'].includes(t));
+    if (soDoi) {
+      const vs = vanDeLanSua(cuoi, truongDoi);
+      if (truongDoi.includes('cccd') || truongDoi.includes('ma_kcb')) {
+        vs.push(...(await kiemTrungSo(sql, {
+          cccd: truongDoi.includes('cccd') ? cuoi.cccd : undefined, ma_kcb: truongDoi.includes('ma_kcb') ? cuoi.ma_kcb : undefined,
+          ho_ten: (moiNT.ho_ten as string | undefined) ?? h.ho_ten, loai_tru_id: id,
+        })));
+      }
+      ghiChuCanhBao = ghiChuBoQua(ganCanhBao(vs, body.bo_qua_canh_bao_so === true));
+    }
+
+    let doiNhanThan = false;
+    for (const { t, moi } of buoc) {
       upd[t] = moi;
-      log('sua_nhan_than', t, h[t], moi);
+      log('sua_nhan_than', t, h[t as keyof Khoa], moi);
+      if (ghiChuCanhBao) nk[nk.length - 1].ghiChu = ghiChuCanhBao;
       doiNhanThan = true;
     }
     if (body.ho_ten !== undefined && body.ho_ten !== h.ho_ten) upd.ho_ten_kd = khongDau(body.ho_ten);
@@ -126,6 +168,7 @@ export async function suaHoSo(user: AuthUser, id: number, body: HoSoSuaBody): Pr
     }
     if (Object.keys(upd).length === 0) return layHoSoDong(sql, id);
 
+    upd.canh_bao_so = canhBaoSoCuaHoSo(cuoi);
     if (doiNhanThan) upd.sua_nhan_than = true;
     if (doiCls) upd.sua_cls = true;
     upd.version = h.version + 1;

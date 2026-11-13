@@ -32,6 +32,7 @@ export type HoSoBaoCao = {
   id: number; don_vi: DonVi; ngay_kham: string; ma_kcb: string; ho_ten: string; gioi_tinh: string; nam_sinh: number;
   cccd: string; dia_chi_chi_tiet: string; cls: Record<ClsKey, number>; co_tt_ksk: number; da_xac_nhan: boolean;
   nguoi_xac_nhan: string; xac_nhan_at: Date | null; nguon: 'cowork' | 'them_tay'; nhan_tu_kho_chung: boolean; ghi_chu: string;
+  canh_bao_so: string[];
 };
 
 export type DuLieuBaoCao = { buoi: BuoiBaoCao[]; hoSo: HoSoBaoCao[]; chiDaXacNhan: boolean };
@@ -67,6 +68,7 @@ type HoSoRow = Record<string, unknown> & {
   id: number; don_vi: DonVi; ngay_kham: string; ma_kcb: string; ho_ten: string; gioi_tinh: string; nam_sinh: number;
   cccd: string; dia_chi_chi_tiet: string; co_tt_ksk: number; da_xac_nhan: boolean; xn_ho_ten: string | null;
   xac_nhan_at: Date | null; nguon: 'cowork' | 'them_tay'; nhan_tu_kho_chung: boolean; ghi_chu: string;
+  canh_bao_so: string[] | null;
 };
 
 export async function layDuLieuBaoCao(sql: Sql, tc: TuyChonBaoCao = {}): Promise<DuLieuBaoCao> {
@@ -104,7 +106,7 @@ export async function layDuLieuBaoCao(sql: Sql, tc: TuyChonBaoCao = {}): Promise
   const hRows = await sql.unsafe<HoSoRow[]>(
     `SELECT h.id, b.don_vi, b.ngay_kham, h.ma_kcb, h.ho_ten, h.gioi_tinh, h.nam_sinh, h.cccd, h.dia_chi_chi_tiet,
             ${CLS.map((c) => `h.${c.col}`).join(', ')}, h.co_tt_ksk, h.da_xac_nhan, xn.ho_ten AS xn_ho_ten, h.xac_nhan_at,
-            h.nguon, h.nhan_tu_kho_chung, h.ghi_chu
+            h.nguon, h.nhan_tu_kho_chung, h.ghi_chu, h.canh_bao_so
      FROM ho_so h
      JOIN buoi_kham b ON b.id = h.buoi_id
      LEFT JOIN users xn ON xn.id = h.xac_nhan_by
@@ -117,7 +119,7 @@ export async function layDuLieuBaoCao(sql: Sql, tc: TuyChonBaoCao = {}): Promise
     nam_sinh: r.nam_sinh, cccd: r.cccd, dia_chi_chi_tiet: r.dia_chi_chi_tiet,
     cls: Object.fromEntries(CLS_KEYS.map((k) => [k, Number(r[k])])) as Record<ClsKey, number>,
     co_tt_ksk: r.co_tt_ksk, da_xac_nhan: r.da_xac_nhan, nguoi_xac_nhan: r.xn_ho_ten ?? '', xac_nhan_at: r.xac_nhan_at,
-    nguon: r.nguon, nhan_tu_kho_chung: r.nhan_tu_kho_chung, ghi_chu: r.ghi_chu,
+    nguon: r.nguon, nhan_tu_kho_chung: r.nhan_tu_kho_chung, ghi_chu: r.ghi_chu, canh_bao_so: r.canh_bao_so ?? [],
   }));
   return { buoi, hoSo, chiDaXacNhan };
 }
