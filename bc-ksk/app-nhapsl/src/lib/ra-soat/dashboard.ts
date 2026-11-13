@@ -52,7 +52,9 @@ export async function dashboardToi(user: AuthUser): Promise<{
       FROM de_nghi_chuyen d
       JOIN ho_so h ON h.id = d.ho_so_id
       LEFT JOIN buoi_kham b ON b.id = h.buoi_id AND h.vi_tri = 'buoi'
-      WHERE d.trang_thai = 'cho_xu_ly' ${admin ? sql`` : sql`AND b.phu_trach_user_id = ${user.id}`}`,
+      JOIN buoi_kham db ON db.id = d.den_buoi_id
+      WHERE d.trang_thai = 'cho_xu_ly' AND d.tu_user_id <> ${user.id}
+        ${admin ? sql`` : sql`AND ((d.loai = 'xin_ve' AND b.phu_trach_user_id = ${user.id}) OR (d.loai = 'gui_di' AND db.phu_trach_user_id = ${user.id}))`}`,
   ]);
   return { the: tongHopTuBuoi(buoi, kho.ket_qua.length), buoi, kho_ca_nhan: kho.ket_qua, de_nghi_cho_toi: dn.n };
 }

@@ -20,6 +20,8 @@ type HsKhoa = {
 };
 type BuoiKhoa = { id: number; ma_buoi: string; phu_trach_user_id: number | null; trang_thai: string };
 
+export const LOI_DICH_NGUOI_KHAC = 'Buổi đích của người khác: hãy gửi đề nghị để người đó chấp nhận';
+
 const INT_MAX = 2_147_483_647;
 
 /** id hoặc ma_buoi → id buổi (không khóa). */
@@ -44,7 +46,9 @@ export async function giaiBuoi(sql: Sql, ref: number | string): Promise<number> 
 export async function diChuyenTrongTx(
   sql: Sql,
   user: AuthUser,
-  p: { id: number; version: number | null; dich: Dich; lyDo: string; che: 'chuyen' | 'nhan_ve'; ghiVet?: { userId: number | null; tienTo: string } },
+  p: { id: number; version: number | null; dich: Dich; lyDo: string; che: 'chuyen' | 'nhan_ve'; ghiVet?: { userId: number | null; tienTo: string };
+    /** Duyệt đề nghị 'gui_di': người duyệt là người nhận (buổi đích), không cần quyền buổi nguồn. Mặc định false. */
+    boQuaQuyenNguon?: boolean },
 ): Promise<{ buoiCuId: number | null; buoiMoiId: number | null }> {
   if (p.che === 'chuyen' && p.dich.loai === 'buoi' && p.lyDo.trim() === '') {
     throw new LoiNghiepVu(400, 'Chuyển sang buổi khám khác cần ghi lý do');
@@ -71,7 +75,7 @@ export async function diChuyenTrongTx(
       throw new LoiNghiepVu(403, 'Hồ sơ này thuộc kho cá nhân của người khác');
     }
   } else if (h.vi_tri === 'buoi') {
-    if (!bNguon || !coQuyenBuoi(user, bNguon.phu_trach_user_id)) throw new LoiNghiepVu(403, LOI_KHONG_QUYEN_BUOI);
+    if (!bNguon || (!p.boQuaQuyenNguon && !coQuyenBuoi(user, bNguon.phu_trach_user_id))) throw new LoiNghiepVu(403, LOI_KHONG_QUYEN_BUOI);
   } else if (h.vi_tri === 'kho_ca_nhan') {
     if (!laAdmin(user) && h.kho_user_id !== user.id) throw new LoiNghiepVu(403, 'Hồ sơ này không thuộc kho của bạn');
   } else if (!laAdmin(user)) {
@@ -136,6 +140,12 @@ export async function chuyenHoSo(user: AuthUser, id: number, body: ChuyenBody): 
   return (await getSql().begin(async (tx) => {
     const sql = tx as unknown as Sql;
     const dich: Dich = body.den === 'buoi' ? { loai: 'buoi', buoi: body.buoi as number | string } : { loai: body.den };
+    // Phase 11: nhân viên chỉ chuyển thẳng vào buổi của chính mình; buổi người khác phải gửi đề nghị (admin không đổi).
+    if (dich.loai === 'buoi' && !laAdmin(user) && (body.ly_do ?? '').trim() !== '') {
+      const denId = await giaiBuoi(sql, dich.buoi);
+      const [bd] = await sql<{ phu_trach_user_id: number | null }[]>`SELECT phu_trach_user_id FROM buoi_kham WHERE id = ${denId}`;
+      if (bd.phu_trach_user_id !== user.id) throw new LoiNghiepVu(403, LOI_DICH_NGUOI_KHAC);
+    }
     const r = await diChuyenTrongTx(sql, user, { id, version: body.version, dich, lyDo: (body.ly_do ?? '').trim(), che: 'chuyen' });
     return dongGoi(sql, user, id, r);
   })) as KetQuaChuyen;

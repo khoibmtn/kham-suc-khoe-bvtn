@@ -308,7 +308,7 @@ export function ThongBaoAmBaoModal({ open, onClose }: Props) {
               <div>
                 <div className="thong-bao-section-title">Âm báo trong ứng dụng</div>
                 <div className="thong-bao-section-sub">
-                  Phát tiếng chuông 2 nốt và rung nhẹ khi có đề nghị chuyển hồ sơ gửi đến bạn (nhắc lại mỗi 2 phút nếu còn chờ).
+                  Phát tiếng chuông 3 nốt kiểu tin nhắn iPhone và rung nhẹ khi có đề nghị chuyển hồ sơ gửi đến bạn (nhắc lại mỗi 2 phút nếu còn chờ).
                 </div>
               </div>
               <span className={amBaoBat ? 'badge badge-xong' : 'badge badge-chua'}>

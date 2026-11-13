@@ -90,7 +90,8 @@ describe('kịch bản D — kho cá nhân / kho chung / nhận về', () => {
     expect(nv.ho_so.chuyen!.tu).toBe('kho_chung');
 
     // chuyển tiếp sang buổi khác: vẫn là hồ sơ bổ sung
-    const tiep = await chuyenHoSo(trinh, h.id, { version: nv.ho_so.version, den: 'buoi', buoi: B7, ly_do: 'Thuộc buổi 07/09' });
+    // (Phase 11: nhân viên không chuyển thẳng sang buổi người khác → dùng admin)
+    const tiep = await chuyenHoSo(admin, h.id, { version: nv.ho_so.version, den: 'buoi', buoi: B7, ly_do: 'Thuộc buổi 07/09' });
     expect(tiep.ho_so.nhan_tu_kho_chung).toBe(true);
     expect(tiep.buoi_moi!.bo_sung).toBe(1);
     expect(tiep.buoi_cu!.bo_sung).toBe(0);
@@ -124,16 +125,19 @@ describe('kịch bản D — kho cá nhân / kho chung / nhận về', () => {
 });
 
 describe('kịch bản E — chuyển: chặn và quyền', () => {
-  it('sang buổi người khác thiếu lý do → 400; có lý do → được', async () => {
+  it('sang buổi người khác: thiếu lý do → 400; nhân viên 403 (phải gửi đề nghị); admin được', async () => {
     const h = await hs('H001');
     expect((await loi(chuyenHoSo(ngan, h.id, { version: h.version, den: 'buoi', buoi: B8 }))).status).toBe(400);
     expect((await loi(chuyenHoSo(ngan, h.id, { version: h.version, den: 'buoi', buoi: B8, ly_do: '  ' }))).status).toBe(400);
-    const r = await chuyenHoSo(ngan, h.id, { version: h.version, den: 'buoi', buoi: B8, ly_do: 'Khám nhầm buổi' });
+    const e403 = await loi(chuyenHoSo(ngan, h.id, { version: h.version, den: 'buoi', buoi: B8, ly_do: 'Khám nhầm buổi' }));
+    expect(e403.status).toBe(403);
+    expect(e403.message).toBe('Buổi đích của người khác: hãy gửi đề nghị để người đó chấp nhận');
+    const r = await chuyenHoSo(admin, h.id, { version: h.version, den: 'buoi', buoi: B8, ly_do: 'Khám nhầm buổi' });
     expect(r.ho_so.buoi!.ma_buoi).toBe(B8);
     expect(r.ho_so.chuyen).toMatchObject({ tu: B7, ly_do: 'Khám nhầm buổi' });
     expect(r.buoi_cu!.hien_co).toBe(2);
     expect(r.buoi_moi!.hien_co).toBe(3);
-    expect(r.ho_so.co_quyen_sua).toBe(false);
+    expect(r.ho_so.co_quyen_sua).toBe(true); // admin
     const [row] = await sql()<{ da_di_chuyen: boolean; nhan_tu_kho_chung: boolean }[]>`SELECT da_di_chuyen, nhan_tu_kho_chung FROM ho_so WHERE id = ${h.id}`;
     expect(row).toEqual({ da_di_chuyen: true, nhan_tu_kho_chung: false });
   });
@@ -150,7 +154,7 @@ describe('kịch bản E — chuyển: chặn và quyền', () => {
   it('buổi nguồn hoặc đích khóa → 423', async () => {
     const h = await hs('H001');
     await sql()`UPDATE buoi_kham SET trang_thai = 'da_xac_nhan' WHERE ma_buoi = ${B8}`;
-    expect((await loi(chuyenHoSo(ngan, h.id, { version: h.version, den: 'buoi', buoi: B8, ly_do: 'x' }))).status).toBe(423);
+    expect((await loi(chuyenHoSo(admin, h.id, { version: h.version, den: 'buoi', buoi: B8, ly_do: 'x' }))).status).toBe(423);
     await sql()`UPDATE buoi_kham SET trang_thai = 'da_xac_nhan' WHERE ma_buoi = ${B7}`;
     expect((await loi(chuyenHoSo(ngan, h.id, { version: h.version, den: 'kho_chung' }))).status).toBe(423);
   });

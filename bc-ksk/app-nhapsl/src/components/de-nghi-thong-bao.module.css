@@ -112,6 +112,43 @@
   color: #92400e;
 }
 
+.popupHeadLeft {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.loaiBadgeXinVe,
+.loaiBadgeGuiDi {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.loaiBadgeXinVe {
+  background-color: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #93c5fd;
+}
+
+.loaiBadgeGuiDi {
+  background-color: #e0e7ff;
+  color: #3730a3;
+  border: 1px solid #818cf8;
+}
+
+.popupApprover {
+  margin: 0 0 4px;
+  color: #334155;
+  font-size: 0.8125rem;
+}
+
 .close {
   border: none;
   background: transparent;

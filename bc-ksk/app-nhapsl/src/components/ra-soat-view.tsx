@@ -15,9 +15,11 @@ import {
   HANH_DONG_NHAN,
   type BuoiTomTat,
   type ChuyenBody,
+  type DeNghiChuyen,
   type HoSoDong,
   type HoSoSuaBody,
   type KetQuaTimKiem,
+  type LoaiDeNghi,
   type NhatKyDong,
 } from '@/lib/api-types';
 import {
@@ -98,6 +100,7 @@ type HoSoRowProps = {
   isSelected: boolean;
   canEdit: boolean;
   rowBusy: boolean;
+  dangChoChuyen?: boolean;
   onSelectRow: (id: number) => void;
   onOpenDetail: (id: number) => void;
   onToggleCls: (hoSo: HoSoDong, key: ClsKey) => void;
@@ -111,6 +114,7 @@ const HoSoRow = memo(function HoSoRow({
   isSelected,
   canEdit,
   rowBusy,
+  dangChoChuyen,
   onSelectRow,
   onOpenDetail,
   onToggleCls,
@@ -161,6 +165,14 @@ const HoSoRow = memo(function HoSoRow({
           )}
           {hoSo.nguon === 'them_tay' && (
             <span className="chip chip-manual">Thêm tay</span>
+          )}
+          {dangChoChuyen && (
+            <span
+              className="chip chip-pending-transfer"
+              title="Đang có đề nghị chuyển chờ người phụ trách buổi khác xử lý"
+            >
+              Đang chờ chuyển
+            </span>
           )}
         </div>
         <div className="hoten-sub-line">
@@ -290,6 +302,7 @@ const HoSoMobileCard = memo(function HoSoMobileCard({
   isSelected,
   canEdit,
   rowBusy,
+  dangChoChuyen,
   onOpenDetail,
   onToggleCls,
   onToggleXacNhan,
@@ -337,6 +350,11 @@ const HoSoMobileCard = memo(function HoSoMobileCard({
           )}
           {hoSo.nguon === 'them_tay' && (
             <span className="chip chip-manual ml-1">Thêm tay</span>
+          )}
+          {dangChoChuyen && (
+            <span className="chip chip-pending-transfer ml-1">
+              Đang chờ chuyển
+            </span>
           )}
         </div>
         <button
@@ -1023,6 +1041,7 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
   // Set id giữ tạm: khi sửa CLS/xác nhận/nhân thân mà dòng không còn khớp bộ lọc,
   // giữ dòng đó hiển thị tới khi đổi bộ lọc hoặc chọn dòng khác.
   const [giuTamIds, setGiuTamIds] = useState<Set<number>>(() => new Set());
+  const [choChuyenIds, setChoChuyenIds] = useState<Set<number>>(() => new Set());
 
   const [busyRowIds, setBusyRowIds] = useState<Record<number, boolean>>({});
   const [movingHoSo, setMovingHoSo] = useState<boolean>(false);
@@ -1060,14 +1079,31 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
     [hoSoList, effectiveQuery],
   );
 
+  const loadChoChuyenIds = useCallback(async () => {
+    const res = await apiRequest<{ de_nghi: DeNghiChuyen[] }>(
+      '/api/de-nghi-chuyen?trang_thai=cho_xu_ly',
+    );
+    if (!res.ok) return;
+    const ids = new Set<number>();
+    for (const d of res.data.de_nghi ?? []) {
+      if (d.trang_thai === 'cho_xu_ly') {
+        ids.add(d.ho_so.id);
+      }
+    }
+    setChoChuyenIds(ids);
+  }, []);
+
   const reloadBuoiHoSo = useCallback(async () => {
     setLoading(true);
     setError('');
     setErrorStatus(0);
 
-    const res = await apiRequest<{ buoi: BuoiTomTat; ho_so: HoSoDong[] }>(
-      `/api/buoi/${encodeURIComponent(maBuoi)}/ho-so`,
-    );
+    const [res] = await Promise.all([
+      apiRequest<{ buoi: BuoiTomTat; ho_so: HoSoDong[] }>(
+        `/api/buoi/${encodeURIComponent(maBuoi)}/ho-so`,
+      ),
+      loadChoChuyenIds(),
+    ]);
 
     if (!res.ok) {
       setError(res.error);
@@ -1079,10 +1115,22 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
     setBuoi(res.data.buoi);
     setHoSoList(res.data.ho_so ?? []);
     setLoading(false);
-  }, [maBuoi]);
+  }, [loadChoChuyenIds, maBuoi]);
 
   useEffect(() => {
     let cancelled = false;
+    apiRequest<{ de_nghi: DeNghiChuyen[] }>(
+      '/api/de-nghi-chuyen?trang_thai=cho_xu_ly',
+    ).then((res) => {
+      if (cancelled || !res.ok) return;
+      const ids = new Set<number>();
+      for (const d of res.data.de_nghi ?? []) {
+        if (d.trang_thai === 'cho_xu_ly') {
+          ids.add(d.ho_so.id);
+        }
+      }
+      setChoChuyenIds(ids);
+    });
     apiRequest<{ buoi: BuoiTomTat; ho_so: HoSoDong[] }>(
       `/api/buoi/${encodeURIComponent(maBuoi)}/ho-so`,
     ).then((res) => {
@@ -1547,8 +1595,77 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
   );
 
   const handleConfirmChuyenBuoi = useCallback(
-    async (buoiDich: string, lyDo: string) => {
+    async (buoiDich: string, lyDo: string, targetBuoi?: BuoiTomTat) => {
       if (!chuyenBuoiTarget) return;
+
+      // Nhân viên chọn buổi của người khác (!co_quyen_sua) → gửi đề nghị chuyển 'gui_di'
+      if (!isAdmin && targetBuoi && !targetBuoi.co_quyen_sua) {
+        if (chuyenBuoiTarget.da_xac_nhan) {
+          showToast('Bỏ xác nhận trước khi chuyển.', 'warning');
+          return;
+        }
+        setMovingHoSo(true);
+        const body: {
+          ho_so_id: number;
+          den_buoi: string;
+          ly_do: string;
+          loai: LoaiDeNghi;
+        } = {
+          ho_so_id: chuyenBuoiTarget.id,
+          den_buoi: buoiDich,
+          ly_do: lyDo,
+          loai: 'gui_di',
+        };
+        const res = await apiRequest<{ de_nghi: DeNghiChuyen }>(
+          '/api/de-nghi-chuyen',
+          {
+            method: 'POST',
+            body: JSON.stringify(body),
+          },
+        );
+        setMovingHoSo(false);
+
+        if (!res.ok) {
+          showToast(res.error, 'error');
+          return;
+        }
+
+        const hoSoId = chuyenBuoiTarget.id;
+        setChuyenBuoiTarget(null);
+        notifyPoolChanged();
+
+        if (res.data.de_nghi.trang_thai === 'dong_y') {
+          setHoSoList((prev) => prev.filter((item) => item.id !== hoSoId));
+          setGiuTamIds((prev) => {
+            if (!prev.has(hoSoId)) return prev;
+            const next = new Set(prev);
+            next.delete(hoSoId);
+            return next;
+          });
+          void reloadBuoiHoSo();
+          showToast(
+            `Đã chuyển hồ sơ #${hoSoId} sang buổi ${buoiDich}.`,
+            'success',
+          );
+          return;
+        }
+
+        setChoChuyenIds((prev) => {
+          const next = new Set(prev);
+          next.add(hoSoId);
+          return next;
+        });
+        const tenPhuTrach =
+          targetBuoi.phu_trach?.ho_ten ??
+          res.data.de_nghi.nguoi_duyet?.ho_ten ??
+          'người phụ trách buổi đó';
+        showToast(
+          `Đã gửi đề nghị, chờ ${tenPhuTrach} chấp nhận`,
+          'success',
+        );
+        return;
+      }
+
       const ok = await executeChuyenHoSo(
         chuyenBuoiTarget,
         {
@@ -1563,7 +1680,7 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
         setChuyenBuoiTarget(null);
       }
     },
-    [chuyenBuoiTarget, executeChuyenHoSo],
+    [chuyenBuoiTarget, executeChuyenHoSo, isAdmin, reloadBuoiHoSo, showToast],
   );
 
   const handleCreatedNewHoSo = useCallback(
@@ -2187,6 +2304,7 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
                     isSelected={effectiveSelectedId === h.id}
                     canEdit={canEdit}
                     rowBusy={Boolean(busyRowIds[h.id])}
+                    dangChoChuyen={choChuyenIds.has(h.id)}
                     onSelectRow={handleSelectRow}
                     onOpenDetail={handleOpenDetail}
                     onToggleCls={handleToggleCls}
@@ -2234,6 +2352,7 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
                         isSelected={effectiveSelectedId === h.id}
                         canEdit={canEdit}
                         rowBusy={Boolean(busyRowIds[h.id])}
+                        dangChoChuyen={choChuyenIds.has(h.id)}
                         onSelectRow={handleSelectRow}
                         onOpenDetail={handleOpenDetail}
                         onToggleCls={handleToggleCls}
@@ -2349,10 +2468,11 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
           open={true}
           hoSo={chuyenBuoiTarget}
           currentMaBuoi={maBuoi}
+          isAdmin={isAdmin}
           loading={movingHoSo}
           onCancel={() => setChuyenBuoiTarget(null)}
-          onConfirm={(buoiDich, lyDo) =>
-            void handleConfirmChuyenBuoi(buoiDich, lyDo)
+          onConfirm={(buoiDich, lyDo, targetBuoi) =>
+            void handleConfirmChuyenBuoi(buoiDich, lyDo, targetBuoi)
           }
         />
       )}

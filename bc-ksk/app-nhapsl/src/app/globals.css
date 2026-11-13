@@ -3973,3 +3973,39 @@ input[type="search"]::-webkit-search-decoration {
 .app-bell-compact .app-bell-label {
   display: none;
 }
+
+/* T22: Two-way transfer request badges and pending-transfer chip */
+.badge-xin-ve {
+  background-color: #dbeafe;
+  color: #1e40af;
+  border-color: #93c5fd;
+}
+
+.badge-gui-di {
+  background-color: #e0e7ff;
+  color: #3730a3;
+  border-color: #818cf8;
+}
+
+.chip-pending-transfer {
+  background-color: #fef3c7;
+  color: #92400e;
+  border-color: #f59e0b;
+}
+
+.denghi-summary-line {
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--text);
+  margin-top: 2px;
+}
+
+.denghi-mobile-approver {
+  font-size: 0.875rem;
+  color: var(--text);
+  margin: 4px 0;
+}
+
+.tu-duyet-info-strip .badge {
+  white-space: normal;
+}

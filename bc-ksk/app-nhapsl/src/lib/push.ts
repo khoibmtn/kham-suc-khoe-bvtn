@@ -54,7 +54,15 @@ export async function guiPush(userIds: number[], payload: PushPayload): Promise<
 }
 
 // ---- Dựng nội dung (không chứa họ tên bệnh nhân, CCCD, năm sinh, lý do, ghi chú) ----
-export function payloadDeNghiMoi(p: { id: number; nguoiDeNghi: string; tuBuoi: string; denBuoi: string }): PushPayload {
+export function payloadDeNghiMoi(p: { id: number; nguoiDeNghi: string; tuBuoi: string; denBuoi: string; loai?: 'xin_ve' | 'gui_di' }): PushPayload {
+  if (p.loai === 'gui_di') {
+    return {
+      title: 'Đề nghị nhận hồ sơ',
+      body: `${p.nguoiDeNghi} muốn gửi 1 hồ sơ từ ${p.tuBuoi} sang buổi ${p.denBuoi} của bạn`,
+      url: '/kho?tab=de_nghi',
+      tag: `de-nghi-${p.id}`,
+    };
+  }
   return {
     title: 'Đề nghị chuyển hồ sơ',
     body: `${p.nguoiDeNghi} xin chuyển 1 hồ sơ từ ${p.tuBuoi} về ${p.denBuoi}`,
@@ -76,8 +84,8 @@ export function payloadDaXuLy(p: { id: number; dongY: boolean; tuDong: boolean; 
 export async function thongBaoDeNghiMoi(id: number): Promise<void> {
   if (!cauHinhVapid()) return;
   const sql = getSql();
-  const [d] = await sql<{ tu_user_id: number; nd_ho_ten: string; tu_ma: string | null; den_ma: string; giu: number | null }[]>`
-    SELECT d.tu_user_id, nd.ho_ten AS nd_ho_ten, tb.ma_buoi AS tu_ma, db.ma_buoi AS den_ma, tb.phu_trach_user_id AS giu
+  const [d] = await sql<{ tu_user_id: number; nd_ho_ten: string; tu_ma: string | null; den_ma: string; giu: number | null; loai: 'xin_ve' | 'gui_di'; den_giu: number | null }[]>`
+    SELECT d.loai, db.phu_trach_user_id AS den_giu, d.tu_user_id, nd.ho_ten AS nd_ho_ten, tb.ma_buoi AS tu_ma, db.ma_buoi AS den_ma, tb.phu_trach_user_id AS giu
     FROM de_nghi_chuyen d
     JOIN users nd ON nd.id = d.tu_user_id
     JOIN ho_so h ON h.id = d.ho_so_id
@@ -87,9 +95,11 @@ export async function thongBaoDeNghiMoi(id: number): Promise<void> {
   if (!d) return;
   const admins = await sql<{ id: number }[]>`SELECT id FROM users WHERE role = 'admin' AND active`;
   const nguoiNhan = new Set<number>(admins.map((a) => a.id));
-  if (d.giu !== null) nguoiNhan.add(d.giu);
+  // xin_ve → người giữ hồ sơ hiện tại; gui_di → người phụ trách buổi đích.
+  const duyet = d.loai === 'gui_di' ? d.den_giu : d.giu;
+  if (duyet !== null) nguoiNhan.add(duyet);
   nguoiNhan.delete(d.tu_user_id);
-  await guiPush([...nguoiNhan], payloadDeNghiMoi({ id, nguoiDeNghi: d.nd_ho_ten, tuBuoi: d.tu_ma ?? '', denBuoi: d.den_ma }));
+  await guiPush([...nguoiNhan], payloadDeNghiMoi({ id, nguoiDeNghi: d.nd_ho_ten, tuBuoi: d.tu_ma ?? '', denBuoi: d.den_ma, loai: d.loai }));
 }
 
 /** Đề nghị đã xử lý (tay hoặc tự động) → người đề nghị. */

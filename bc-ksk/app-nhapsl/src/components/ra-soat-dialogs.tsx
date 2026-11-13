@@ -118,8 +118,9 @@ type ChuyenBuoiModalProps = {
   open: boolean;
   hoSo: HoSoDong | null;
   currentMaBuoi: string;
+  isAdmin?: boolean;
   loading: boolean;
-  onConfirm: (targetMaBuoi: string, lyDo: string) => void;
+  onConfirm: (targetMaBuoi: string, lyDo: string, targetBuoi: BuoiTomTat) => void;
   onCancel: () => void;
 };
 
@@ -127,14 +128,16 @@ export function ChuyenBuoiModal({
   open,
   hoSo,
   currentMaBuoi,
+  isAdmin = false,
   loading,
   onConfirm,
   onCancel,
 }: ChuyenBuoiModalProps) {
   const [allBuoi, setAllBuoi] = useState<BuoiTomTat[]>([]);
+  const [myUserId, setMyUserId] = useState<number | null>(null);
   const [loadingBuoi, setLoadingBuoi] = useState(true);
   const [buoiError, setBuoiError] = useState('');
-  const [donVi, setDonVi] = useState<string>('TN');
+  const [donVi, setDonVi] = useState<string>('');
   const [selectedMaBuoi, setSelectedMaBuoi] = useState<string>('');
   const [lyDo, setLyDo] = useState<string>('');
   const [formError, setFormError] = useState<string>('');
@@ -151,14 +154,20 @@ export function ChuyenBuoiModal({
         return;
       }
       setBuoiError('');
-      const list = (res.data.buoi ?? []).filter(
-        (b) => b.ma_buoi !== currentMaBuoi,
-      );
+      const raw = res.data.buoi ?? [];
+      const currentBuoi = raw.find((b) => b.ma_buoi === currentMaBuoi);
+      const list = raw.filter((b) => b.ma_buoi !== currentMaBuoi);
+      const detectedMyId =
+        currentBuoi?.phu_trach?.id ??
+        list.find((b) => b.co_quyen_sua)?.phu_trach?.id ??
+        null;
+      setMyUserId(detectedMyId);
       setAllBuoi(list);
+      setDonVi('');
       const unlocked = list.filter((b) => b.trang_thai !== 'da_xac_nhan');
-      const first = unlocked[0] ?? list[0];
+      const firstOwnUnlocked = unlocked.find((b) => b.co_quyen_sua);
+      const first = firstOwnUnlocked ?? unlocked[0] ?? list[0];
       if (first) {
-        setDonVi(first.don_vi);
         setSelectedMaBuoi(first.ma_buoi);
       }
     });
@@ -169,16 +178,36 @@ export function ChuyenBuoiModal({
   }, [open, currentMaBuoi]);
 
   const buoiTheoDonVi = useMemo(
-    () => allBuoi.filter((b) => b.don_vi === donVi),
+    () => (donVi ? allBuoi.filter((b) => b.don_vi === donVi) : allBuoi),
     [allBuoi, donVi],
   );
+
+  const { buoiCuaToi, buoiNguoiKhac } = useMemo(() => {
+    const cuaToi: BuoiTomTat[] = [];
+    const nguoiKhac: BuoiTomTat[] = [];
+    for (const b of buoiTheoDonVi) {
+      const laBuoiCuaToi =
+        b.co_quyen_sua || (!isAdmin && myUserId !== null && b.phu_trach?.id === myUserId);
+      if (laBuoiCuaToi) {
+        cuaToi.push(b);
+      } else {
+        nguoiKhac.push(b);
+      }
+    }
+    return { buoiCuaToi: cuaToi, buoiNguoiKhac: nguoiKhac };
+  }, [buoiTheoDonVi, isAdmin, myUserId]);
 
   const activeTargetBuoi = useMemo(
     () =>
       buoiTheoDonVi.find((b) => b.ma_buoi === selectedMaBuoi) ??
+      buoiTheoDonVi.find((b) => b.trang_thai !== 'da_xac_nhan') ??
       buoiTheoDonVi[0] ??
       null,
     [buoiTheoDonVi, selectedMaBuoi],
+  );
+
+  const laGuiDeNghi = Boolean(
+    !isAdmin && activeTargetBuoi && !activeTargetBuoi.co_quyen_sua,
   );
 
   useEffect(() => {
@@ -197,7 +226,9 @@ export function ChuyenBuoiModal({
 
   function handleDonViChange(nextDonVi: string) {
     setDonVi(nextDonVi);
-    const inUnit = allBuoi.filter((b) => b.don_vi === nextDonVi);
+    const inUnit = nextDonVi
+      ? allBuoi.filter((b) => b.don_vi === nextDonVi)
+      : allBuoi;
     const firstUnlocked = inUnit.find((b) => b.trang_thai !== 'da_xac_nhan');
     setSelectedMaBuoi((firstUnlocked ?? inUnit[0])?.ma_buoi ?? '');
   }
@@ -210,14 +241,28 @@ export function ChuyenBuoiModal({
       return;
     }
     if (activeTargetBuoi.trang_thai === 'da_xac_nhan') {
-      setFormError('Buổi khám đích đã khóa, không thể chuyển hồ sơ vào.');
+      setFormError('Buổi khám đích đã chốt, không thể chuyển hồ sơ vào.');
       return;
     }
     if (!lyDo.trim()) {
       setFormError('Vui lòng nhập lý do chuyển sang buổi khác (bắt buộc).');
       return;
     }
-    onConfirm(activeTargetBuoi.ma_buoi, lyDo.trim());
+    onConfirm(activeTargetBuoi.ma_buoi, lyDo.trim(), activeTargetBuoi);
+  }
+
+  function renderOptionBuoi(b: BuoiTomTat) {
+    const tenPhuTrach = b.phu_trach
+      ? `PT: ${b.phu_trach.ho_ten}`
+      : 'Chưa phân công';
+    const daChot = b.trang_thai === 'da_xac_nhan';
+    return (
+      <option key={b.ma_buoi} value={b.ma_buoi} disabled={daChot}>
+        {formatDate(b.ngay_kham)} · {b.diem_kham || b.ten_don_vi} ({b.ma_buoi}) —{' '}
+        {tenPhuTrach}
+        {daChot ? ' [Đã chốt]' : ''}
+      </option>
+    );
   }
 
   return (
@@ -256,7 +301,7 @@ export function ChuyenBuoiModal({
               <div className="form-stack mt-2">
                 <div className="form-field">
                   <label htmlFor="chuyen-don-vi" className="form-label">
-                    1. Chọn đơn vị đích *
+                    1. Lọc theo đơn vị đích
                   </label>
                   <select
                     id="chuyen-don-vi"
@@ -265,6 +310,7 @@ export function ChuyenBuoiModal({
                     onChange={(e) => handleDonViChange(e.target.value)}
                     disabled={loading}
                   >
+                    <option value="">Tất cả đơn vị</option>
                     {(['TN', 'LK', 'VK'] as const).map((code) => (
                       <option key={code} value={code}>
                         {DON_VI[code]} ({code})
@@ -275,7 +321,7 @@ export function ChuyenBuoiModal({
 
                 <div className="form-field">
                   <label htmlFor="chuyen-ngay-kham" className="form-label">
-                    2. Chọn ngày khám đích *
+                    2. Chọn buổi khám đích *
                   </label>
                   <select
                     id="chuyen-ngay-kham"
@@ -284,17 +330,16 @@ export function ChuyenBuoiModal({
                     onChange={(e) => setSelectedMaBuoi(e.target.value)}
                     disabled={loading || buoiTheoDonVi.length === 0}
                   >
-                    {buoiTheoDonVi.map((b) => (
-                      <option
-                        key={b.ma_buoi}
-                        value={b.ma_buoi}
-                        disabled={b.trang_thai === 'da_xac_nhan'}
-                      >
-                        {formatDate(b.ngay_kham)} · {b.diem_kham || '—'} (
-                        {b.ma_buoi})
-                        {b.trang_thai === 'da_xac_nhan' ? ' [Đã khóa]' : ''}
-                      </option>
-                    ))}
+                    {buoiCuaToi.length > 0 && (
+                      <optgroup label="Buổi của tôi — chuyển ngay">
+                        {buoiCuaToi.map(renderOptionBuoi)}
+                      </optgroup>
+                    )}
+                    {buoiNguoiKhac.length > 0 && (
+                      <optgroup label="Buổi của người khác — gửi đề nghị, chờ người phụ trách buổi đó chấp nhận">
+                        {buoiNguoiKhac.map(renderOptionBuoi)}
+                      </optgroup>
+                    )}
                   </select>
                 </div>
 
@@ -313,6 +358,16 @@ export function ChuyenBuoiModal({
                           : 'Chưa phân công'}
                       </strong>
                     </div>
+                    {laGuiDeNghi && (
+                      <div className="text-muted text-xs mt-1">
+                        Buổi này do{' '}
+                        <strong>
+                          {activeTargetBuoi.phu_trach?.ho_ten ?? 'người khác'}
+                        </strong>{' '}
+                        phụ trách — hệ thống sẽ gửi đề nghị chuyển và chờ người phụ
+                        trách buổi đó chấp nhận.
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -353,7 +408,13 @@ export function ChuyenBuoiModal({
                 activeTargetBuoi.trang_thai === 'da_xac_nhan'
               }
             >
-              {loading ? 'Đang chuyển…' : 'Chuyển sang buổi đã chọn'}
+              {loading
+                ? laGuiDeNghi
+                  ? 'Đang gửi đề nghị…'
+                  : 'Đang chuyển…'
+                : laGuiDeNghi
+                  ? 'Gửi đề nghị'
+                  : 'Chuyển sang buổi đã chọn'}
             </button>
           </div>
         </form>

@@ -114,7 +114,7 @@ export function khoiTaoMoKhoaAmBao(): () => void {
 }
 
 /**
- * Phát chuông 2 nốt (~0,6 giây, âm lượng vừa) bằng Web Audio + rung điện thoại nếu hỗ trợ.
+ * Phát chuông 3 nốt kiểu tin nhắn iOS (~0,9 giây) bằng Web Audio + rung điện thoại nếu hỗ trợ.
  * @param boQuaKiemTraBat - truyền true khi bấm nút "Nghe thử"
  */
 export function phatChuongThongBao(boQuaKiemTraBat = false): boolean {
@@ -138,27 +138,40 @@ export function phatChuongThongBao(boQuaKiemTraBat = false): boolean {
   const playNotes = () => {
     try {
       const now = ctx.currentTime;
-      // Nốt 1: E5 (~659.25 Hz) trong 0.24s, Nốt 2: A5 (~880 Hz) từ 0.24s đến 0.60s
-      const notes: Array<{ freq: number; start: number; duration: number; peak: number }> = [
-        { freq: 659.25, start: 0, duration: 0.24, peak: 0.22 },
-        { freq: 880.0, start: 0.24, duration: 0.36, peak: 0.26 },
+      // Owner 13/11/2026: "âm thanh tin nhắn chuẩn của iOS". Apple's sound file is copyrighted and cannot be
+      // bundled, so this synthesises a similar short three-note ascending bell ("tri-tone" style):
+      // B5 → E6 → G#6, ~0.11 s apart, bell timbre = fundamental + softer 2nd/3rd harmonics, exponential decay.
+      const notes: Array<{ freq: number; start: number; decay: number; peak: number }> = [
+        { freq: 987.77, start: 0, decay: 0.32, peak: 0.2 },
+        { freq: 1318.51, start: 0.11, decay: 0.32, peak: 0.2 },
+        { freq: 1661.22, start: 0.22, decay: 0.7, peak: 0.22 },
       ];
+      const partials: Array<{ mul: number; gain: number }> = [
+        { mul: 1, gain: 1 },
+        { mul: 2, gain: 0.28 },
+        { mul: 3, gain: 0.08 },
+      ];
+      const master = ctx.createGain();
+      master.gain.setValueAtTime(0.9, now);
+      master.connect(ctx.destination);
 
       for (const n of notes) {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(n.freq, now + n.start);
-
-        gain.gain.setValueAtTime(0.0001, now + n.start);
-        gain.gain.linearRampToValueAtTime(n.peak, now + n.start + 0.025);
-        gain.gain.exponentialRampToValueAtTime(0.0008, now + n.start + n.duration);
-
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-
-        osc.start(now + n.start);
-        osc.stop(now + n.start + n.duration + 0.02);
+        for (const pt of partials) {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(n.freq * pt.mul, now + n.start);
+          const peak = n.peak * pt.gain;
+          // Higher partials die out faster, like a struck bell.
+          const decay = n.decay / pt.mul;
+          gain.gain.setValueAtTime(0.0001, now + n.start);
+          gain.gain.linearRampToValueAtTime(peak, now + n.start + 0.006);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + n.start + 0.006 + decay);
+          osc.connect(gain);
+          gain.connect(master);
+          osc.start(now + n.start);
+          osc.stop(now + n.start + 0.006 + decay + 0.03);
+        }
       }
     } catch {
       // ignore audio errors

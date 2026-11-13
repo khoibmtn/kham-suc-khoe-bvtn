@@ -208,9 +208,9 @@ export const MUC: Muc[] = [
         tieuDe: 'Chuyển sang buổi khác',
         anh: { file: '09b-chuyen-sang-buoi-khac.png', alt: 'Hộp thoại chuyển hồ sơ sang buổi khám khác' },
         buoc: [
-          { n: 1, t: 'Chọn **đơn vị** và **ngày khám đích**.' },
+          { n: 1, t: 'Chọn **buổi khám đích** trong 2 nhóm rõ ràng: **Buổi của tôi — chuyển ngay** hoặc **Buổi của người khác — gửi đề nghị, chờ người phụ trách buổi đó chấp nhận**.' },
           { n: 2, t: 'Gõ **lý do** (bắt buộc), ví dụ “Hồ sơ giấy ghi ngày khám 14/09”.' },
-          { n: 3, t: 'Bấm **Chuyển sang buổi đã chọn**.' },
+          { n: 3, t: 'Bấm **Chuyển sang buổi đã chọn** (với buổi của mình) hoặc **Gửi đề nghị** (khi gửi sang buổi của người khác — người phụ trách buổi đích sẽ trực tiếp chấp nhận mà không cần qua Admin).' },
         ],
       },
     ],
@@ -276,24 +276,24 @@ export const MUC: Muc[] = [
   },
   {
     id: 'tim-toan-app',
-    tieuDe: 'Tìm toàn app và đề nghị chuyển',
-    khiNao: 'Có giấy của một người nhưng người đó đang nằm trong buổi của nhân viên khác, hoặc cần lọc hồ sơ trên toàn hệ thống.',
+    tieuDe: 'Tìm toàn app và đề nghị chuyển hai chiều',
+    khiNao: 'Có giấy của một người đang nằm ở buổi của nhân viên khác (xin nhận về), hoặc muốn gửi hồ sơ từ buổi của mình sang buổi của nhân viên khác (gửi sang).',
     khoi: [
       {
         anh: { file: '12-tim-kiem-toan-app.png', alt: 'Trang Tìm kiếm với phạm vi Toàn bộ DS, dòng Chỉ xem và nút Chuyển về buổi của tôi' },
         buoc: [
           { n: 1, t: 'Bấm **Tìm kiếm** trên menu, gõ từ khóa (họ tên, ghi chú, năm sinh, CCCD, mã KCB — hỗ trợ **tìm mờ theo thứ tự** và **tô vàng** chữ khớp), **Phạm vi** mặc định là **Toàn bộ DS** (có thể thu hẹp: Buổi của tôi, Kho chờ chung). Bấm dấu **✕** cuối ô hoặc **Esc** để xóa chữ.' },
           { n: 2, t: 'Dùng thanh **Bộ lọc tìm kiếm** (Xã/phường, Ngày khám, 8 cận lâm sàng **Tất cả / Có / Không**, Xác nhận, Nhân viên rà soát, Ghi chú, DS đẩy cổng, Nguồn, Vị trí) để lọc kết quả. Khi bật ít nhất 1 bộ lọc, bạn có thể bấm **Tìm kiếm** ngay cả khi để trống ô từ khóa.' },
-          { n: 3, t: 'Người thuộc buổi của người khác chỉ có nhãn **Chỉ xem**: bạn không sửa được hồ sơ đó.' },
-          { n: 4, t: 'Bấm **Đề nghị chuyển về buổi của tôi**, chọn buổi đích, ghi lý do rồi gửi. Chờ người phụ trách đồng ý.' },
+          { n: 3, t: 'Đề nghị chuyển hỗ trợ **hai chiều**: (1) **Xin nhận về** — hồ sơ đang ở buổi người khác, bạn bấm **Chuyển về buổi của tôi** để xin nhận về buổi của mình; (2) **Gửi sang** — hồ sơ đang ở buổi của bạn, bạn chọn buổi của người khác để gửi đề nghị sang cho họ.' },
+          { n: 4, t: '**Ai là người duyệt?** Người phụ trách buổi đối ứng sẽ **trực tiếp duyệt** mà không cần qua Admin: với **Xin nhận về**, người đang giữ buổi gốc duyệt; với **Gửi sang**, người nhận (phụ trách buổi đích) trực tiếp chấp nhận. **Quản trị viên (Admin)** vẫn có quyền phê duyệt toàn bộ đề nghị ở cả hai chiều.' },
         ],
       },
       {
-        tieuDe: 'Nếu bạn là người nhận đề nghị',
+        tieuDe: 'Nếu bạn là người duyệt đề nghị (người đang giữ hoặc người nhận)',
         anh: { file: '13-de-nghi-chuyen.png', alt: 'Tab Đề nghị chuyển với nút Đồng ý và Từ chối' },
         buoc: [
-          { n: 1, t: 'Vào **Kho chờ**, tab **Đề nghị chuyển** (menu hiện **Đề nghị: n** khi có đề nghị chờ). Bấm **Đồng ý** nếu đúng: hồ sơ chuyển sang buổi của người đề nghị.' },
-          { n: 2, t: 'Bấm **Từ chối** nếu không đúng (có thể ghi lý do ngắn gọn).' },
+          { n: 1, t: 'Vào **Kho chờ**, tab **Đề nghị chuyển** (menu hiện **Đề nghị: n** khi có đề nghị chờ bạn duyệt). Mỗi dòng có nhãn rõ **Xin nhận về** hoặc **Gửi sang** và ghi rõ **Người duyệt**.' },
+          { n: 2, t: 'Bấm **Đồng ý** để chuyển hồ sơ ngay sang buổi đích, hoặc bấm **Từ chối** nếu không đúng (có thể ghi lý do ngắn gọn).' },
         ],
       },
     ],
@@ -301,7 +301,7 @@ export const MUC: Muc[] = [
   {
     id: 'thong-bao-de-nghi',
     tieuDe: 'Thông báo đề nghị chuyển',
-    khiNao: 'Khi nhân viên khác gửi đề nghị xin chuyển hồ sơ từ buổi bạn đang phụ trách sang buổi của họ.',
+    khiNao: 'Khi nhân viên khác gửi đề nghị xin nhận hồ sơ từ buổi của bạn hoặc muốn gửi hồ sơ sang buổi của bạn.',
     khoi: [
       {
         anh: {
@@ -311,22 +311,22 @@ export const MUC: Muc[] = [
         buoc: [
           {
             n: 1,
-            t: '**Dải vàng** ngay dưới thanh trên cùng báo bạn có bao nhiêu đề nghị chuyển hồ sơ đang chờ xử lý và đề nghị mới nhất từ ai.',
+            t: '**Dải vàng** ngay dưới thanh trên cùng báo bạn có bao nhiêu đề nghị chuyển hồ sơ đang chờ xử lý, kèm nhãn **Xin nhận về** hoặc **Gửi sang** và tên người duyệt.',
           },
           {
             n: 2,
-            t: 'Bấm **Xem và xử lý →** trên dải vàng (hoặc **Xem và xử lý** trong popup) để mở tab **Đề nghị chuyển**, rồi bấm **Đồng ý** hoặc **Từ chối** (như ảnh mục trên).',
+            t: 'Bấm **Xem và xử lý →** trên dải vàng (hoặc **Xem và xử lý** trong popup) để mở tab **Đề nghị chuyển**, rồi bấm **Đồng ý** hoặc **Từ chối** trực tiếp mà không cần chờ Admin.',
           },
           {
             n: 3,
-            t: 'Đọc **popup góc phải** cho mỗi đề nghị mới: biết rõ ai xin chuyển, hồ sơ nào, từ buổi nào về buổi nào và lý do.',
+            t: 'Đọc **popup góc phải** cho mỗi đề nghị mới: biết rõ loại đề nghị (**Xin nhận về** / **Gửi sang**), ai gửi, hồ sơ nào, từ buổi nào sang buổi nào, người duyệt và lý do.',
           },
         ],
       },
     ],
     luuY: [
-      'Popup góc phải **tự mờ và tắt sau 10 giây**, nhưng **dải vàng** vẫn còn cho đến khi bạn xử lý xong hết các đề nghị.',
-      'Trên thanh menu, mục **Kho chờ** cũng hiện huy hiệu **Đề nghị: N** báo số đề nghị đang chờ.',
+      'Popup góc phải **tự mờ và tắt sau 10 giây**, nhưng **dải vàng** vẫn còn cho đến khi bạn xử lý xong hết các đề nghị gửi đến mình.',
+      'Trên thanh menu và thanh tab dưới điện thoại, mục **Kho chờ** hiện huy hiệu **Đề nghị: N** đếm chính xác các đề nghị đang chờ bạn duyệt.',
     ],
   },
   {
@@ -376,7 +376,7 @@ export const MUC: Muc[] = [
           },
           {
             n: 2,
-            t: '**Âm báo trong ứng dụng** (mặc định đang bật): phát tiếng chuông 2 nốt và rung nhẹ khi có đề nghị chuyển hồ sơ gửi đến bạn (kể cả khi tab trình duyệt đang ẩn trên máy tính). Nếu sau 2 phút vẫn còn đề nghị chờ và bạn chưa mở tab Đề nghị chuyển, chuông sẽ nhắc lại. Bấm **Nghe thử** để kiểm tra loa.',
+            t: '**Âm báo trong ứng dụng** (mặc định đang bật): phát tiếng chuông 3 nốt kiểu tin nhắn iPhone và rung nhẹ khi có đề nghị chuyển hồ sơ gửi đến bạn (kể cả khi tab trình duyệt đang ẩn trên máy tính). Nếu sau 2 phút vẫn còn đề nghị chờ và bạn chưa mở tab Đề nghị chuyển, chuông sẽ nhắc lại. Bấm **Nghe thử** để kiểm tra loa.',
           },
           {
             n: 3,
@@ -387,9 +387,9 @@ export const MUC: Muc[] = [
       {
         tieuDe: '3. Tự động duyệt đề nghị chuyển là gì?',
         ds: [
-          'Để nhân viên xin nhận hồ sơ không phải chờ lâu khi người giữ buổi gốc đang bận, **Quản trị viên (Admin)** có thể cấu hình chế độ **Tự động duyệt đề nghị chuyển** tại trang **Tổng quan (/admin)**: **Tắt**, **Duyệt ngay khi có đề nghị**, hoặc **Duyệt nếu sau N phút người giữ hồ sơ chưa xử lý** (mặc định 5 phút).',
+          'Để việc chuyển hồ sơ hai chiều (**Xin nhận về** và **Gửi sang**) không phải chờ lâu khi người duyệt (người giữ buổi gốc hoặc người nhận ở buổi đích) đang bận, **Quản trị viên (Admin)** có thể cấu hình chế độ **Tự động duyệt đề nghị chuyển** tại trang **Tổng quan (/admin)**: **Tắt**, **Duyệt ngay khi có đề nghị**, hoặc **Duyệt nếu sau N phút chưa xử lý** (mặc định 5 phút) — áp dụng cho **cả hai chiều**.',
           'Trong tab **Kho chờ → Đề nghị chuyển**, dòng đầu trang cho biết chế độ tự duyệt hiện tại và mỗi đề nghị đang chờ sẽ hiển thị đồng hồ đếm ngược **Tự duyệt sau mm:ss**.',
-          'Các đề nghị được hệ thống tự duyệt sẽ gắn nhãn **Tự động**. Nếu hồ sơ đã xác nhận hoặc buổi khám đã chốt khóa thì hệ thống **không tự duyệt** và sẽ hiện nhãn đỏ báo cần xử lý tay.',
+          'Các đề nghị được hệ thống tự duyệt sẽ gắn nhãn **Tự động**. Nếu hồ sơ đã xác nhận hoặc buổi khám đã chốt khóa thì hệ thống **không tự duyệt** và sẽ hiện nhãn đỏ báo cần xử lý tay (người phụ trách hoặc Admin đều duyệt được).',
         ],
       },
     ],

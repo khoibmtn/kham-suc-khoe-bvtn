@@ -10,7 +10,13 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { CaiDatTuDuyet, DeNghiChuyen, DeNghiChuyenTuDuyet } from '@/lib/api-types';
+import type {
+  CaiDatTuDuyet,
+  DeNghiChuyen,
+  DeNghiChuyenTuDuyet,
+  LoaiDeNghi,
+  UserNgan,
+} from '@/lib/api-types';
 import { formatPhutTuDuyetPopup, phatChuongThongBao } from '@/lib/client/am-bao';
 import styles from './de-nghi-thong-bao.module.css';
 
@@ -23,9 +29,138 @@ export type DeNghiChuyenCoTuDuyet = DeNghiChuyen & Partial<DeNghiChuyenTuDuyet>;
 
 type Props = { userId: number; isAdmin: boolean };
 
-export function denToi(d: DeNghiChuyen, userId: number, isAdmin: boolean): boolean {
+export const LOAI_DE_NGHI_NHAN: Record<LoaiDeNghi, string> = {
+  xin_ve: 'Xin nhận về',
+  gui_di: 'Gửi sang',
+};
+
+export type DeNghiToiThieu = Pick<
+  DeNghiChuyen,
+  'trang_thai' | 'nguoi_de_nghi' | 'tu_buoi' | 'den_buoi'
+> &
+  Partial<Pick<DeNghiChuyen, 'loai' | 'nguoi_duyet'>>;
+
+/** Trường `loai` thiếu trên dữ liệu cũ ⇒ mặc định coi là 'xin_ve'. */
+export function layLoaiDeNghi(d: Partial<Pick<DeNghiChuyen, 'loai'>>): LoaiDeNghi {
+  return d.loai === 'gui_di' ? 'gui_di' : 'xin_ve';
+}
+
+/** Trường `nguoi_duyet` thiếu trên dữ liệu cũ ⇒ dùng `tu_buoi.phu_trach` (hoặc `den_buoi.phu_trach` khi `gui_di`). */
+export function layNguoiDuyetDeNghi(
+  d: Pick<DeNghiChuyen, 'tu_buoi' | 'den_buoi'> & Partial<Pick<DeNghiChuyen, 'loai' | 'nguoi_duyet'>>,
+): UserNgan | null {
+  if (d.nguoi_duyet !== undefined) return d.nguoi_duyet;
+  if (layLoaiDeNghi(d) === 'gui_di') {
+    return d.den_buoi?.phu_trach ?? null;
+  }
+  return d.tu_buoi?.phu_trach ?? null;
+}
+
+export function tenNguoiDuyetDeNghi(
+  d: Pick<DeNghiChuyen, 'tu_buoi' | 'den_buoi'> & Partial<Pick<DeNghiChuyen, 'loai' | 'nguoi_duyet'>>,
+): string {
+  return layNguoiDuyetDeNghi(d)?.ho_ten ?? 'Quản trị viên';
+}
+
+export function denToi(d: DeNghiToiThieu, userId: number, isAdmin: boolean): boolean {
   if (d.trang_thai !== 'cho_xu_ly' || d.nguoi_de_nghi.id === userId) return false;
-  return isAdmin || d.tu_buoi?.phu_trach?.id === userId;
+  const nguoiDuyet = layNguoiDuyetDeNghi(d);
+  return isAdmin || nguoiDuyet?.id === userId;
+}
+
+export function moTaDeNghiChuyenText(
+  d: Pick<DeNghiChuyen, 'nguoi_de_nghi' | 'ho_so' | 'tu_buoi' | 'den_buoi'> &
+    Partial<Pick<DeNghiChuyen, 'loai' | 'nguoi_duyet' | 'trang_thai'>>,
+  userId: number,
+  isAdmin: boolean,
+): string {
+  const loai = layLoaiDeNghi(d);
+  const tenNguoiGui = d.nguoi_de_nghi.ho_ten;
+  const tenHoSo = d.ho_so.ho_ten;
+  const namSinh = d.ho_so.nam_sinh;
+  const maDenBuoi = d.den_buoi.ma_buoi;
+  const daChuyenDenBuoiDich =
+    d.trang_thai === 'dong_y' && d.tu_buoi?.ma_buoi === maDenBuoi;
+  const maTuBuoi = daChuyenDenBuoiDich
+    ? 'buổi gốc'
+    : (d.tu_buoi?.ma_buoi ?? 'Kho chưa gán');
+
+  if (loai === 'gui_di') {
+    const tenChuBuoiNguon = daChuyenDenBuoiDich
+      ? tenNguoiGui
+      : (d.tu_buoi?.phu_trach?.ho_ten ?? tenNguoiGui);
+    const laBuoiCuaToi =
+      !isAdmin &&
+      (d.den_buoi.phu_trach?.id === userId || layNguoiDuyetDeNghi(d)?.id === userId);
+    const tenChuBuoiDich =
+      d.den_buoi.phu_trach?.ho_ten ?? layNguoiDuyetDeNghi(d)?.ho_ten ?? 'Quản trị viên';
+    return `${tenNguoiGui} muốn gửi hồ sơ ${tenHoSo} (${namSinh}) từ ${daChuyenDenBuoiDich ? maTuBuoi : `buổi ${maTuBuoi}`} (của ${tenChuBuoiNguon}) sang buổi ${maDenBuoi} ${laBuoiCuaToi ? 'của bạn' : `của ${tenChuBuoiDich}`}`;
+  }
+
+  const tenChuBuoiDich = d.den_buoi.phu_trach?.ho_ten ?? tenNguoiGui;
+  return `${tenNguoiGui} xin nhận hồ sơ ${tenHoSo} (${namSinh}) từ ${daChuyenDenBuoiDich ? maTuBuoi : `buổi ${maTuBuoi}`} về buổi ${maDenBuoi} (của ${tenChuBuoiDich})`;
+}
+
+export function MoTaDeNghiChuyen({
+  deNghi: d,
+  userId,
+  isAdmin,
+}: {
+  deNghi: Pick<DeNghiChuyen, 'nguoi_de_nghi' | 'ho_so' | 'tu_buoi' | 'den_buoi'> &
+    Partial<Pick<DeNghiChuyen, 'loai' | 'nguoi_duyet' | 'trang_thai'>>;
+  userId: number;
+  isAdmin: boolean;
+}) {
+  const loai = layLoaiDeNghi(d);
+  const tenNguoiGui = d.nguoi_de_nghi.ho_ten;
+  const tenHoSo = d.ho_so.ho_ten;
+  const namSinh = d.ho_so.nam_sinh;
+  const maDenBuoi = d.den_buoi.ma_buoi;
+  const daChuyenDenBuoiDich =
+    d.trang_thai === 'dong_y' && d.tu_buoi?.ma_buoi === maDenBuoi;
+  const maTuBuoi = daChuyenDenBuoiDich
+    ? 'buổi gốc'
+    : (d.tu_buoi?.ma_buoi ?? 'Kho chưa gán');
+
+  if (loai === 'gui_di') {
+    const tenChuBuoiNguon = daChuyenDenBuoiDich
+      ? tenNguoiGui
+      : (d.tu_buoi?.phu_trach?.ho_ten ?? tenNguoiGui);
+    const laBuoiCuaToi =
+      !isAdmin &&
+      (d.den_buoi.phu_trach?.id === userId || layNguoiDuyetDeNghi(d)?.id === userId);
+    const tenChuBuoiDich =
+      d.den_buoi.phu_trach?.ho_ten ?? layNguoiDuyetDeNghi(d)?.ho_ten ?? 'Quản trị viên';
+    return (
+      <>
+        <strong>{tenNguoiGui}</strong> muốn gửi hồ sơ <strong>{tenHoSo}</strong> ({namSinh}) từ{' '}
+        {daChuyenDenBuoiDich ? (
+          <strong>{maTuBuoi}</strong>
+        ) : (
+          <>
+            buổi <strong>{maTuBuoi}</strong>
+          </>
+        )}{' '}
+        (của {tenChuBuoiNguon}) sang buổi <strong>{maDenBuoi}</strong>{' '}
+        {laBuoiCuaToi ? <strong>của bạn</strong> : <>của {tenChuBuoiDich}</>}
+      </>
+    );
+  }
+
+  const tenChuBuoiDich = d.den_buoi.phu_trach?.ho_ten ?? tenNguoiGui;
+  return (
+    <>
+      <strong>{tenNguoiGui}</strong> xin nhận hồ sơ <strong>{tenHoSo}</strong> ({namSinh}) từ{' '}
+      {daChuyenDenBuoiDich ? (
+        <strong>{maTuBuoi}</strong>
+      ) : (
+        <>
+          buổi <strong>{maTuBuoi}</strong>
+        </>
+      )}{' '}
+      về buổi <strong>{maDenBuoi}</strong> (của {tenChuBuoiDich})
+    </>
+  );
 }
 
 const seenKey = (userId: number) => `nhapsl:de-nghi-da-bao:${userId}`;
@@ -173,7 +308,18 @@ export function DeNghiThongBao({ userId, isAdmin }: Props) {
             xử lý
             {pending[0] && (
               <span className={styles.bannerDetail}>
-                {' '}— mới nhất: {pending[0].nguoi_de_nghi.ho_ten} xin chuyển về buổi {pending[0].den_buoi.ma_buoi}
+                {' '}— mới nhất:{' '}
+                <span
+                  className={
+                    layLoaiDeNghi(pending[0]) === 'gui_di'
+                      ? styles.loaiBadgeGuiDi
+                      : styles.loaiBadgeXinVe
+                  }
+                >
+                  {LOAI_DE_NGHI_NHAN[layLoaiDeNghi(pending[0])]}
+                </span>{' '}
+                <MoTaDeNghiChuyen deNghi={pending[0]} userId={userId} isAdmin={isAdmin} /> (Người
+                duyệt: {tenNguoiDuyetDeNghi(pending[0])})
               </span>
             )}
           </span>
@@ -196,7 +342,18 @@ export function DeNghiThongBao({ userId, isAdmin }: Props) {
             return (
               <div key={d.id} className={styles.popup} role="alert">
                 <div className={styles.popupHead}>
-                  <strong>Đề nghị chuyển hồ sơ mới</strong>
+                  <div className={styles.popupHeadLeft}>
+                    <strong>Đề nghị chuyển hồ sơ mới</strong>
+                    <span
+                      className={
+                        layLoaiDeNghi(d) === 'gui_di'
+                          ? styles.loaiBadgeGuiDi
+                          : styles.loaiBadgeXinVe
+                      }
+                    >
+                      {LOAI_DE_NGHI_NHAN[layLoaiDeNghi(d)]}
+                    </span>
+                  </div>
                   <button
                     type="button"
                     className={styles.close}
@@ -207,9 +364,10 @@ export function DeNghiThongBao({ userId, isAdmin }: Props) {
                   </button>
                 </div>
                 <p className={styles.popupBody}>
-                  <strong>{d.nguoi_de_nghi.ho_ten}</strong> đề nghị chuyển hồ sơ{' '}
-                  <strong>{d.ho_so.ho_ten}</strong> ({d.ho_so.nam_sinh}) từ buổi{' '}
-                  {d.tu_buoi?.ma_buoi ?? '—'} về buổi <strong>{d.den_buoi.ma_buoi}</strong>.
+                  <MoTaDeNghiChuyen deNghi={d} userId={userId} isAdmin={isAdmin} />.
+                </p>
+                <p className={styles.popupApprover}>
+                  Người duyệt: <strong>{tenNguoiDuyetDeNghi(d)}</strong>
                 </p>
                 {d.ly_do && <p className={styles.popupReason}>Lý do: {d.ly_do}</p>}
                 {dongTuDuyet && <p className={styles.popupAutoApprove}>{dongTuDuyet}</p>}

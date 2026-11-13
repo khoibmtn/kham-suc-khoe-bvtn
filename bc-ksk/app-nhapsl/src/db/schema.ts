@@ -151,6 +151,7 @@ export const deNghiChuyen = pgTable('de_nghi_chuyen', {
   xuLyGhiChu: text('xu_ly_ghi_chu').notNull().default(''),
   tuDong: boolean('tu_dong').notNull().default(false),
   tuDongLoi: text('tu_dong_loi').notNull().default(''),
+  loai: text('loai').$type<'xin_ve' | 'gui_di'>().notNull().default('xin_ve'),
 });
 
 export const caiDat = pgTable('cai_dat', {

@@ -95,6 +95,7 @@ export const deNghiSchema = z.strictObject({
   ho_so_id: z.number().int().min(1, 'Hồ sơ không hợp lệ'),
   den_buoi: buoiRef,
   ly_do: lyDo.optional(),
+  loai: z.enum(['xin_ve', 'gui_di'], { error: 'Loại đề nghị không hợp lệ' }).default('xin_ve'),
 });
 
 export const xuLyDeNghiSchema = z.strictObject({

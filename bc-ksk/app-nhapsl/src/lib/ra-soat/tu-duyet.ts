@@ -34,18 +34,20 @@ async function duyetMot(id: number, ghiChuXuLy: string): Promise<KetQua> {
   const loi: { msg: string | null } = { msg: null };
   const kq = await getSql().begin(async (tx): Promise<KetQua> => {
     const sql = tx as unknown as Sql;
-    const [d] = await sql<{ id: number; ho_so_id: number; den_buoi_id: number; ly_do: string }[]>`
-      SELECT id, ho_so_id, den_buoi_id, ly_do FROM de_nghi_chuyen
+    const [d] = await sql<{ id: number; ho_so_id: number; den_buoi_id: number; ly_do: string; loai: 'xin_ve' | 'gui_di' }[]>`
+      SELECT id, ho_so_id, den_buoi_id, ly_do, loai FROM de_nghi_chuyen
       WHERE id = ${id} AND trang_thai = 'cho_xu_ly' AND tu_dong_loi = '' FOR UPDATE SKIP LOCKED`;
     if (!d) return 'bo_qua';
     try {
       const [h] = await sql<{ vi_tri: string; buoi_id: number | null }[]>`SELECT vi_tri, buoi_id FROM ho_so WHERE id = ${d.ho_so_id}`;
       if (!h || h.vi_tri !== 'buoi' || h.buoi_id === null) throw new LoiNghiepVu(400, 'Hồ sơ không còn nằm trong buổi khám nào');
-      const [b] = await sql<{ phu_trach_user_id: number | null }[]>`SELECT phu_trach_user_id FROM buoi_kham WHERE id = ${h.buoi_id}`;
+      // xin_ve: người thực hiện = người giữ buổi hiện tại; gui_di: người phụ trách buổi đích (nguoi_duyet). Không có/không hoạt động → admin nhỏ nhất.
+      const [b] = await sql<{ phu_trach_user_id: number | null }[]>`
+        SELECT phu_trach_user_id FROM buoi_kham WHERE id = ${d.loai === 'gui_di' ? d.den_buoi_id : h.buoi_id}`;
       const giu = await layNguoiGiu(sql, b?.phu_trach_user_id ?? null);
       if (!giu) throw new LoiNghiepVu(400, 'Không có người giữ hồ sơ để tự duyệt');
       await diChuyenTrongTx(sql, giu, {
-        id: d.ho_so_id, version: null, dich: { loai: 'buoi', buoi: d.den_buoi_id }, lyDo: d.ly_do, che: 'chuyen',
+        id: d.ho_so_id, version: null, dich: { loai: 'buoi', buoi: d.den_buoi_id }, lyDo: d.ly_do, che: 'chuyen', boQuaQuyenNguon: d.loai === 'gui_di',
         ghiVet: { userId: null, tienTo: '[Tự động]' },
       });
       await sql`UPDATE de_nghi_chuyen SET trang_thai = 'dong_y', tu_dong = true, xu_ly_by = ${giu.id}, xu_ly_at = now(), xu_ly_ghi_chu = ${ghiChuXuLy} WHERE id = ${id}`;

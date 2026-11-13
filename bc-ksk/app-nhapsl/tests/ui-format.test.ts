@@ -27,6 +27,14 @@ import {
   TRANG_THAI_BUOI_NHAN,
 } from '@/lib/client/format';
 import { tinhTheTongHopTuBuoi } from '@/components/home-buoi-list';
+import {
+  denToi,
+  LOAI_DE_NGHI_NHAN,
+  layLoaiDeNghi,
+  layNguoiDuyetDeNghi,
+  moTaDeNghiChuyenText,
+  tenNguoiDuyetDeNghi,
+} from '@/components/de-nghi-thong-bao';
 import { MUC } from '@/components/huong-dan-noi-dung';
 import {
   TOAST_ACTION_DURATION_MS,
@@ -297,5 +305,74 @@ describe('UI client format helpers', () => {
     );
     expect(mucDienThoai).toBeDefined();
     expect(mucDienThoai?.tieuDe).toBe('Dùng trên điện thoại & thông báo');
+  });
+
+  it('Phase 11 / T22: đề nghị chuyển hai chiều (denToi, fallback trường thiếu, nhãn loại, mô tả)', () => {
+    expect(LOAI_DE_NGHI_NHAN.xin_ve).toBe('Xin nhận về');
+    expect(LOAI_DE_NGHI_NHAN.gui_di).toBe('Gửi sang');
+
+    // Fallback khi thiếu trường loai hoặc nguoi_duyet
+    expect(layLoaiDeNghi({})).toBe('xin_ve');
+    expect(layLoaiDeNghi({ loai: 'gui_di' })).toBe('gui_di');
+
+    const ngan = { id: 2, username: 'ngan', ho_ten: 'Ngân' };
+    const minh = { id: 3, username: 'minh', ho_ten: 'Minh' };
+
+    const deNghiCuThieuTruong = {
+      trang_thai: 'cho_xu_ly' as const,
+      nguoi_de_nghi: ngan,
+      ho_so: {
+        id: 101,
+        ho_ten: 'Nguyễn Văn A',
+        nam_sinh: 1960,
+        cccd: '',
+        ma_kcb: 'KCB01',
+      },
+      tu_buoi: { ma_buoi: '20260401-S-TN', phu_trach: minh },
+      den_buoi: { id: 20, ma_buoi: '20260402-S-TN', phu_trach: ngan },
+    };
+
+    expect(layNguoiDuyetDeNghi(deNghiCuThieuTruong)).toEqual(minh);
+    expect(tenNguoiDuyetDeNghi(deNghiCuThieuTruong)).toBe('Minh');
+    expect(denToi(deNghiCuThieuTruong, 3, false)).toBe(true); // Minh duyệt
+    expect(denToi(deNghiCuThieuTruong, 2, false)).toBe(false); // Ngân tự tạo
+    expect(denToi(deNghiCuThieuTruong, 1, true)).toBe(true); // Admin duyệt được tất cả
+    expect(moTaDeNghiChuyenText(deNghiCuThieuTruong, 3, false)).toBe(
+      'Ngân xin nhận hồ sơ Nguyễn Văn A (1960) từ buổi 20260401-S-TN về buổi 20260402-S-TN (của Ngân)',
+    );
+
+    // Đề nghị gửi đi (gui_di): Ngân gửi hồ sơ từ buổi A sang buổi B của Minh
+    const deNghiGuiDi = {
+      trang_thai: 'cho_xu_ly' as const,
+      loai: 'gui_di' as const,
+      nguoi_de_nghi: ngan,
+      nguoi_duyet: minh,
+      ho_so: {
+        id: 102,
+        ho_ten: 'Trần Thị B',
+        nam_sinh: 1955,
+        cccd: '',
+        ma_kcb: 'KCB02',
+      },
+      tu_buoi: { ma_buoi: '20260401-S-TN', phu_trach: ngan },
+      den_buoi: { id: 21, ma_buoi: '20260403-S-LK', phu_trach: minh },
+    };
+
+    expect(denToi(deNghiGuiDi, 3, false)).toBe(true); // Minh (người nhận) trực tiếp duyệt
+    expect(denToi(deNghiGuiDi, 2, false)).toBe(false); // Ngân tự gửi
+    expect(denToi(deNghiGuiDi, 1, true)).toBe(true); // Admin duyệt được
+    expect(denToi({ ...deNghiGuiDi, trang_thai: 'dong_y' }, 3, false)).toBe(false);
+
+    // Minh (người nhận) xem: "sang buổi B của bạn"
+    expect(moTaDeNghiChuyenText(deNghiGuiDi, 3, false)).toBe(
+      'Ngân muốn gửi hồ sơ Trần Thị B (1955) từ buổi 20260401-S-TN (của Ngân) sang buổi 20260403-S-LK của bạn',
+    );
+    // Admin xem: "sang buổi B của Minh"
+    expect(moTaDeNghiChuyenText(deNghiGuiDi, 1, true)).toBe(
+      'Ngân muốn gửi hồ sơ Trần Thị B (1955) từ buổi 20260401-S-TN (của Ngân) sang buổi 20260403-S-LK của Minh',
+    );
+
+    const mucTimKiem = MUC.find((m) => m.id === 'tim-toan-app');
+    expect(mucTimKiem?.tieuDe).toContain('hai chiều');
   });
 });

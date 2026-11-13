@@ -33,6 +33,14 @@ import {
   getCanhBaoTooltip,
 } from '@/lib/client/format';
 import { notifyPoolChanged } from './app-shell';
+import {
+  denToi,
+  LOAI_DE_NGHI_NHAN,
+  layLoaiDeNghi,
+  layNguoiDuyetDeNghi,
+  MoTaDeNghiChuyen,
+  tenNguoiDuyetDeNghi,
+} from './de-nghi-thong-bao';
 import { useToast } from './toast';
 
 export type KhoTab = 'kho_ca_nhan' | 'kho_chung' | 'de_nghi';
@@ -386,18 +394,33 @@ function XuLyDeNghiModal({
         <form onSubmit={handleSubmit}>
           <div className="modal-body">
             <p className="modal-desc">
+              <span
+                className={`badge ${
+                  layLoaiDeNghi(deNghi) === 'gui_di' ? 'badge-gui-di' : 'badge-xin-ve'
+                }`}
+              >
+                {LOAI_DE_NGHI_NHAN[layLoaiDeNghi(deNghi)]}
+              </span>{' '}
               Hồ sơ: <strong>{deNghi.ho_so.ho_ten}</strong> (ID #
               {deNghi.ho_so.id} · Năm sinh {deNghi.ho_so.nam_sinh})
             </p>
             <p className="modal-consequence">
               Người đề nghị: <strong>{deNghi.nguoi_de_nghi.ho_ten}</strong> ·
-              Chuyển sang buổi:{' '}
+              Từ buổi:{' '}
+              <strong>
+                {deNghi.tu_buoi ? formatMaViTri(deNghi.tu_buoi.ma_buoi) : 'Kho chưa gán'}
+              </strong>{' '}
+              → Sang buổi:{' '}
               <strong>{formatMaViTri(deNghi.den_buoi.ma_buoi)}</strong>
+              <br />
+              Người duyệt: <strong>{tenNguoiDuyetDeNghi(deNghi)}</strong>
               <br />
               Lý do đề nghị: <em>{deNghi.ly_do}</em>
               <br />
               {dongY
-                ? 'Khi đồng ý, hồ sơ sẽ lập tức được chuyển sang buổi đích của người đề nghị.'
+                ? layLoaiDeNghi(deNghi) === 'gui_di'
+                  ? 'Khi đồng ý, hồ sơ sẽ lập tức được nhận vào buổi khám đích.'
+                  : 'Khi đồng ý, hồ sơ sẽ lập tức được chuyển sang buổi đích của người đề nghị.'
                 : 'Khi từ chối, hồ sơ vẫn giữ nguyên ở buổi khám hiện tại.'}
             </p>
 
@@ -844,29 +867,36 @@ export function KhoView({ currentUser }: KhoViewProps) {
 
   // Phân nhóm đề nghị chuyển: Gửi đến tôi vs Tôi đã gửi
   const { deNghiDenToi, deNghiToiGui, soChoXuLy } = useMemo(() => {
-    const denToi: DeNghiChuyenItem[] = [];
+    const denToiList: DeNghiChuyenItem[] = [];
     const toiGui: DeNghiChuyenItem[] = [];
     for (const d of deNghiList) {
       const isMineSent = d.nguoi_de_nghi.id === currentUser.id;
+      const nguoiDuyet = layNguoiDuyetDeNghi(d);
       const isMineReceived =
-        d.tu_buoi?.phu_trach?.id === currentUser.id ||
-        (isAdmin && !isMineSent);
+        !isMineSent &&
+        (denToi(d, currentUser.id, isAdmin) ||
+          nguoiDuyet?.id === currentUser.id ||
+          (layLoaiDeNghi(d) === 'gui_di'
+            ? d.den_buoi?.phu_trach?.id === currentUser.id
+            : d.tu_buoi?.phu_trach?.id === currentUser.id) ||
+          d.xu_ly_by?.id === currentUser.id ||
+          isAdmin);
       if (isMineReceived) {
-        denToi.push(d);
+        denToiList.push(d);
       }
       if (isMineSent) {
         toiGui.push(d);
       }
     }
-    const pendingCount = deNghiList.filter(
-      (d) => d.trang_thai === 'cho_xu_ly',
+    const pendingCount = deNghiList.filter((d) =>
+      denToi(d, currentUser.id, isAdmin),
     ).length;
     return {
-      deNghiDenToi: denToi,
+      deNghiDenToi: denToiList,
       deNghiToiGui: toiGui,
       soChoXuLy: pendingCount,
     };
-  }, [currentUser.id, deNghiList, isAdmin]);
+  }, [currentUser, deNghiList, isAdmin]);
 
   return (
     <div className="page-container">
@@ -1160,8 +1190,8 @@ export function KhoView({ currentUser }: KhoViewProps) {
                     Đề nghị gửi đến tôi ({formatNumber(deNghiDenToi.length)})
                   </h2>
                   <span className="text-muted">
-                    Các đề nghị xin chuyển hồ sơ từ buổi khám bạn đang phụ trách
-                    sang buổi của người khác
+                    Các đề nghị xin nhận hồ sơ từ buổi khám của bạn hoặc gửi hồ
+                    sơ sang buổi của bạn
                   </span>
                 </div>
 
@@ -1175,91 +1205,122 @@ export function KhoView({ currentUser }: KhoViewProps) {
                   <>
                     {/* Thẻ đề nghị trên điện thoại */}
                     <div className="mobile-only-cards denghi-card-list">
-                      {deNghiDenToi.map((d) => (
-                        <div key={d.id} className="denghi-mobile-card">
-                          <div className="denghi-mobile-card-head">
-                            <div>
-                              <span className="text-muted text-xs num">#{d.id}</span>{' '}
-                              <strong>{d.nguoi_de_nghi.ho_ten}</strong>{' '}
-                              <span className="text-muted text-xs">xin chuyển</span>
+                      {deNghiDenToi.map((d) => {
+                        const loai = layLoaiDeNghi(d);
+                        const coQuyenXuLy = denToi(d, currentUser.id, isAdmin);
+                        return (
+                          <div key={d.id} className="denghi-mobile-card">
+                            <div className="denghi-mobile-card-head">
+                              <div className="denghi-mobile-badges">
+                                <span className="text-muted text-xs num">#{d.id}</span>
+                                <span
+                                  className={`badge ${
+                                    loai === 'gui_di' ? 'badge-gui-di' : 'badge-xin-ve'
+                                  }`}
+                                >
+                                  {LOAI_DE_NGHI_NHAN[loai]}
+                                </span>
+                              </div>
+                              <div className="denghi-mobile-badges">
+                                <span
+                                  className={`badge ${
+                                    d.trang_thai === 'dong_y'
+                                      ? 'badge-success'
+                                      : d.trang_thai === 'tu_choi'
+                                        ? 'badge-danger'
+                                        : 'badge-warning'
+                                  }`}
+                                >
+                                  {TRANG_THAI_DE_NGHI_NHAN[d.trang_thai]}
+                                </span>
+                                {d.trang_thai !== 'cho_xu_ly' && d.tu_dong && (
+                                  <span className="badge badge-primary">Tự động</span>
+                                )}
+                              </div>
                             </div>
-                            <div className="denghi-mobile-badges">
-                              <span
-                                className={`badge ${
-                                  d.trang_thai === 'dong_y'
-                                    ? 'badge-success'
-                                    : d.trang_thai === 'tu_choi'
-                                      ? 'badge-danger'
-                                      : 'badge-warning'
-                                }`}
-                              >
-                                {TRANG_THAI_DE_NGHI_NHAN[d.trang_thai]}
+
+                            <div className="denghi-mobile-hoso">
+                              <div className="denghi-summary-line">
+                                <MoTaDeNghiChuyen
+                                  deNghi={d}
+                                  userId={currentUser.id}
+                                  isAdmin={isAdmin}
+                                />
+                              </div>
+                              <div className="text-muted text-xs num">
+                                ID #{d.ho_so.id} · CCCD: {d.ho_so.cccd || '—'} · Mã KCB:{' '}
+                                {d.ho_so.ma_kcb || '—'}
+                              </div>
+                            </div>
+
+                            <div className="denghi-mobile-route">
+                              <span>
+                                Từ:{' '}
+                                <strong>
+                                  {d.tu_buoi &&
+                                  !(
+                                    d.trang_thai === 'dong_y' &&
+                                    d.tu_buoi.ma_buoi === d.den_buoi.ma_buoi
+                                  )
+                                    ? formatMaViTri(d.tu_buoi.ma_buoi)
+                                    : 'Đã rời buổi gốc'}
+                                </strong>
                               </span>
-                              {d.trang_thai !== 'cho_xu_ly' && d.tu_dong && (
-                                <span className="badge badge-primary">Tự động</span>
-                              )}
+                              <span aria-hidden="true">→</span>
+                              <span>
+                                {loai === 'gui_di' ? 'Sang:' : 'Về:'}{' '}
+                                <strong>{formatMaViTri(d.den_buoi.ma_buoi)}</strong>
+                              </span>
                             </div>
-                          </div>
 
-                          <div className="denghi-mobile-hoso">
-                            <strong>{d.ho_so.ho_ten}</strong> ({d.ho_so.nam_sinh}) · ID #
-                            {d.ho_so.id}
-                            <div className="text-muted text-xs num">
-                              CCCD: {d.ho_so.cccd || '—'} · Mã KCB: {d.ho_so.ma_kcb || '—'}
+                            <div className="denghi-mobile-approver">
+                              Người duyệt: <strong>{tenNguoiDuyetDeNghi(d)}</strong>
                             </div>
-                          </div>
 
-                          <div className="denghi-mobile-route">
-                            <span>
-                              Từ:{' '}
-                              <strong>
-                                {d.tu_buoi ? formatMaViTri(d.tu_buoi.ma_buoi) : 'Đã rời buổi'}
-                              </strong>
-                            </span>
-                            <span aria-hidden="true">→</span>
-                            <span>
-                              Về: <strong>{formatMaViTri(d.den_buoi.ma_buoi)}</strong>
-                            </span>
-                          </div>
-
-                          <div className="denghi-mobile-reason">
-                            <strong>Lý do:</strong> {d.ly_do}
-                          </div>
-
-                          <div className="denghi-mobile-meta num">
-                            <span>Gửi lúc: {formatDateTime(d.created_at)}</span>
-                          </div>
-
-                          {d.trang_thai === 'cho_xu_ly' && (
-                            <NhanTuDuyetDeNghi d={d} nowMs={nowMs} />
-                          )}
-
-                          {d.trang_thai === 'cho_xu_ly' ? (
-                            <div className="denghi-mobile-actions">
-                              <button
-                                type="button"
-                                className="btn btn-primary denghi-mobile-btn"
-                                onClick={() => setXuLyTarget({ deNghi: d, dongY: true })}
-                              >
-                                Đồng ý
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-danger denghi-mobile-btn"
-                                onClick={() => setXuLyTarget({ deNghi: d, dongY: false })}
-                              >
-                                Từ chối
-                              </button>
+                            <div className="denghi-mobile-reason">
+                              <strong>Lý do:</strong> {d.ly_do}
                             </div>
-                          ) : (
-                            <div className="text-muted text-xs">
-                              Xử lý bởi {d.xu_ly_by?.ho_ten ?? (d.tu_dong ? 'Hệ thống tự động' : '—')}{' '}
-                              lúc {formatDateTime(d.xu_ly_at)}
-                              {d.xu_ly_ghi_chu ? ` · Ghi chú: "${d.xu_ly_ghi_chu}"` : ''}
+
+                            <div className="denghi-mobile-meta num">
+                              <span>Gửi lúc: {formatDateTime(d.created_at)}</span>
                             </div>
-                          )}
-                        </div>
-                      ))}
+
+                            {d.trang_thai === 'cho_xu_ly' && (
+                              <NhanTuDuyetDeNghi d={d} nowMs={nowMs} />
+                            )}
+
+                            {coQuyenXuLy ? (
+                              <div className="denghi-mobile-actions">
+                                <button
+                                  type="button"
+                                  className="btn btn-primary denghi-mobile-btn"
+                                  onClick={() => setXuLyTarget({ deNghi: d, dongY: true })}
+                                >
+                                  Đồng ý
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-danger denghi-mobile-btn"
+                                  onClick={() => setXuLyTarget({ deNghi: d, dongY: false })}
+                                >
+                                  Từ chối
+                                </button>
+                              </div>
+                            ) : d.trang_thai === 'cho_xu_ly' ? (
+                              <div className="text-muted text-xs">
+                                Đang chờ {tenNguoiDuyetDeNghi(d)} phản hồi
+                              </div>
+                            ) : (
+                              <div className="text-muted text-xs">
+                                Xử lý bởi{' '}
+                                {d.xu_ly_by?.ho_ten ?? (d.tu_dong ? 'Hệ thống tự động' : '—')}{' '}
+                                lúc {formatDateTime(d.xu_ly_at)}
+                                {d.xu_ly_ghi_chu ? ` · Ghi chú: "${d.xu_ly_ghi_chu}"` : ''}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
 
                     {/* Bảng đầy đủ trên máy tính */}
@@ -1268,10 +1329,11 @@ export function KhoView({ currentUser }: KhoViewProps) {
                         <thead>
                           <tr>
                             <th className="num-col">Mã</th>
-                            <th>Hồ sơ</th>
+                            <th>Loại</th>
+                            <th>Hồ sơ &amp; Nội dung</th>
                             <th>Từ buổi</th>
                             <th>Sang buổi đích</th>
-                            <th>Người đề nghị</th>
+                            <th>Người duyệt</th>
                             <th>Lý do</th>
                             <th>Thời gian gửi</th>
                             <th>Trạng thái</th>
@@ -1279,112 +1341,153 @@ export function KhoView({ currentUser }: KhoViewProps) {
                           </tr>
                         </thead>
                         <tbody>
-                          {deNghiDenToi.map((d) => (
-                            <tr key={d.id}>
-                              <td className="num-col">#{d.id}</td>
-                              <td>
-                                <div>
-                                  <strong>{d.ho_so.ho_ten}</strong> (ID #
-                                  {d.ho_so.id})
-                                </div>
-                                <div className="text-muted">
-                                  Năm sinh: {d.ho_so.nam_sinh} · CCCD:{' '}
-                                  {d.ho_so.cccd || '—'} · Mã KCB:{' '}
-                                  {d.ho_so.ma_kcb || '—'}
-                                </div>
-                              </td>
-                              <td>
-                                {d.tu_buoi ? (
-                                  <>
-                                    <div>
-                                      <strong>
-                                        {formatMaViTri(d.tu_buoi.ma_buoi)}
-                                      </strong>
-                                    </div>
-                                    <div className="text-muted">
-                                      PT:{' '}
-                                      {d.tu_buoi.phu_trach?.ho_ten ??
-                                        'Chưa phân công'}
-                                    </div>
-                                  </>
-                                ) : (
-                                  <span className="text-muted">
-                                    Đã rời buổi khám
+                          {deNghiDenToi.map((d) => {
+                            const loai = layLoaiDeNghi(d);
+                            const coQuyenXuLy = denToi(d, currentUser.id, isAdmin);
+                            return (
+                              <tr key={d.id}>
+                                <td className="num-col">#{d.id}</td>
+                                <td>
+                                  <span
+                                    className={`badge ${
+                                      loai === 'gui_di' ? 'badge-gui-di' : 'badge-xin-ve'
+                                    }`}
+                                  >
+                                    {LOAI_DE_NGHI_NHAN[loai]}
                                   </span>
-                                )}
-                              </td>
-                              <td>
-                                <strong>
-                                  {formatMaViTri(d.den_buoi.ma_buoi)}
-                                </strong>
-                              </td>
-                              <td>
-                                <strong>{d.nguoi_de_nghi.ho_ten}</strong> (
-                                {d.nguoi_de_nghi.username})
-                              </td>
-                              <td>{d.ly_do}</td>
-                              <td className="num">
-                                {formatDateTime(d.created_at)}
-                              </td>
-                              <td>
-                                <div className="denghi-status-cell">
+                                </td>
+                                <td>
                                   <div>
-                                    <span
-                                      className={`badge ${
-                                        d.trang_thai === 'dong_y'
-                                          ? 'badge-success'
-                                          : d.trang_thai === 'tu_choi'
-                                            ? 'badge-danger'
-                                            : 'badge-warning'
-                                      }`}
-                                    >
-                                      {TRANG_THAI_DE_NGHI_NHAN[d.trang_thai]}
+                                    <strong>{d.ho_so.ho_ten}</strong> (ID #
+                                    {d.ho_so.id})
+                                  </div>
+                                  <div className="denghi-summary-line">
+                                    <MoTaDeNghiChuyen
+                                      deNghi={d}
+                                      userId={currentUser.id}
+                                      isAdmin={isAdmin}
+                                    />
+                                  </div>
+                                  <div className="text-muted">
+                                    Năm sinh: {d.ho_so.nam_sinh} · CCCD:{' '}
+                                    {d.ho_so.cccd || '—'} · Mã KCB:{' '}
+                                    {d.ho_so.ma_kcb || '—'}
+                                  </div>
+                                </td>
+                                <td>
+                                  {d.tu_buoi &&
+                                  !(
+                                    d.trang_thai === 'dong_y' &&
+                                    d.tu_buoi.ma_buoi === d.den_buoi.ma_buoi
+                                  ) ? (
+                                    <>
+                                      <div>
+                                        <strong>
+                                          {formatMaViTri(d.tu_buoi.ma_buoi)}
+                                        </strong>
+                                      </div>
+                                      <div className="text-muted">
+                                        PT:{' '}
+                                        {d.tu_buoi.phu_trach?.ho_ten ??
+                                          'Chưa phân công'}
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <span className="text-muted">
+                                      Đã rời buổi gốc
                                     </span>
-                                    {d.trang_thai !== 'cho_xu_ly' && (
+                                  )}
+                                </td>
+                                <td>
+                                  <div>
+                                    <strong>
+                                      {formatMaViTri(d.den_buoi.ma_buoi)}
+                                    </strong>
+                                  </div>
+                                  <div className="text-muted">
+                                    PT:{' '}
+                                    {d.den_buoi.phu_trach?.ho_ten ??
+                                      'Chưa phân công'}
+                                  </div>
+                                </td>
+                                <td>
+                                  <div>
+                                    Người duyệt:{' '}
+                                    <strong>{tenNguoiDuyetDeNghi(d)}</strong>
+                                  </div>
+                                  <div className="text-muted text-xs">
+                                    Người gửi: {d.nguoi_de_nghi.ho_ten} (
+                                    {d.nguoi_de_nghi.username})
+                                  </div>
+                                </td>
+                                <td>{d.ly_do}</td>
+                                <td className="num">
+                                  {formatDateTime(d.created_at)}
+                                </td>
+                                <td>
+                                  <div className="denghi-status-cell">
+                                    <div>
+                                      <span
+                                        className={`badge ${
+                                          d.trang_thai === 'dong_y'
+                                            ? 'badge-success'
+                                            : d.trang_thai === 'tu_choi'
+                                              ? 'badge-danger'
+                                              : 'badge-warning'
+                                        }`}
+                                      >
+                                        {TRANG_THAI_DE_NGHI_NHAN[d.trang_thai]}
+                                      </span>
+                                      {d.trang_thai !== 'cho_xu_ly' && (
+                                        <NhanTuDuyetDeNghi d={d} nowMs={nowMs} />
+                                      )}
+                                    </div>
+                                    {d.trang_thai === 'cho_xu_ly' && (
                                       <NhanTuDuyetDeNghi d={d} nowMs={nowMs} />
                                     )}
                                   </div>
-                                  {d.trang_thai === 'cho_xu_ly' && (
-                                    <NhanTuDuyetDeNghi d={d} nowMs={nowMs} />
+                                </td>
+                                <td>
+                                  {coQuyenXuLy ? (
+                                    <div className="kho-actions-cell">
+                                      <button
+                                        type="button"
+                                        className="btn btn-primary btn-xs"
+                                        onClick={() =>
+                                          setXuLyTarget({ deNghi: d, dongY: true })
+                                        }
+                                      >
+                                        Đồng ý
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="btn btn-danger btn-xs"
+                                        onClick={() =>
+                                          setXuLyTarget({ deNghi: d, dongY: false })
+                                        }
+                                      >
+                                        Từ chối
+                                      </button>
+                                    </div>
+                                  ) : d.trang_thai === 'cho_xu_ly' ? (
+                                    <span className="text-muted">
+                                      Đang chờ {tenNguoiDuyetDeNghi(d)} phản hồi
+                                    </span>
+                                  ) : (
+                                    <div className="text-muted">
+                                      Xử lý bởi{' '}
+                                      {d.xu_ly_by?.ho_ten ??
+                                        (d.tu_dong ? 'Hệ thống tự động' : '—')}{' '}
+                                      lúc {formatDateTime(d.xu_ly_at)}
+                                      {d.xu_ly_ghi_chu
+                                        ? ` · Ghi chú: "${d.xu_ly_ghi_chu}"`
+                                        : ''}
+                                    </div>
                                   )}
-                                </div>
-                              </td>
-                              <td>
-                                {d.trang_thai === 'cho_xu_ly' ? (
-                                  <div className="kho-actions-cell">
-                                    <button
-                                      type="button"
-                                      className="btn btn-primary btn-xs"
-                                      onClick={() =>
-                                        setXuLyTarget({ deNghi: d, dongY: true })
-                                      }
-                                    >
-                                      Đồng ý
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="btn btn-danger btn-xs"
-                                      onClick={() =>
-                                        setXuLyTarget({ deNghi: d, dongY: false })
-                                      }
-                                    >
-                                      Từ chối
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <div className="text-muted">
-                                    Xử lý bởi{' '}
-                                    {d.xu_ly_by?.ho_ten ??
-                                      (d.tu_dong ? 'Hệ thống tự động' : '—')}{' '}
-                                    lúc {formatDateTime(d.xu_ly_at)}
-                                    {d.xu_ly_ghi_chu
-                                      ? ` · Ghi chú: "${d.xu_ly_ghi_chu}"`
-                                      : ''}
-                                  </div>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -1398,8 +1501,8 @@ export function KhoView({ currentUser }: KhoViewProps) {
                     Đề nghị tôi đã gửi ({formatNumber(deNghiToiGui.length)})
                   </h2>
                   <span className="text-muted">
-                    Các đề nghị bạn đã gửi để xin nhận hồ sơ từ buổi khám của
-                    người khác về buổi của mình
+                    Các đề nghị bạn đã gửi để xin nhận hồ sơ về buổi của mình
+                    hoặc gửi hồ sơ sang buổi của người khác
                   </span>
                 </div>
 
@@ -1413,68 +1516,91 @@ export function KhoView({ currentUser }: KhoViewProps) {
                   <>
                     {/* Thẻ đề nghị tôi đã gửi trên điện thoại */}
                     <div className="mobile-only-cards denghi-card-list">
-                      {deNghiToiGui.map((d) => (
-                        <div key={d.id} className="denghi-mobile-card">
-                          <div className="denghi-mobile-card-head">
-                            <div>
-                              <span className="text-muted text-xs num">#{d.id}</span>{' '}
-                              <strong>{d.ho_so.ho_ten}</strong> ({d.ho_so.nam_sinh})
-                            </div>
-                            <div className="denghi-mobile-badges">
-                              <span
-                                className={`badge ${
-                                  d.trang_thai === 'dong_y'
-                                    ? 'badge-success'
-                                    : d.trang_thai === 'tu_choi'
-                                      ? 'badge-danger'
-                                      : 'badge-warning'
-                                }`}
-                              >
-                                {TRANG_THAI_DE_NGHI_NHAN[d.trang_thai]}
-                              </span>
-                              {d.trang_thai !== 'cho_xu_ly' && d.tu_dong && (
-                                <span className="badge badge-primary">Tự động</span>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="denghi-mobile-route">
-                            <span>
-                              Từ:{' '}
-                              <strong>
-                                {d.tu_buoi ? formatMaViTri(d.tu_buoi.ma_buoi) : '—'}
-                              </strong>
-                            </span>
-                            <span aria-hidden="true">→</span>
-                            <span>
-                              Về: <strong>{formatMaViTri(d.den_buoi.ma_buoi)}</strong>
-                            </span>
-                          </div>
-
-                          <div className="denghi-mobile-reason">
-                            <strong>Lý do:</strong> {d.ly_do}
-                          </div>
-
-                          <div className="denghi-mobile-meta num">
-                            <span>Gửi lúc: {formatDateTime(d.created_at)}</span>
-                          </div>
-
-                          {d.trang_thai === 'cho_xu_ly' ? (
-                            <>
-                              <NhanTuDuyetDeNghi d={d} nowMs={nowMs} />
-                              <div className="text-muted text-xs">
-                                Đang chờ người phụ trách buổi gốc phản hồi
+                      {deNghiToiGui.map((d) => {
+                        const loai = layLoaiDeNghi(d);
+                        return (
+                          <div key={d.id} className="denghi-mobile-card">
+                            <div className="denghi-mobile-card-head">
+                              <div className="denghi-mobile-badges">
+                                <span className="text-muted text-xs num">#{d.id}</span>
+                                <span
+                                  className={`badge ${
+                                    loai === 'gui_di' ? 'badge-gui-di' : 'badge-xin-ve'
+                                  }`}
+                                >
+                                  {LOAI_DE_NGHI_NHAN[loai]}
+                                </span>
+                                <strong>{d.ho_so.ho_ten}</strong> ({d.ho_so.nam_sinh})
                               </div>
-                            </>
-                          ) : (
-                            <div className="text-muted text-xs">
-                              {d.xu_ly_by?.ho_ten ?? (d.tu_dong ? 'Hệ thống tự động' : '—')}{' '}
-                              xử lý lúc {formatDateTime(d.xu_ly_at)}
-                              {d.xu_ly_ghi_chu ? ` · Ghi chú: "${d.xu_ly_ghi_chu}"` : ''}
+                              <div className="denghi-mobile-badges">
+                                <span
+                                  className={`badge ${
+                                    d.trang_thai === 'dong_y'
+                                      ? 'badge-success'
+                                      : d.trang_thai === 'tu_choi'
+                                        ? 'badge-danger'
+                                        : 'badge-warning'
+                                  }`}
+                                >
+                                  {TRANG_THAI_DE_NGHI_NHAN[d.trang_thai]}
+                                </span>
+                                {d.trang_thai !== 'cho_xu_ly' && d.tu_dong && (
+                                  <span className="badge badge-primary">Tự động</span>
+                                )}
+                              </div>
                             </div>
-                          )}
-                        </div>
-                      ))}
+
+                            <div className="denghi-summary-line">
+                              <MoTaDeNghiChuyen
+                                deNghi={d}
+                                userId={currentUser.id}
+                                isAdmin={isAdmin}
+                              />
+                            </div>
+
+                            <div className="denghi-mobile-route">
+                              <span>
+                                Từ:{' '}
+                                <strong>
+                                  {d.tu_buoi ? formatMaViTri(d.tu_buoi.ma_buoi) : '—'}
+                                </strong>
+                              </span>
+                              <span aria-hidden="true">→</span>
+                              <span>
+                                {loai === 'gui_di' ? 'Sang:' : 'Về:'}{' '}
+                                <strong>{formatMaViTri(d.den_buoi.ma_buoi)}</strong>
+                              </span>
+                            </div>
+
+                            <div className="denghi-mobile-approver">
+                              Người duyệt: <strong>{tenNguoiDuyetDeNghi(d)}</strong>
+                            </div>
+
+                            <div className="denghi-mobile-reason">
+                              <strong>Lý do:</strong> {d.ly_do}
+                            </div>
+
+                            <div className="denghi-mobile-meta num">
+                              <span>Gửi lúc: {formatDateTime(d.created_at)}</span>
+                            </div>
+
+                            {d.trang_thai === 'cho_xu_ly' ? (
+                              <>
+                                <NhanTuDuyetDeNghi d={d} nowMs={nowMs} />
+                                <div className="text-muted text-xs">
+                                  Đang chờ {tenNguoiDuyetDeNghi(d)} phản hồi
+                                </div>
+                              </>
+                            ) : (
+                              <div className="text-muted text-xs">
+                                {d.xu_ly_by?.ho_ten ?? (d.tu_dong ? 'Hệ thống tự động' : '—')}{' '}
+                                xử lý lúc {formatDateTime(d.xu_ly_at)}
+                                {d.xu_ly_ghi_chu ? ` · Ghi chú: "${d.xu_ly_ghi_chu}"` : ''}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
 
                     {/* Bảng đầy đủ trên máy tính */}
@@ -1483,9 +1609,11 @@ export function KhoView({ currentUser }: KhoViewProps) {
                         <thead>
                           <tr>
                             <th className="num-col">Mã</th>
-                            <th>Hồ sơ</th>
-                            <th>Đang ở buổi</th>
-                            <th>Nhận về buổi của tôi</th>
+                            <th>Loại</th>
+                            <th>Hồ sơ &amp; Nội dung</th>
+                            <th>Từ buổi</th>
+                            <th>Sang buổi đích</th>
+                            <th>Người duyệt</th>
                             <th>Lý do gửi</th>
                             <th>Thời gian gửi</th>
                             <th>Trạng thái</th>
@@ -1493,92 +1621,122 @@ export function KhoView({ currentUser }: KhoViewProps) {
                           </tr>
                         </thead>
                         <tbody>
-                          {deNghiToiGui.map((d) => (
-                            <tr key={d.id}>
-                              <td className="num-col">#{d.id}</td>
-                              <td>
-                                <div>
-                                  <strong>{d.ho_so.ho_ten}</strong> (ID #
-                                  {d.ho_so.id})
-                                </div>
-                                <div className="text-muted">
-                                  Năm sinh: {d.ho_so.nam_sinh} · CCCD:{' '}
-                                  {d.ho_so.cccd || '—'} · Mã KCB:{' '}
-                                  {d.ho_so.ma_kcb || '—'}
-                                </div>
-                              </td>
-                              <td>
-                                {d.tu_buoi ? (
-                                  <>
-                                    <div>
-                                      <strong>
-                                        {formatMaViTri(d.tu_buoi.ma_buoi)}
-                                      </strong>
-                                    </div>
-                                    <div className="text-muted">
-                                      PT:{' '}
-                                      {d.tu_buoi.phu_trach?.ho_ten ??
-                                        'Chưa phân công'}
-                                    </div>
-                                  </>
-                                ) : (
-                                  <span className="text-muted">—</span>
-                                )}
-                              </td>
-                              <td>
-                                <strong>
-                                  {formatMaViTri(d.den_buoi.ma_buoi)}
-                                </strong>
-                              </td>
-                              <td>{d.ly_do}</td>
-                              <td className="num">
-                                {formatDateTime(d.created_at)}
-                              </td>
-                              <td>
-                                <div className="denghi-status-cell">
+                          {deNghiToiGui.map((d) => {
+                            const loai = layLoaiDeNghi(d);
+                            return (
+                              <tr key={d.id}>
+                                <td className="num-col">#{d.id}</td>
+                                <td>
+                                  <span
+                                    className={`badge ${
+                                      loai === 'gui_di' ? 'badge-gui-di' : 'badge-xin-ve'
+                                    }`}
+                                  >
+                                    {LOAI_DE_NGHI_NHAN[loai]}
+                                  </span>
+                                </td>
+                                <td>
                                   <div>
-                                    <span
-                                      className={`badge ${
-                                        d.trang_thai === 'dong_y'
-                                          ? 'badge-success'
-                                          : d.trang_thai === 'tu_choi'
-                                            ? 'badge-danger'
-                                            : 'badge-warning'
-                                      }`}
-                                    >
-                                      {TRANG_THAI_DE_NGHI_NHAN[d.trang_thai]}
-                                    </span>
-                                    {d.trang_thai !== 'cho_xu_ly' && (
+                                    <strong>{d.ho_so.ho_ten}</strong> (ID #
+                                    {d.ho_so.id})
+                                  </div>
+                                  <div className="denghi-summary-line">
+                                    <MoTaDeNghiChuyen
+                                      deNghi={d}
+                                      userId={currentUser.id}
+                                      isAdmin={isAdmin}
+                                    />
+                                  </div>
+                                  <div className="text-muted">
+                                    Năm sinh: {d.ho_so.nam_sinh} · CCCD:{' '}
+                                    {d.ho_so.cccd || '—'} · Mã KCB:{' '}
+                                    {d.ho_so.ma_kcb || '—'}
+                                  </div>
+                                </td>
+                                <td>
+                                  {d.tu_buoi ? (
+                                    <>
+                                      <div>
+                                        <strong>
+                                          {formatMaViTri(d.tu_buoi.ma_buoi)}
+                                        </strong>
+                                      </div>
+                                      <div className="text-muted">
+                                        PT:{' '}
+                                        {d.tu_buoi.phu_trach?.ho_ten ??
+                                          'Chưa phân công'}
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <span className="text-muted">—</span>
+                                  )}
+                                </td>
+                                <td>
+                                  <div>
+                                    <strong>
+                                      {formatMaViTri(d.den_buoi.ma_buoi)}
+                                    </strong>
+                                  </div>
+                                  <div className="text-muted">
+                                    PT:{' '}
+                                    {d.den_buoi.phu_trach?.ho_ten ??
+                                      'Chưa phân công'}
+                                  </div>
+                                </td>
+                                <td>
+                                  Người duyệt:{' '}
+                                  <strong>{tenNguoiDuyetDeNghi(d)}</strong>
+                                </td>
+                                <td>{d.ly_do}</td>
+                                <td className="num">
+                                  {formatDateTime(d.created_at)}
+                                </td>
+                                <td>
+                                  <div className="denghi-status-cell">
+                                    <div>
+                                      <span
+                                        className={`badge ${
+                                          d.trang_thai === 'dong_y'
+                                            ? 'badge-success'
+                                            : d.trang_thai === 'tu_choi'
+                                              ? 'badge-danger'
+                                              : 'badge-warning'
+                                        }`}
+                                      >
+                                        {TRANG_THAI_DE_NGHI_NHAN[d.trang_thai]}
+                                      </span>
+                                      {d.trang_thai !== 'cho_xu_ly' && (
+                                        <NhanTuDuyetDeNghi d={d} nowMs={nowMs} />
+                                      )}
+                                    </div>
+                                    {d.trang_thai === 'cho_xu_ly' && (
                                       <NhanTuDuyetDeNghi d={d} nowMs={nowMs} />
                                     )}
                                   </div>
-                                  {d.trang_thai === 'cho_xu_ly' && (
-                                    <NhanTuDuyetDeNghi d={d} nowMs={nowMs} />
-                                  )}
-                                </div>
-                              </td>
-                              <td>
-                                {d.trang_thai === 'cho_xu_ly' ? (
-                                  <span className="text-muted">
-                                    Đang chờ người phụ trách buổi gốc phản hồi
-                                  </span>
-                                ) : (
-                                  <div>
-                                    <span>
-                                      {d.xu_ly_by?.ho_ten ??
-                                        (d.tu_dong ? 'Hệ thống tự động' : '—')}{' '}
-                                      xử lý lúc {formatDateTime(d.xu_ly_at)}
+                                </td>
+                                <td>
+                                  {d.trang_thai === 'cho_xu_ly' ? (
+                                    <span className="text-muted">
+                                      Đang chờ {tenNguoiDuyetDeNghi(d)} phản hồi
                                     </span>
-                                    {d.xu_ly_ghi_chu && (
-                                      <div className="text-muted">
-                                        Ghi chú: &quot;{d.xu_ly_ghi_chu}&quot;
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
+                                  ) : (
+                                    <div>
+                                      <span>
+                                        {d.xu_ly_by?.ho_ten ??
+                                          (d.tu_dong ? 'Hệ thống tự động' : '—')}{' '}
+                                        xử lý lúc {formatDateTime(d.xu_ly_at)}
+                                      </span>
+                                      {d.xu_ly_ghi_chu && (
+                                        <div className="text-muted">
+                                          Ghi chú: &quot;{d.xu_ly_ghi_chu}&quot;
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>

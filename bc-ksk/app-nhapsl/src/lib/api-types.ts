@@ -175,7 +175,7 @@ export type DeNghiChuyen = {
   id: number;
   ho_so: { id: number; ho_ten: string; nam_sinh: number; cccd: string; ma_kcb: string };
   tu_buoi: { ma_buoi: string; phu_trach: UserNgan | null } | null;   // where the record is now
-  den_buoi: { id: number; ma_buoi: string };
+  den_buoi: { id: number; ma_buoi: string; phu_trach: UserNgan | null };   // Phase 11: phu_trach
   nguoi_de_nghi: UserNgan;
   ly_do: string;
   trang_thai: 'cho_xu_ly' | 'dong_y' | 'tu_choi';
@@ -183,7 +183,8 @@ export type DeNghiChuyen = {
   xu_ly_by: UserNgan | null;
   xu_ly_at: string | null;
   xu_ly_ghi_chu: string;
-} & DeNghiChuyenTuDuyet;   // Phase 10: tu_dong, tu_dong_loi, han_tu_duyet
+} & DeNghiChuyenTuDuyet   // Phase 10: tu_dong, tu_dong_loi, han_tu_duyet
+  & DeNghiChuyenHaiChieu;   // Phase 11: loai, nguoi_duyet
 
 export type HoSoSuaBody = {
   version: number;
@@ -411,3 +412,40 @@ export type DeNghiChuyenTuDuyet = { tu_dong: boolean; tu_dong_loi: string; han_t
 //   Sends happen after the DB commit, never delay/fail the API response (next/server `after()`), 5 s timeout,
 //   404/410 from the push service ⇒ delete that subscription. Never log endpoints or payloads.
 // Public (no login) paths added to src/proxy.ts: /manifest.webmanifest, /sw.js, /icons/*.
+
+// ---- Phase 11 (owner request 13/11/2026): two-way transfer requests, approved by the receiving account ----
+// "tài khoản đến có thể trực tiếp chấp nhận yêu cầu gửi hồ sơ đi hay nhận hồ sơ về mà không cần admin nữa
+//  (admin vẫn có quyền phê duyệt toàn bộ)"
+// Migration 0005_de_nghi_gui_di.sql:
+//   ALTER TABLE de_nghi_chuyen ADD COLUMN loai TEXT NOT NULL DEFAULT 'xin_ve' CHECK (loai IN ('xin_ve','gui_di'));
+// Two kinds of request (both stored in de_nghi_chuyen, same lifecycle, same auto-approve setting/sweep):
+//   'xin_ve' (existing) — "xin nhận hồ sơ về": record is in SOMEONE ELSE's session, den_buoi is the requester's.
+//        Approver: assignee of the record's CURRENT session, or any admin.
+//   'gui_di' (new)      — "gửi hồ sơ sang buổi của người khác": record is in the REQUESTER's session (requester has
+//        write access on it), den_buoi belongs to another assignee. Approver: assignee of den_buoi, or any admin.
+//        Unassigned den_buoi → only admins can approve.
+//   Either kind: when the requester can already write BOTH the source and the destination session (own sessions,
+//   or admin) → moved immediately, stored as dong_y + tu_dong (Phase 10 behaviour kept).
+// POST /api/de-nghi-chuyen body { ho_so_id, den_buoi, ly_do, loai? = 'xin_ve' }
+//   gui_di validation: record vi_tri='buoi' in a session the requester can write (else 403); den_buoi ≠ current
+//   session; record must not be confirmed and neither session locked (400/423, checked at creation AND approval);
+//   duplicate pending request for the same record → 400.
+// POST /api/de-nghi-chuyen/:id/xu-ly — permission per kind as above (403 otherwise). Approving a gui_di moves the
+//   record into den_buoi; audit rows: user_id = approver, chuyen_boi = approver.
+// GET /api/de-nghi-chuyen — visible: requests I made + xin_ve about records currently in my sessions + gui_di whose
+//   den_buoi is mine; admin: all.
+// DeNghiChuyen gains: loai; den_buoi.phu_trach: UserNgan | null; nguoi_duyet: UserNgan | null (the non-admin
+//   account expected to decide: xin_ve → tu_buoi.phu_trach, gui_di → den_buoi.phu_trach).
+// UI rule "addressed to me" (banner, popup, sound, badge): pending AND not created by me AND
+//   (admin OR nguoi_duyet.id === me).
+// Push "new request": nguoi_duyet + all admins, minus requester. gui_di text:
+//   title 'Đề nghị nhận hồ sơ', body '<Họ tên người gửi> muốn gửi 1 hồ sơ từ <nguồn> sang buổi <đích> của bạn'.
+// Dashboard de_nghi_cho_toi counts with the same "addressed to me" rule.
+export type LoaiDeNghi = 'xin_ve' | 'gui_di';
+export type DeNghiChuyenHaiChieu = {
+  loai: LoaiDeNghi;
+  nguoi_duyet: UserNgan | null;
+};
+// POST /api/ho-so/:id/chuyen with den='buoi': a NON-admin may now only move directly into a session they are
+//   assigned to; another person's session → 403 'Buổi đích của người khác: hãy gửi đề nghị để người đó chấp nhận'
+//   (UI sends POST /api/de-nghi-chuyen loai='gui_di' instead). Admin unchanged (direct move anywhere).

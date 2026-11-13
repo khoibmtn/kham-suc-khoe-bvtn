@@ -286,34 +286,75 @@ function DeNghiChuyenTuTimKiemModal({
 
   useEffect(() => {
     let cancelled = false;
-    apiRequest<{ buoi: BuoiTomTat[] }>('/api/buoi').then((res) => {
+    const url = hoSo.co_quyen_sua ? '/api/buoi?tat_ca=1' : '/api/buoi';
+    apiRequest<{ buoi: BuoiTomTat[] }>(url).then((res) => {
       if (cancelled) return;
       setLoadingBuoi(false);
       if (!res.ok) {
         setError(res.error);
         return;
       }
-      const editable = (res.data.buoi ?? []).filter(
-        (b) =>
-          b.co_quyen_sua &&
-          b.trang_thai !== 'da_xac_nhan' &&
-          b.ma_buoi !== hoSo.buoi?.ma_buoi,
+      const raw = (res.data.buoi ?? []).filter(
+        (b) => b.ma_buoi !== hoSo.buoi?.ma_buoi,
       );
-      setBuoiList(editable);
-      if (editable.length > 0) {
-        setSelectedBuoiDich(editable[0].ma_buoi);
+      if (hoSo.co_quyen_sua) {
+        setBuoiList(raw);
+        const firstUnlockedOwn = raw.find(
+          (b) => b.co_quyen_sua && b.trang_thai !== 'da_xac_nhan',
+        );
+        const firstUnlockedAny = raw.find(
+          (b) => b.trang_thai !== 'da_xac_nhan',
+        );
+        const first = firstUnlockedOwn ?? firstUnlockedAny ?? raw[0];
+        if (first) {
+          setSelectedBuoiDich(first.ma_buoi);
+        }
+      } else {
+        const editable = raw.filter(
+          (b) => b.co_quyen_sua && b.trang_thai !== 'da_xac_nhan',
+        );
+        setBuoiList(editable);
+        if (editable.length > 0) {
+          setSelectedBuoiDich(editable[0].ma_buoi);
+        }
       }
     });
     return () => {
       cancelled = true;
     };
-  }, [hoSo.buoi?.ma_buoi]);
+  }, [hoSo.buoi?.ma_buoi, hoSo.co_quyen_sua]);
+
+  const { buoiCuaToi, buoiNguoiKhac } = useMemo(() => {
+    const cuaToi: BuoiTomTat[] = [];
+    const nguoiKhac: BuoiTomTat[] = [];
+    for (const b of buoiList) {
+      if (b.co_quyen_sua) {
+        cuaToi.push(b);
+      } else {
+        nguoiKhac.push(b);
+      }
+    }
+    return { buoiCuaToi: cuaToi, buoiNguoiKhac: nguoiKhac };
+  }, [buoiList]);
+
+  const selectedBuoiObj = useMemo(
+    () => buoiList.find((b) => b.ma_buoi === selectedBuoiDich) ?? null,
+    [buoiList, selectedBuoiDich],
+  );
+
+  const laGuiSangBuoiNguoiKhac = Boolean(
+    hoSo.co_quyen_sua && selectedBuoiObj && !selectedBuoiObj.co_quyen_sua,
+  );
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError('');
-    if (!selectedBuoiDich) {
-      setError('Vui lòng chọn buổi khám đích của bạn.');
+    if (!selectedBuoiDich || !selectedBuoiObj) {
+      setError('Vui lòng chọn buổi khám đích.');
+      return;
+    }
+    if (selectedBuoiObj.trang_thai === 'da_xac_nhan') {
+      setError('Buổi khám đích đã chốt, không thể chuyển hồ sơ vào.');
       return;
     }
     const trimmedLyDo = lyDo.trim();
@@ -321,6 +362,8 @@ function DeNghiChuyenTuTimKiemModal({
       setError('Vui lòng nhập lý do chuyển.');
       return;
     }
+
+    const loai = laGuiSangBuoiNguoiKhac ? 'gui_di' : 'xin_ve';
 
     setSubmitting(true);
     const res = await apiRequest<{ de_nghi: DeNghiChuyen }>(
@@ -331,6 +374,7 @@ function DeNghiChuyenTuTimKiemModal({
           ho_so_id: hoSo.id,
           den_buoi: selectedBuoiDich,
           ly_do: trimmedLyDo,
+          loai,
         }),
       },
     );
@@ -342,13 +386,41 @@ function DeNghiChuyenTuTimKiemModal({
     }
 
     notifyPoolChanged();
-    showToast(
-      res.data.de_nghi.trang_thai === 'dong_y'
-        ? `Đã chuyển hồ sơ về buổi ${res.data.de_nghi.den_buoi.ma_buoi}.`
-        : 'Đã gửi đề nghị chuyển hồ sơ về buổi của bạn.',
-      'success',
-    );
+    if (res.data.de_nghi.trang_thai === 'dong_y') {
+      showToast(
+        `Đã chuyển hồ sơ sang buổi ${res.data.de_nghi.den_buoi.ma_buoi}.`,
+        'success',
+      );
+    } else if (loai === 'gui_di') {
+      const tenPhuTrach =
+        selectedBuoiObj.phu_trach?.ho_ten ??
+        res.data.de_nghi.nguoi_duyet?.ho_ten ??
+        'người phụ trách buổi đó';
+      showToast(
+        `Đã gửi đề nghị, chờ ${tenPhuTrach} chấp nhận`,
+        'success',
+      );
+    } else {
+      showToast(
+        'Đã gửi đề nghị chuyển hồ sơ về buổi của bạn.',
+        'success',
+      );
+    }
     onSuccess();
+  }
+
+  function renderOptionBuoi(b: BuoiTomTat) {
+    const tenPhuTrach = b.phu_trach
+      ? `PT: ${b.phu_trach.ho_ten}`
+      : 'Chưa phân công';
+    const daChot = b.trang_thai === 'da_xac_nhan';
+    return (
+      <option key={b.ma_buoi} value={b.ma_buoi} disabled={daChot}>
+        {b.ten_don_vi} · {formatDate(b.ngay_kham)} ({b.diem_kham || '—'} ·{' '}
+        {b.ma_buoi}) — {tenPhuTrach}
+        {daChot ? ' [Đã chốt]' : ''}
+      </option>
+    );
   }
 
   return (
@@ -361,7 +433,9 @@ function DeNghiChuyenTuTimKiemModal({
       <div className="modal-card">
         <div className="modal-header">
           <h2 id="modal-denghi-timkiem-title" className="modal-title">
-            Chuyển hồ sơ về buổi của tôi
+            {hoSo.co_quyen_sua
+              ? 'Chuyển hồ sơ sang buổi khác'
+              : 'Chuyển hồ sơ về buổi của tôi'}
           </h2>
         </div>
         <form onSubmit={handleSubmit}>
@@ -373,7 +447,9 @@ function DeNghiChuyenTuTimKiemModal({
             <p className="modal-consequence">
               Đang ở: <strong>{formatViTriKetQua(hoSo)}</strong>.{' '}
               {hoSo.co_quyen_sua
-                ? 'Hồ sơ đang ở buổi bạn có quyền sửa nên được chuyển ngay, không cần chờ duyệt.'
+                ? laGuiSangBuoiNguoiKhac
+                  ? `Buổi đích do ${selectedBuoiObj?.phu_trach?.ho_ten ?? 'người khác'} phụ trách — hệ thống sẽ gửi đề nghị chuyển và chờ người phụ trách buổi đó chấp nhận.`
+                  : 'Chọn buổi của bạn để chuyển ngay, hoặc chọn buổi của người khác để gửi đề nghị chuyển.'
                 : 'Đề nghị sẽ được gửi tới người phụ trách buổi hiện tại (hoặc quản trị viên) để xác nhận chuyển sang buổi của bạn.'}
             </p>
 
@@ -384,16 +460,18 @@ function DeNghiChuyenTuTimKiemModal({
             )}
 
             {loadingBuoi ? (
-              <p className="text-muted">Đang tải danh sách buổi của bạn…</p>
+              <p className="text-muted">Đang tải danh sách buổi khám…</p>
             ) : buoiList.length === 0 ? (
               <div className="alert-error" role="alert">
-                Bạn hiện không có buổi khám nào đang mở để nhận hồ sơ về.
+                Bạn hiện không có buổi khám nào đang mở để chuyển hồ sơ.
               </div>
             ) : (
               <>
                 <div className="form-group">
                   <label htmlFor="denghi-buoi-dich" className="form-label">
-                    Chọn buổi khám nhận về (của tôi){' '}
+                    {hoSo.co_quyen_sua
+                      ? 'Chọn buổi khám đích'
+                      : 'Chọn buổi khám nhận về (của tôi)'}{' '}
                     <span className="text-danger">*</span>
                   </label>
                   <select
@@ -403,12 +481,27 @@ function DeNghiChuyenTuTimKiemModal({
                     onChange={(e) => setSelectedBuoiDich(e.target.value)}
                     disabled={submitting}
                   >
-                    {buoiList.map((b) => (
-                      <option key={b.ma_buoi} value={b.ma_buoi}>
-                        {b.ten_don_vi} · {formatDate(b.ngay_kham)} (
-                        {b.diem_kham || '—'})
-                      </option>
-                    ))}
+                    {hoSo.co_quyen_sua ? (
+                      <>
+                        {buoiCuaToi.length > 0 && (
+                          <optgroup label="Buổi của tôi — chuyển ngay">
+                            {buoiCuaToi.map(renderOptionBuoi)}
+                          </optgroup>
+                        )}
+                        {buoiNguoiKhac.length > 0 && (
+                          <optgroup label="Buổi của người khác — gửi đề nghị, chờ người phụ trách buổi đó chấp nhận">
+                            {buoiNguoiKhac.map(renderOptionBuoi)}
+                          </optgroup>
+                        )}
+                      </>
+                    ) : (
+                      buoiList.map((b) => (
+                        <option key={b.ma_buoi} value={b.ma_buoi}>
+                          {b.ten_don_vi} · {formatDate(b.ngay_kham)} (
+                          {b.diem_kham || '—'})
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
 
@@ -420,7 +513,7 @@ function DeNghiChuyenTuTimKiemModal({
                     id="denghi-ly-do"
                     type="text"
                     className="form-input"
-                    placeholder="Ví dụ: Có hồ sơ giấy khám tại buổi của tôi…"
+                    placeholder="Ví dụ: Có hồ sơ giấy khám tại buổi đích…"
                     value={lyDo}
                     onChange={(e) => setLyDo(e.target.value)}
                     disabled={submitting}
@@ -442,9 +535,20 @@ function DeNghiChuyenTuTimKiemModal({
             <button
               type="submit"
               className="btn btn-primary btn-sm"
-              disabled={submitting || loadingBuoi || buoiList.length === 0}
+              disabled={
+                submitting ||
+                loadingBuoi ||
+                buoiList.length === 0 ||
+                selectedBuoiObj?.trang_thai === 'da_xac_nhan'
+              }
             >
-              {submitting ? 'Đang gửi…' : hoSo.co_quyen_sua ? 'Chuyển ngay' : 'Gửi đề nghị chuyển'}
+              {submitting
+                ? 'Đang gửi…'
+                : laGuiSangBuoiNguoiKhac
+                  ? 'Gửi đề nghị'
+                  : hoSo.co_quyen_sua
+                    ? 'Chuyển ngay'
+                    : 'Gửi đề nghị chuyển'}
             </button>
           </div>
         </form>
@@ -1547,7 +1651,10 @@ export function TimKiemView() {
         <DeNghiChuyenTuTimKiemModal
           hoSo={deNghiTarget}
           onClose={() => setDeNghiTarget(null)}
-          onSuccess={() => setDeNghiTarget(null)}
+          onSuccess={() => {
+            setDeNghiTarget(null);
+            setReloadTick((t) => t + 1);
+          }}
         />
       )}
     </div>
