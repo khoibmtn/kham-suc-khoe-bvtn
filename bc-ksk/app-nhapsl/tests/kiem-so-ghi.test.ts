@@ -85,9 +85,9 @@ describe('sửa hồ sơ — kiểm số', () => {
     const kq = await suaHoSo(ngan, h.id, { version: h.version, cccd: '031166014505', bo_qua_canh_bao_so: true });
     expect(kq.cccd).toBe('031166014505');
     expect(kq.sua_nhan_than).toBe(true);
-    expect(kq.canh_bao_so).toEqual(['CCCD ứng với năm sinh 1966, hồ sơ ghi 1952', 'Mã KCB thường gồm 10 số, bắt đầu bằng 26']);
+    expect(kq.canh_bao_so).toEqual(['Số 5–6 của CCCD (66) ứng với năm sinh 1966, hồ sơ ghi 1952 — đối chiếu giấy tờ', 'Mã KCB thường gồm 10 số, bắt đầu bằng 26']);
     const nk = (await lichSuHoSo(ngan, h.id)).find((x) => x.hanh_dong === 'sua_nhan_than' && x.truong === 'cccd');
-    expect(nk?.ghi_chu).toBe('[Vẫn lưu dù cảnh báo: CCCD ứng với năm sinh 1966, hồ sơ ghi 1952]');
+    expect(nk?.ghi_chu).toBe('[Vẫn lưu dù cảnh báo: Số 5–6 của CCCD (66) ứng với năm sinh 1966, hồ sơ ghi 1952 — đối chiếu giấy tờ]');
   });
 
   it('chuẩn hóa: bỏ khoảng trắng / dấu chấm / gạch ngang của CCCD, mã KCB, SĐT', async () => {
@@ -110,7 +110,7 @@ describe('sửa hồ sơ — kiểm số', () => {
   it('đổi năm sinh làm lệch CCCD → 422; đổi cho khớp thì lưu và canh_bao_so hết', async () => {
     const h = await dong('H001'); // 1951 vs CCCD 1966
     const ok = await suaHoSo(ngan, h.id, { version: h.version, nam_sinh: 1966 });
-    expect(ok.canh_bao_so.filter((x) => x.startsWith('CCCD ứng với năm sinh'))).toEqual([]);
+    expect(ok.canh_bao_so.filter((x) => x.startsWith('Số 5–6 của CCCD'))).toEqual([]);
     const e = await loi(suaHoSo(ngan, h.id, { version: ok.version, nam_sinh: 1970 }));
     expect(e.status).toBe(422);
     expect(ma(e.body!.van_de_so as VanDeSo[])).toEqual(['cccd:CCCD_NAM_SINH']);
@@ -206,7 +206,7 @@ describe('nạp gói tính canh_bao_so; thêm tay', () => {
   it('nạp lần đầu: canh_bao_so = thông điệp kiểm số của từng hồ sơ', async () => {
     const h = await dong('H001'); // ma_kcb 001234 (không đúng dạng), CCCD lệch năm sinh
     expect(h.canh_bao_so).toEqual([
-      'CCCD ứng với năm sinh 1966, hồ sơ ghi 1951',
+      'Số 5–6 của CCCD (66) ứng với năm sinh 1966, hồ sơ ghi 1951 — đối chiếu giấy tờ',
       'Mã KCB thường gồm 10 số, bắt đầu bằng 26',
     ]);
   });
@@ -224,9 +224,9 @@ describe('nạp gói tính canh_bao_so; thêm tay', () => {
 
     const kq = await themHoSo(ngan, B7, { ...goc, cccd: '031 066 014599', so_dt: '0912.345.678', bo_qua_canh_bao_so: true });
     expect(kq.ho_so).toMatchObject({ cccd: '031066014599', so_dt: '0912345678', nguon: 'them_tay' });
-    expect(kq.ho_so.canh_bao_so).toEqual(['CCCD ứng với năm sinh 1966, hồ sơ ghi 1990']);
+    expect(kq.ho_so.canh_bao_so).toEqual(['Số 5–6 của CCCD (66) ứng với năm sinh 1966, hồ sơ ghi 1990 — đối chiếu giấy tờ']);
     const nk = (await lichSuHoSo(ngan, kq.ho_so.id)).find((x) => x.hanh_dong === 'them_ho_so');
-    expect(nk?.ghi_chu).toBe('[Vẫn lưu dù cảnh báo: CCCD ứng với năm sinh 1966, hồ sơ ghi 1990]');
+    expect(nk?.ghi_chu).toBe('[Vẫn lưu dù cảnh báo: Số 5–6 của CCCD (66) ứng với năm sinh 1966, hồ sơ ghi 1990 — đối chiếu giấy tờ]');
   });
 
   it('thêm tay đúng số: không cảnh báo, canh_bao_so rỗng', async () => {

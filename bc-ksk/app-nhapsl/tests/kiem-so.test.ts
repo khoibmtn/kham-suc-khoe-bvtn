@@ -27,7 +27,7 @@ describe('kiemTraSo', () => {
   });
   it('CCCD lệch năm sinh / giới tính / mã tỉnh', () => {
     expect(ma({ cccd: '031142006754', nam_sinh: 1940, gioi_tinh: 'Nữ' })).toEqual(['cccd:canh_bao:CCCD_NAM_SINH']);
-    expect(kiemTraSo({ cccd: '031142006754', nam_sinh: 1940 })[0].thong_diep).toBe('CCCD ứng với năm sinh 1942, hồ sơ ghi 1940');
+    expect(kiemTraSo({ cccd: '031142006754', nam_sinh: 1940 })[0].thong_diep).toBe('Số 5–6 của CCCD (42) ứng với năm sinh 1942, hồ sơ ghi 1940 — đối chiếu giấy tờ');
     expect(ma({ cccd: '031142006754', nam_sinh: 1942, gioi_tinh: 'Nam' })).toEqual(['cccd:canh_bao:CCCD_GIOI_TINH']);
     expect(ma({ cccd: '003142006754', nam_sinh: 1942, gioi_tinh: 'Nữ' })).toEqual(['cccd:canh_bao:CCCD_MA_TINH']);
     expect(ma({ cccd: '031742006754' })).toEqual(['cccd:canh_bao:CCCD_THE_KY']);

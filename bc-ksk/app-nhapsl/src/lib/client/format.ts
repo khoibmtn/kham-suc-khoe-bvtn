@@ -526,6 +526,7 @@ export function phanLoaiCanhBaoSoTheoTruong(canhBaoSo: string[]): {
       msg.startsWith('CCCD') ||
       msg.startsWith('3 số đầu CCCD') ||
       msg.startsWith('Số thứ 4 của CCCD') ||
+      msg.startsWith('Số 5–6 của CCCD') ||
       msg.includes('trùng với CCCD')
     ) {
       cccd.push(msg);

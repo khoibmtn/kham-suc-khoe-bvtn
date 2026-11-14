@@ -73,11 +73,11 @@ function kiemCccd(v: string, h: HoSoKiemSo, out: VanDeSo[]): void {
   const namCccd = (d <= 1 ? 1900 : 2000) + Number(v.slice(4, 6));
   const ns = Number(h.nam_sinh);
   if (Number.isFinite(ns) && ns > 0 && ns !== namCccd) {
-    push('canh_bao', 'CCCD_NAM_SINH', `CCCD ứng với năm sinh ${namCccd}, hồ sơ ghi ${ns}`);
+    push('canh_bao', 'CCCD_NAM_SINH', `Số 5–6 của CCCD (${v.slice(4, 6)}) ứng với năm sinh ${namCccd}, hồ sơ ghi ${ns} — đối chiếu giấy tờ`);
   }
   const gtCccd = d % 2 === 0 ? 'Nam' : 'Nữ';
   if ((h.gioi_tinh === 'Nam' || h.gioi_tinh === 'Nữ') && h.gioi_tinh !== gtCccd) {
-    push('canh_bao', 'CCCD_GIOI_TINH', `CCCD là của người ${gtCccd}, hồ sơ ghi ${h.gioi_tinh}`);
+    push('canh_bao', 'CCCD_GIOI_TINH', `Số thứ 4 của CCCD (${d}) ứng với ${gtCccd}, hồ sơ ghi ${h.gioi_tinh} — đối chiếu giấy tờ`);
   }
 }
 

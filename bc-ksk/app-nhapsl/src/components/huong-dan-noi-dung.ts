@@ -363,7 +363,7 @@ export const MUC: Muc[] = [
         tieuDe: '1. Quy tắc nhận diện 3 loại số',
         ds: [
           '**Mã KCB**: chuẩn HIS gồm **10 chữ số, bắt đầu bằng `26`** (ví dụ `2602083219`). Nếu ô Mã KCB có 12 số bắt đầu bằng `0` thì thường là gõ nhầm số CCCD sang.',
-          '**Số CCCD / CMND**: gồm **12 chữ số** (hoặc CMND 9 số cũ). Với CCCD 12 số: 3 số đầu là mã tỉnh/thành (`001`–`096`), **số thứ 4** cho biết thế kỷ và giới tính (`0, 2` = Nam/Nữ sinh thế kỷ 20; `1, 3` = Nữ/Nam...), **số thứ 5–6** là 2 số cuối của năm sinh.',
+          '**Số CCCD / CMND**: gồm **12 chữ số** (hoặc CMND 9 số cũ). Với CCCD 12 số: 3 số đầu là mã tỉnh/thành (`001`–`096`), **số thứ 4** cho biết thế kỷ sinh và giới tính (sinh 1900–1999: `0` = Nam, `1` = Nữ; sinh 2000–2099: `2` = Nam, `3` = Nữ), **số thứ 5–6** là 2 số cuối của năm sinh (theo quy định mã hóa số định danh cá nhân của Bộ Công an). Lệch với hồ sơ chỉ là **cảnh báo**: đối chiếu giấy tờ để biết sai ở giới tính/năm sinh hay ở số CCCD.',
           '**Số điện thoại (SĐT)**: gồm **10 chữ số, bắt đầu bằng `0`** (đầu `03, 05, 07, 08, 09` hoặc cố định `02`).',
         ],
       },

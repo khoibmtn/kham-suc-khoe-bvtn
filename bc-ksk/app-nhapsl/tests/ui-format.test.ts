@@ -386,16 +386,16 @@ describe('UI client format helpers', () => {
 
     const cb = [
       'Mã KCB có dạng số CCCD',
-      'CCCD ứng với năm sinh 1959, hồ sơ ghi 1994',
+      'Số 5–6 của CCCD (59) ứng với năm sinh 1959, hồ sơ ghi 1994 — đối chiếu giấy tờ',
       'SĐT di động phải 10 số, bắt đầu bằng 03/05/07/08/09',
     ];
     expect(phanLoaiCanhBaoSoTheoTruong(cb)).toEqual({
       ma_kcb: ['Mã KCB có dạng số CCCD'],
-      cccd: ['CCCD ứng với năm sinh 1959, hồ sơ ghi 1994'],
+      cccd: ['Số 5–6 của CCCD (59) ứng với năm sinh 1959, hồ sơ ghi 1994 — đối chiếu giấy tờ'],
       so_dt: ['SĐT di động phải 10 số, bắt đầu bằng 03/05/07/08/09'],
     });
     expect(formatDongXemLaiSo(cb)).toBe(
-      '⚠ Xem lại: Mã KCB có dạng số CCCD; CCCD ứng với năm sinh 1959, hồ sơ ghi 1994; SĐT di động phải 10 số, bắt đầu bằng 03/05/07/08/09',
+      '⚠ Xem lại: Mã KCB có dạng số CCCD; Số 5–6 của CCCD (59) ứng với năm sinh 1959, hồ sơ ghi 1994 — đối chiếu giấy tờ; SĐT di động phải 10 số, bắt đầu bằng 03/05/07/08/09',
     );
     expect(formatDongXemLaiSo([])).toBe('');
 
