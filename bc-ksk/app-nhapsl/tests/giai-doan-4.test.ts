@@ -274,10 +274,10 @@ describe('xác nhận / mở khóa danh sách', () => {
     expect((await xacNhanBuoi(admin, 'LK-20261014', 'Không có ai khám')).buoi.hien_co).toBe(0);
   });
 
-  it('mở khóa: nhân viên 403; admin thiếu lý do 400; có lý do → sửa lại được, nhật ký đủ', async () => {
+  it('mở khóa: nhân viên không phụ trách 403; admin thiếu lý do 400; có lý do → sửa lại được, nhật ký đủ', async () => {
     await xacNhanHet(ngan, B7);
     await xacNhanBuoi(ngan, B7, 'Thiếu 1 người');
-    expect((await loi(moKhoaBuoi(ngan, B7, 'x'))).status).toBe(403);
+    expect((await loi(moKhoaBuoi(trinh, B7, 'x'))).status).toBe(403);
     expect((await loi(moKhoaBuoi(admin, B7))).status).toBe(400);
     expect((await loi(moKhoaBuoi(admin, B7, '  '))).status).toBe(400);
     const { buoi } = await moKhoaBuoi(admin, B7, 'Phát hiện nhập sai');
@@ -291,6 +291,18 @@ describe('xác nhận / mở khóa danh sách', () => {
       SELECT hanh_dong, ghi_chu FROM nhat_ky WHERE doi_tuong = 'buoi_kham' AND hanh_dong IN ('xac_nhan_buoi','mo_khoa_buoi') ORDER BY id`;
     expect(nk.map((x) => x.hanh_dong)).toEqual(['xac_nhan_buoi', 'mo_khoa_buoi', 'mo_khoa_buoi']);
     expect(nk[1].ghi_chu).toBe('Phát hiện nhập sai');
+  });
+
+  it('người phụ trách tự hủy xác nhận danh sách của mình (cần lý do)', async () => {
+    await xacNhanHet(ngan, B7);
+    await xacNhanBuoi(ngan, B7, 'Thiếu 1 người');
+    expect((await loi(moKhoaBuoi(ngan, B7, ''))).status).toBe(400);
+    const { buoi } = await moKhoaBuoi(ngan, B7, 'Cần sửa lại CLS');
+    expect(buoi.trang_thai).toBe('dang_ra_soat');
+    expect(buoi.co_quyen_sua).toBe(true);
+    const [nk] = await sql()<{ user_id: number; ghi_chu: string }[]>`
+      SELECT user_id, ghi_chu FROM nhat_ky WHERE hanh_dong = 'mo_khoa_buoi' AND truong = 'trang_thai' ORDER BY id DESC LIMIT 1`;
+    expect(nk).toEqual({ user_id: ngan.id, ghi_chu: 'Cần sửa lại CLS' });
   });
 });
 

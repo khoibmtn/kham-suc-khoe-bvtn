@@ -102,6 +102,7 @@ export function timMoDanhSachHoSo(
 type RaSoatViewProps = {
   maBuoi: string;
   isAdmin?: boolean;
+  currentUserId?: number;
 };
 
 type HoSoRowProps = {
@@ -1377,7 +1378,7 @@ function HoSoLichSuPane({ hoSoId, version }: { hoSoId: number; version: number }
   );
 }
 
-export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
+export function RaSoatView({ maBuoi, isAdmin = false, currentUserId }: RaSoatViewProps) {
   const { showToast } = useToast();
   const searchParams = useSearchParams();
   const chonParam = searchParams.get('chon');
@@ -2123,7 +2124,7 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
 
       setBuoi(res.data.buoi);
       setShowMoKhoaBuoi(false);
-      showToast('Đã mở khóa danh sách buổi khám.', 'success');
+      showToast('Đã hủy xác nhận danh sách — có thể sửa lại hồ sơ.', 'success');
     },
     [maBuoi, showToast],
   );
@@ -2315,6 +2316,9 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
 
   const canEdit = buoi.co_quyen_sua;
   const isLocked = buoi.trang_thai === 'da_xac_nhan';
+  // Owner 14/11/2026: the assignee can cancel their own list confirmation to fix records (admin: any list).
+  const coTheHuyXacNhan =
+    isAdmin || (currentUserId !== undefined && buoi.phu_trach?.id === currentUserId);
   const readOnlyReason = isLocked
     ? 'Danh sách đã xác nhận (đã khóa)'
     : 'Không phải buổi khám của bạn phụ trách';
@@ -2522,13 +2526,13 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
               </div>
             )}
 
-            {isLocked && isAdmin && (
+            {isLocked && coTheHuyXacNhan && (
               <button
                 type="button"
                 className="btn btn-secondary btn-xs"
                 onClick={() => setShowMoKhoaBuoi(true)}
               >
-                Mở khóa
+                Hủy xác nhận danh sách
               </button>
             )}
 
@@ -2610,13 +2614,13 @@ export function RaSoatView({ maBuoi, isAdmin = false }: RaSoatViewProps) {
                 · Mọi ô chỉnh sửa nhân thân, CLS, chuyển và thêm hồ sơ đã khóa.
               </span>
             </div>
-            {isAdmin && (
+            {coTheHuyXacNhan && (
               <button
                 type="button"
                 className="btn btn-secondary btn-xs"
                 onClick={() => setShowMoKhoaBuoi(true)}
               >
-                Mở khóa danh sách
+                Hủy xác nhận để sửa lại
               </button>
             )}
           </div>

@@ -144,7 +144,7 @@ export type ThongTinChuyen = { tu: string; boi: UserNgan | null; luc: string | n
 // POST /api/buoi/:key/xac-nhan body { giai_trinh? } → { buoi: BuoiTomTat }
 //   Assignee or admin. Every vi_tri='buoi' record confirmed, else 400 'Còn N hồ sơ chưa xác nhận'. hien_co ≠
 //   so_doan_tong → giai_trinh required (400). Sets trang_thai='da_xac_nhan', xac_nhan_by/at, giai_trinh. Audit.
-// POST /api/buoi/:key/mo-khoa  body { ly_do } (admin) → { buoi } ; ly_do required; trang_thai recomputed. Audit.
+// POST /api/buoi/:key/mo-khoa  body { ly_do } (admin or the session's assignee — 14/11/2026) → { buoi }; ly_do required; trang_thai recomputed. Audit.
 // POST /api/de-nghi-chuyen     body { ho_so_id, den_buoi, ly_do } → { de_nghi: DeNghiChuyen }
 //   Any user, for a record they can NOT write (in someone else's session); den_buoi must be the requester's
 //   session (admin: any). Duplicate pending request for the same record → 400.

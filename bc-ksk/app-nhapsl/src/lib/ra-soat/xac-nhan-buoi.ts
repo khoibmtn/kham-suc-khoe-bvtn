@@ -35,15 +35,21 @@ export async function xacNhanBuoi(user: AuthUser, key: string, giaiTrinh?: strin
 }
 
 export async function moKhoaBuoi(user: AuthUser, key: string, lyDo?: string): Promise<{ buoi: BuoiTomTat }> {
-  if (!laAdmin(user)) throw new LoiNghiepVu(403, 'Chỉ quản trị viên được mở khóa danh sách');
+  // Owner 14/11/2026: the assignee may cancel their own list confirmation to fix records; admin: any session.
   const ly = (lyDo ?? '').trim();
-  if (!ly) throw new LoiNghiepVu(400, 'Cần ghi lý do mở khóa');
   const b0 = await layBuoiTheoKey(getSql(), user, key);
+  if (!laAdmin(user) && b0.phu_trach?.id !== user.id) {
+    throw new LoiNghiepVu(403, 'Chỉ người phụ trách buổi hoặc quản trị viên được hủy xác nhận danh sách');
+  }
+  if (!ly) throw new LoiNghiepVu(400, 'Cần ghi lý do hủy xác nhận danh sách');
   return (await getSql().begin(async (tx) => {
     const sql = tx as unknown as Sql;
-    const [b] = await sql<{ trang_thai: string; giai_trinh: string | null }[]>`
-      SELECT trang_thai, giai_trinh FROM buoi_kham WHERE id = ${b0.id} FOR UPDATE`;
-    if (b.trang_thai !== 'da_xac_nhan') throw new LoiNghiepVu(400, 'Danh sách này chưa được xác nhận nên không cần mở khóa');
+    const [b] = await sql<{ trang_thai: string; giai_trinh: string | null; phu_trach_user_id: number | null }[]>`
+      SELECT trang_thai, giai_trinh, phu_trach_user_id FROM buoi_kham WHERE id = ${b0.id} FOR UPDATE`;
+    if (!laAdmin(user) && b.phu_trach_user_id !== user.id) {
+      throw new LoiNghiepVu(403, 'Chỉ người phụ trách buổi hoặc quản trị viên được hủy xác nhận danh sách');
+    }
+    if (b.trang_thai !== 'da_xac_nhan') throw new LoiNghiepVu(400, 'Danh sách này chưa được xác nhận nên không cần hủy xác nhận');
     const [{ co }] = await sql<{ co: boolean }[]>`
       SELECT EXISTS (SELECT 1 FROM ho_so WHERE buoi_id = ${b0.id} AND vi_tri = 'buoi' AND da_xac_nhan) AS co`;
     const moi = co ? 'dang_ra_soat' : 'chua_ra_soat';

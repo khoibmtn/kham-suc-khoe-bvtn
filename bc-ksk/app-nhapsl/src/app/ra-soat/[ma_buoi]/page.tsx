@@ -25,6 +25,7 @@ async function RaSoatMaBuoiContent({
         key={ma_buoi}
         maBuoi={ma_buoi}
         isAdmin={user.role === 'admin'}
+        currentUserId={user.id}
       />
     </AppShell>
   );

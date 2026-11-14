@@ -1406,7 +1406,7 @@ export function MoKhoaBuoiModal({
     e.preventDefault();
     setError('');
     if (!lyDo.trim()) {
-      setError('Vui lòng nhập lý do mở khóa danh sách (bắt buộc).');
+      setError('Vui lòng nhập lý do hủy xác nhận (bắt buộc).');
       return;
     }
     onConfirm(lyDo.trim());
@@ -1425,7 +1425,7 @@ export function MoKhoaBuoiModal({
       <div className="modal-card">
         <div className="modal-header">
           <h2 id="modal-mo-khoa-buoi-title" className="modal-title">
-            Mở khóa danh sách buổi khám ({buoi.ma_buoi})
+            Hủy xác nhận danh sách buổi khám ({buoi.ma_buoi})
           </h2>
         </div>
 
@@ -1436,7 +1436,7 @@ export function MoKhoaBuoiModal({
               <strong>{formatDate(buoi.ngay_kham)}</strong>.
             </p>
             <p className="modal-text mt-2 text-muted">
-              Hệ quả: Danh sách sẽ chuyển về trạng thái đang rà soát để nhân viên hoặc quản trị viên chỉnh sửa lại hồ sơ. Thao tác này được ghi nhận vào nhật ký hệ thống.
+              Hệ quả: Danh sách trở lại trạng thái đang rà soát, sửa được hồ sơ như trước; giải trình chênh lệch (nếu có) bị xóa. Các hồ sơ đã xác nhận vẫn giữ dấu xác nhận. Sửa xong cần bấm lại &ldquo;Xác nhận rà soát xong danh sách&rdquo;. Thao tác được ghi vào nhật ký.
             </p>
 
             {error && (
@@ -1447,7 +1447,7 @@ export function MoKhoaBuoiModal({
 
             <div className="form-field mt-2">
               <label htmlFor="mo-khoa-ly-do" className="form-label">
-                Lý do mở khóa danh sách (bắt buộc) *
+                Lý do hủy xác nhận (bắt buộc) *
               </label>
               <input
                 id="mo-khoa-ly-do"
@@ -1473,7 +1473,7 @@ export function MoKhoaBuoiModal({
               Hủy bỏ
             </button>
             <button type="submit" className="btn btn-danger" disabled={loading}>
-              {loading ? 'Đang mở khóa…' : 'Mở khóa danh sách'}
+              {loading ? 'Đang hủy xác nhận…' : 'Hủy xác nhận danh sách'}
             </button>
           </div>
         </form>
