@@ -2529,7 +2529,10 @@ export function RaSoatView({ maBuoi, isAdmin = false, currentUserId }: RaSoatVie
             {isLocked && coTheHuyXacNhan && (
               <button
                 type="button"
-                className="btn btn-secondary btn-xs"
+                className="btn btn-xs btn-huy-xac-nhan"
+                title={`Đã xác nhận bởi ${buoi.xac_nhan_by?.ho_ten ?? 'người phụ trách'} lúc ${
+                  buoi.xac_nhan_at ? formatDateTime(buoi.xac_nhan_at) : '—'
+                }${buoi.giai_trinh ? ` · Giải trình: ${buoi.giai_trinh}` : ''}. Bấm để hủy xác nhận và sửa lại.`}
                 onClick={() => setShowMoKhoaBuoi(true)}
               >
                 Hủy xác nhận danh sách
@@ -2598,38 +2601,10 @@ export function RaSoatView({ maBuoi, isAdmin = false, currentUserId }: RaSoatVie
           onResetAll={handleResetAllFilters}
         />
 
-        {isLocked ? (
-          <div className="rasoat-locked-banner" role="status">
-            <div className="rasoat-locked-main">
-              <strong>
-                Đã xác nhận bởi {buoi.xac_nhan_by?.ho_ten ?? 'người phụ trách'} lúc{' '}
-                {buoi.xac_nhan_at ? formatDateTime(buoi.xac_nhan_at) : '—'}
-              </strong>
-              {buoi.giai_trinh && (
-                <span className="rasoat-locked-note">
-                  · Giải trình chênh lệch: <em>{buoi.giai_trinh}</em>
-                </span>
-              )}
-              <span className="text-muted">
-                · Mọi ô chỉnh sửa nhân thân, CLS, chuyển và thêm hồ sơ đã khóa.
-              </span>
-            </div>
-            {coTheHuyXacNhan && (
-              <button
-                type="button"
-                className="btn btn-secondary btn-xs"
-                onClick={() => setShowMoKhoaBuoi(true)}
-              >
-                Hủy xác nhận để sửa lại
-              </button>
-            )}
+        {!isLocked && !canEdit && (
+          <div className="rasoat-readonly-banner" role="status">
+            <strong>Chỉ xem:</strong> {readOnlyReason}. Các nút chỉnh sửa cận lâm sàng, nhân thân và xác nhận đang khóa.
           </div>
-        ) : (
-          !canEdit && (
-            <div className="rasoat-readonly-banner" role="status">
-              <strong>Chỉ xem:</strong> {readOnlyReason}. Các nút chỉnh sửa cận lâm sàng, nhân thân và xác nhận đang khóa.
-            </div>
-          )
         )}
       </div>
 

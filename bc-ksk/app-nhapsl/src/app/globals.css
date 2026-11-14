@@ -4179,3 +4179,22 @@ main .timkiem-pager:not(.timkiem-summary-bar .timkiem-pager) {
   .timkiem-pager-size { margin-left: 0; }
   .timkiem-pager-pages .btn { min-height: 40px; min-width: 40px; }
 }
+
+/* "Hủy xác nhận danh sách" on a locked review list: brick fill (same tone as the active search box) to stand out. */
+.btn.btn-huy-xac-nhan {
+  background-color: #b4482a;
+  border-color: #8f351d;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.btn.btn-huy-xac-nhan:hover {
+  background-color: #9a3c22;
+  border-color: #7a2e18;
+  color: #ffffff;
+}
+
+.btn.btn-huy-xac-nhan:focus-visible {
+  outline: 2px solid #8f351d;
+  outline-offset: 2px;
+}
