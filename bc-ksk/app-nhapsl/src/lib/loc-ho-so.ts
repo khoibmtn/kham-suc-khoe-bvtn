@@ -60,9 +60,20 @@ export function khacGoc(h: HoSoDong): boolean {
   return false;
 }
 
-/** The staff note has content (the auto "⚠ Xem lại số" line is not a note). */
-export function coGhiChu(h: Pick<HoSoDong, 'ghi_chu'>): boolean {
-  return (h.ghi_chu ?? '').trim() !== '';
+/**
+ * The record shows something in the Ghi chú column: a staff note OR the automatic "⚠ Xem lại số" line
+ * (owner 14/11/2026; the automatic line disappears once the number is fixed).
+ */
+export function coGhiChu(
+  h: Pick<HoSoDong, 'ghi_chu'> & Partial<Pick<HoSoDong, 'cccd' | 'ma_kcb' | 'nam_sinh' | 'gioi_tinh'>> & {
+    so_dt?: string | null;
+    canh_bao_so?: string[] | null;
+  },
+): boolean {
+  if ((h.ghi_chu ?? '').trim() !== '') return true;
+  if (Array.isArray(h.canh_bao_so)) return h.canh_bao_so.length > 0;
+  if (h.cccd === undefined && h.ma_kcb === undefined) return false;
+  return layCanhBaoSo({ cccd: h.cccd ?? '', ma_kcb: h.ma_kcb ?? '', nam_sinh: h.nam_sinh ?? 0, gioi_tinh: h.gioi_tinh ?? '', so_dt: h.so_dt, canh_bao_so: h.canh_bao_so }).length > 0;
 }
 
 export function soBoLocDangBat(b: BoLoc): number {

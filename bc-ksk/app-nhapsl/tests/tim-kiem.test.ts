@@ -302,11 +302,16 @@ describe('bộ lọc tìm kiếm', () => {
     expect(await ids({ phu_trach: ngan.id })).toEqual(['H001', 'H002', 'H003']);
   });
   it('co_ghi_chu', async () => {
+    await sql()`UPDATE ho_so SET canh_bao_so = '{}'`; // dữ liệu giả có sẵn cảnh báo số — xóa để thử riêng
     await sql()`UPDATE ho_so SET ghi_chu = 'nhập nhầm' WHERE ma_ho_so = 'H002'`;
     await sql()`UPDATE ho_so SET ghi_chu = '   ' WHERE ma_ho_so = 'H003'`;
     expect(await ids({ co_ghi_chu: true })).toEqual(['H002']);
     expect((await ids({ co_ghi_chu: false })).includes('H002')).toBe(false);
     expect((await ids({ co_ghi_chu: false })).includes('H003')).toBe(true);
+    // ghi chú tự động "Xem lại số" cũng tính là có ghi chú
+    await sql()`UPDATE ho_so SET canh_bao_so = ARRAY['CCCD phải đủ 12 số (đang có 13 số)'] WHERE ma_ho_so = 'H003'`;
+    expect(await ids({ co_ghi_chu: true })).toEqual(['H002', 'H003']);
+    expect((await ids({ co_ghi_chu: false })).includes('H003')).toBe(false);
   });
   it('tt_ksk', async () => {
     await sql()`UPDATE ho_so SET co_tt_ksk = 0 WHERE ma_ho_so = 'H003'`;

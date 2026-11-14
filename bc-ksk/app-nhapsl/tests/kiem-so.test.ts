@@ -53,8 +53,10 @@ describe('kiemTraSo', () => {
 
 import { BO_LOC_MAC_DINH, coGhiChu, khopBoLoc, soBoLocDangBat } from '@/lib/loc-ho-so';
 describe('lọc Có ghi chú', () => {
-  it('chỉ tính ghi chú của người dùng, khoảng trắng coi như trống', () => {
+  it('tính cả ghi chú tự động Xem lại số; khoảng trắng coi như trống', () => {
     expect(coGhiChu({ ghi_chu: ' ' })).toBe(false);
+    expect(coGhiChu({ ghi_chu: '', canh_bao_so: ['CCCD phải đủ 12 số (đang có 13 số)'] })).toBe(true); // ghi chú tự động
+    expect(coGhiChu({ ghi_chu: '', canh_bao_so: [] })).toBe(false);
     expect(coGhiChu({ ghi_chu: 'Khám ngày 15/09' })).toBe(true);
     const h = { da_xac_nhan: false, cls: Object.fromEntries(['ctm','glucose','ure','creatinin','got','gpt','tpt_nuoc_tieu','sieu_am'].map((k) => [k, 0])), co_tt_ksk: 1, nguon: 'cowork', nhan_tu_kho_chung: false, src: null, canh_bao: [], canh_bao_so: [], ghi_chu: 'x', cccd: '', ma_kcb: '2600000001', nam_sinh: 1960, gioi_tinh: 'Nam' } as never;
     const b = { ...BO_LOC_MAC_DINH, co_ghi_chu: 'co' as const };

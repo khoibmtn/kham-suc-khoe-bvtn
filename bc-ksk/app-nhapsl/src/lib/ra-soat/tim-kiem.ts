@@ -53,7 +53,12 @@ export function dieuKienBoLoc(sql: Sql, l: BoLoc): Frag {
   }
   if (l.xac_nhan) dk.push(l.xac_nhan === 'da' ? sql`h.da_xac_nhan` : sql`NOT h.da_xac_nhan`);
   if (l.phu_trach !== undefined) dk.push(sql`b.phu_trach_user_id = ${l.phu_trach}`);
-  if (l.co_ghi_chu !== undefined) dk.push(l.co_ghi_chu ? sql`btrim(h.ghi_chu) <> ''` : sql`btrim(h.ghi_chu) = ''`);
+  // Owner 14/11/2026: "Có ghi chú" includes the automatic "Xem lại số" note (canh_bao_so), which disappears once fixed.
+  if (l.co_ghi_chu !== undefined) {
+    dk.push(l.co_ghi_chu
+      ? sql`(btrim(h.ghi_chu) <> '' OR cardinality(h.canh_bao_so) > 0)`
+      : sql`(btrim(h.ghi_chu) = '' AND cardinality(h.canh_bao_so) = 0)`);
+  }
   if (l.tt_ksk) dk.push(sql`h.co_tt_ksk = ${l.tt_ksk === 'co' ? 1 : 0}`);
   if (l.nguon === 'his') dk.push(sql`(h.nguon = 'cowork' AND NOT h.nhan_tu_kho_chung)`);
   else if (l.nguon === 'them_tay') dk.push(sql`h.nguon = 'them_tay'`);
