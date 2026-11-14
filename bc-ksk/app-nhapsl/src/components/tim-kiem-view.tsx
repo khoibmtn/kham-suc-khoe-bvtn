@@ -591,6 +591,10 @@ export function TimKiemView() {
   const [ketQua, setKetQua] = useState<KetQuaTimKiem[]>([]);
   const [tong, setTong] = useState<number>(0);
   const [gioiHan, setGioiHan] = useState<number | null>(200);
+  // Paging (owner 14/11/2026): show every match, one page at a time.
+  const [trang, setTrang] = useState<number>(1);
+  const [coTrang, setCoTrang] = useState<number>(100);
+  const ketQuaTopRef = useRef<HTMLDivElement | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [hasSearched, setHasSearched] = useState<boolean>(false);
@@ -647,6 +651,13 @@ export function TimKiemView() {
     () => taoUrlSearchParamsTimKiem(query, phamVi, boLoc, true).toString(),
     [query, phamVi, boLoc],
   );
+
+  // New query / filters / page size → back to page 1.
+  const [pagingKey, setPagingKey] = useState(`${apiQueryString}|${coTrang}`);
+  if (pagingKey !== `${apiQueryString}|${coTrang}`) {
+    setPagingKey(`${apiQueryString}|${coTrang}`);
+    setTrang(1);
+  }
 
   const resetKetQua = useCallback(() => {
     setKetQua([]);
@@ -729,7 +740,7 @@ export function TimKiemView() {
       setLoading(true);
       setError('');
 
-      const url = `/api/tim-kiem?${apiQueryString}`;
+      const url = `/api/tim-kiem?${apiQueryString}&trang=${trang}&co_trang=${coTrang}`;
       const res = await apiRequest<{
         ket_qua: KetQuaTimKiem[];
         tong: number;
@@ -757,7 +768,7 @@ export function TimKiemView() {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [duDieuKienTim, apiQueryString, reloadTick]);
+  }, [duDieuKienTim, apiQueryString, reloadTick, trang, coTrang]);
 
   const handleRetry = useCallback(() => {
     setReloadTick((prev) => prev + 1);
@@ -768,7 +779,73 @@ export function TimKiemView() {
     [coTuKhoa, trimmedQuery],
   );
 
-  const vuotGioiHan = gioiHan !== null && tong > gioiHan;
+  const soTrang = gioiHan ? Math.max(1, Math.ceil(tong / gioiHan)) : 1;
+  const batDau = gioiHan ? (trang - 1) * gioiHan : 0;
+
+  const chuyenTrang = (t: number) => {
+    const next = Math.min(Math.max(1, t), soTrang);
+    if (next === trang) return;
+    setTrang(next);
+    const el = ketQuaTopRef.current;
+    if (el) {
+      // Keep the top pager visible below the fixed app bar (and the request banner if shown).
+      const header = document.querySelector('.app-topbar, header');
+      const offset = (header?.getBoundingClientRect().bottom ?? 0) + 12;
+      window.scrollTo({ top: window.scrollY + el.getBoundingClientRect().top - offset, behavior: 'smooth' });
+    }
+  };
+
+  function renderPhanTrang(viTri: 'tren' | 'duoi') {
+    if (soTrang <= 1 && viTri === 'duoi') return null;
+    const nut: (number | '…')[] = [];
+    for (let i = 1; i <= soTrang; i++) {
+      if (i === 1 || i === soTrang || Math.abs(i - trang) <= 2) nut.push(i);
+      else if (nut[nut.length - 1] !== '…') nut.push('…');
+    }
+    return (
+      <nav className="timkiem-pager" aria-label={`Phân trang kết quả (${viTri === 'tren' ? 'trên' : 'dưới'})`}>
+        <span className="timkiem-pager-info num">
+          {formatNumber(tong === 0 ? 0 : batDau + 1)}–{formatNumber(Math.min(batDau + ketQua.length, tong))} /{' '}
+          <strong>{formatNumber(tong)}</strong> kết quả
+        </span>
+        {soTrang > 1 && (
+          <span className="timkiem-pager-pages">
+            <button type="button" className="btn btn-secondary btn-xs" onClick={() => chuyenTrang(trang - 1)} disabled={trang <= 1} aria-label="Trang trước">
+              ‹ Trước
+            </button>
+            {nut.map((n, i) =>
+              n === '…' ? (
+                <span key={`g${i}`} className="timkiem-pager-gap" aria-hidden="true">…</span>
+              ) : (
+                <button
+                  key={n}
+                  type="button"
+                  className={`btn btn-xs ${n === trang ? 'btn-primary' : 'btn-secondary'}`}
+                  aria-current={n === trang ? 'page' : undefined}
+                  onClick={() => chuyenTrang(n)}
+                >
+                  {formatNumber(n)}
+                </button>
+              ),
+            )}
+            <button type="button" className="btn btn-secondary btn-xs" onClick={() => chuyenTrang(trang + 1)} disabled={trang >= soTrang} aria-label="Trang sau">
+              Sau ›
+            </button>
+          </span>
+        )}
+        {viTri === 'tren' && (
+          <label className="timkiem-pager-size">
+            Mỗi trang:{' '}
+            <select className="form-select form-select-sm" value={coTrang} onChange={(e) => setCoTrang(Number(e.target.value))}>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </label>
+        )}
+      </nav>
+    );
+  }
 
   function renderFilterControls(idPrefix: string) {
     return (
@@ -783,7 +860,7 @@ export function TimKiemView() {
             </label>
             <select
               id={`${idPrefix}-loc-don-vi`}
-              className="form-select rasoat-filter-select"
+              className={`form-select rasoat-filter-select${boLoc.don_vi !== '' ? ' loc-dang-bat' : ''}`}
               value={boLoc.don_vi}
               onChange={(e) =>
                 handleChangeDonVi(e.target.value as '' | DonVi)
@@ -807,7 +884,7 @@ export function TimKiemView() {
             </label>
             <select
               id={`${idPrefix}-loc-ngay`}
-              className="form-select rasoat-filter-select rasoat-filter-select-wide"
+              className={`form-select rasoat-filter-select rasoat-filter-select-wide${boLoc.ngay !== '' ? ' loc-dang-bat' : ''}`}
               value={boLoc.ngay}
               onChange={(e) => {
                 const v = e.target.value;
@@ -843,7 +920,7 @@ export function TimKiemView() {
             </label>
             <select
               id={`${idPrefix}-loc-phu-trach`}
-              className="form-select rasoat-filter-select"
+              className={`form-select rasoat-filter-select${boLoc.phu_trach !== '' ? ' loc-dang-bat' : ''}`}
               value={boLoc.phu_trach}
               onChange={(e) =>
                 handleChangeBoLoc({ ...boLoc, phu_trach: e.target.value })
@@ -875,7 +952,7 @@ export function TimKiemView() {
             </label>
             <select
               id={`${idPrefix}-loc-xac-nhan`}
-              className="form-select rasoat-filter-select"
+              className={`form-select rasoat-filter-select${boLoc.xac_nhan !== 'tat_ca' ? ' loc-dang-bat' : ''}`}
               value={boLoc.xac_nhan}
               onChange={(e) =>
                 handleChangeBoLoc({
@@ -899,7 +976,7 @@ export function TimKiemView() {
             </label>
             <select
               id={`${idPrefix}-loc-vi-tri`}
-              className="form-select rasoat-filter-select"
+              className={`form-select rasoat-filter-select${boLoc.vi_tri !== 'tat_ca' ? ' loc-dang-bat' : ''}`}
               value={boLoc.vi_tri}
               onChange={(e) =>
                 handleChangeBoLoc({
@@ -960,7 +1037,7 @@ export function TimKiemView() {
             </label>
             <select
               id={`${idPrefix}-loc-ghi-chu`}
-              className="form-select rasoat-filter-select"
+              className={`form-select rasoat-filter-select${boLoc.co_ghi_chu !== 'tat_ca' ? ' loc-dang-bat' : ''}`}
               value={boLoc.co_ghi_chu}
               onChange={(e) =>
                 handleChangeBoLoc({
@@ -984,7 +1061,7 @@ export function TimKiemView() {
             </label>
             <select
               id={`${idPrefix}-loc-tt-ksk`}
-              className="form-select rasoat-filter-select"
+              className={`form-select rasoat-filter-select${boLoc.tt_ksk !== 'tat_ca' ? ' loc-dang-bat' : ''}`}
               value={boLoc.tt_ksk}
               onChange={(e) =>
                 handleChangeBoLoc({
@@ -1008,7 +1085,7 @@ export function TimKiemView() {
             </label>
             <select
               id={`${idPrefix}-loc-nguon`}
-              className="form-select rasoat-filter-select"
+              className={`form-select rasoat-filter-select${boLoc.nguon !== 'tat_ca' ? ' loc-dang-bat' : ''}`}
               value={boLoc.nguon}
               onChange={(e) =>
                 handleChangeBoLoc({
@@ -1033,7 +1110,7 @@ export function TimKiemView() {
             </label>
             <select
               id={`${idPrefix}-loc-nghi-nham-so`}
-              className="form-select rasoat-filter-select"
+              className={`form-select rasoat-filter-select${(boLoc.nghi_nham_so ?? 'tat_ca') !== 'tat_ca' ? ' loc-dang-bat' : ''}`}
               value={boLoc.nghi_nham_so ?? 'tat_ca'}
               onChange={(e) =>
                 handleChangeBoLoc({
@@ -1324,24 +1401,8 @@ export function TimKiemView() {
 
       {duDieuKienTim && !loading && !error && ketQua.length > 0 && (
         <>
-          <div
-            className={`timkiem-summary-bar ${vuotGioiHan ? 'timkiem-limit-warning' : ''}`}
-            role="status"
-            aria-live="polite"
-          >
-            {vuotGioiHan ? (
-              <span>
-                Hiển thị{' '}
-                <strong className="num">{formatNumber(ketQua.length)}</strong> /{' '}
-                <strong className="num">{formatNumber(tong)}</strong> kết quả —
-                gõ thêm từ khóa hoặc thêm bộ lọc để thu hẹp
-              </span>
-            ) : (
-              <span>
-                Tìm thấy <strong className="num">{formatNumber(tong)}</strong>{' '}
-                kết quả
-              </span>
-            )}
+          <div className="timkiem-summary-bar" role="status" aria-live="polite" ref={ketQuaTopRef}>
+            {renderPhanTrang('tren')}
           </div>
 
           {/* Kết quả dạng THẺ có tô vàng trên điện thoại */}
@@ -1367,7 +1428,7 @@ export function TimKiemView() {
                 >
                   <div className="mobile-data-card-head">
                     <div>
-                      <span className="text-muted text-xs num">#{idx + 1}</span>{' '}
+                      <span className="text-muted text-xs num">#{batDau + idx + 1}</span>{' '}
                       <strong className="hoten-text">
                         <ToVang text={h.ho_ten} ranges={danhDau?.ho_ten} />
                       </strong>{' '}
@@ -1558,7 +1619,7 @@ export function TimKiemView() {
                       key={h.id}
                       className={h.da_xac_nhan ? 'hoso-row-confirmed' : ''}
                     >
-                      <td className="num-col col-stt">{idx + 1}</td>
+                      <td className="num-col col-stt">{batDau + idx + 1}</td>
                       <td className="col-hoten">
                         <div className="hoten-main-line">
                           <strong className="hoten-text">
@@ -1771,6 +1832,7 @@ export function TimKiemView() {
               </tbody>
             </table>
           </div>
+          {renderPhanTrang('duoi')}
         </>
       )}
 

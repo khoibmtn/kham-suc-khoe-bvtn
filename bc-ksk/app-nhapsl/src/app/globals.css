@@ -4120,3 +4120,62 @@ input[type="search"]::-webkit-search-decoration {
   padding: 6px 10px;
   list-style: none;
 }
+
+/* Search page: a filter that is not at its default value gets the same tinted look as an active CLS filter. */
+.form-select.loc-dang-bat {
+  background-color: var(--primary-soft);
+  border-color: var(--primary);
+  color: #075985;
+  font-weight: 700;
+}
+
+/* Search page pager */
+.timkiem-pager {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  width: 100%;
+}
+
+.timkiem-pager-pages {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.timkiem-pager-pages .btn {
+  min-width: 34px;
+  font-variant-numeric: tabular-nums;
+}
+
+.timkiem-pager-gap {
+  padding: 0 4px;
+  color: var(--text-muted);
+}
+
+.timkiem-pager-size {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.timkiem-pager-size .form-select {
+  width: auto;
+}
+
+main .timkiem-pager:not(.timkiem-summary-bar .timkiem-pager) {
+  margin: 12px 0 4px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+@media (max-width: 640px) {
+  .timkiem-pager-size { margin-left: 0; }
+  .timkiem-pager-pages .btn { min-height: 40px; min-width: 40px; }
+}

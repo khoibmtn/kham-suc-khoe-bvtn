@@ -301,6 +301,19 @@ describe('bộ lọc tìm kiếm', () => {
   it('phu_trach', async () => {
     expect(await ids({ phu_trach: ngan.id })).toEqual(['H001', 'H002', 'H003']);
   });
+  it('phân trang: trang/co_trang, tổng không đổi, vượt trang vẫn báo tổng', async () => {
+    const tatCa = await timKiem(admin, { q: '', pham_vi: 'tat_ca', loc: { xac_nhan: 'chua' } });
+    expect(tatCa.tong).toBeGreaterThan(3);
+    const t1 = await timKiem(admin, { q: '', pham_vi: 'tat_ca', loc: { xac_nhan: 'chua' }, co_trang: 2, trang: 1 });
+    const t2 = await timKiem(admin, { q: '', pham_vi: 'tat_ca', loc: { xac_nhan: 'chua' }, co_trang: 2, trang: 2 });
+    expect(t1.ket_qua.map((x) => x.id)).toEqual(tatCa.ket_qua.slice(0, 2).map((x) => x.id));
+    expect(t2.ket_qua.map((x) => x.id)).toEqual(tatCa.ket_qua.slice(2, 4).map((x) => x.id));
+    expect([t1.tong, t2.tong]).toEqual([tatCa.tong, tatCa.tong]);
+    expect([t1.trang, t2.trang, t1.gioi_han]).toEqual([1, 2, 2]);
+    const xa = await timKiem(admin, { q: '', pham_vi: 'tat_ca', loc: { xac_nhan: 'chua' }, co_trang: 2, trang: 999 });
+    expect(xa.ket_qua).toEqual([]);
+    expect(xa.tong).toBe(tatCa.tong);
+  });
   it('co_ghi_chu', async () => {
     await sql()`UPDATE ho_so SET canh_bao_so = '{}'`; // dữ liệu giả có sẵn cảnh báo số — xóa để thử riêng
     await sql()`UPDATE ho_so SET ghi_chu = 'nhập nhầm' WHERE ma_ho_so = 'H002'`;

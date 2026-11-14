@@ -478,3 +478,7 @@ export type DeNghiChuyenHaiChieu = {
 // GET /api/tim-kiem: extra filter nghi_nham_so=1|0 (cardinality(canh_bao_so) > 0 / = 0).
 // Re-export so the UI can import the problem type from the contract file.
 export type { VanDeSo } from './kiem-so';
+
+// ---- 14/11/2026: paging for GET /api/tim-kiem ----
+// Extra params: trang (1-based, default 1), co_trang (10..200, default 200). Response adds `trang`;
+// `gioi_han` = page size; `tong` = total matches. pham_vi=buoi stays unpaged.

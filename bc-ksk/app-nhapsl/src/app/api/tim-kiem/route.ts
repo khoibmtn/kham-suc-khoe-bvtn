@@ -8,6 +8,8 @@ const querySchema = z.object({
   q: z.string().max(200).default(''),
   pham_vi: z.enum(['buoi', 'cua_toi', 'kho_chung', 'tat_ca']).default('cua_toi'),
   buoi: z.string().max(40).optional(),
+  trang: z.coerce.number().int().min(1).max(100000).optional(),
+  co_trang: z.coerce.number().int().min(10).max(200).optional(),
 });
 
 const ngayHopLe = (s: string) => {
@@ -69,6 +71,8 @@ export async function GET(req: Request): Promise<Response> {
       q: p.get('q') ?? undefined,
       pham_vi: p.get('pham_vi') ?? undefined,
       buoi: p.get('buoi') ?? undefined,
+      trang: p.get('trang') ?? undefined,
+      co_trang: p.get('co_trang') ?? undefined,
     });
     if (!kq.success) throw new LoiNghiepVu(400, 'Phạm vi tìm kiếm hoặc từ khóa không hợp lệ');
     return Response.json(await timKiem(auth, { ...kq.data, loc: docBoLoc(p) }));

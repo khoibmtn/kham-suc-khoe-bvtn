@@ -135,9 +135,9 @@ export async function layKetQuaTheoId(sql: Sql, user: AuthUser, id: number): Pro
 
 export async function timKiem(
   user: AuthUser,
-  p: { q: string; pham_vi: PhamViTimKiem; buoi?: string | null; loc?: BoLoc },
+  p: { q: string; pham_vi: PhamViTimKiem; buoi?: string | null; loc?: BoLoc; trang?: number; co_trang?: number },
   sqlIn?: Sql,
-): Promise<{ ket_qua: KetQuaTimKiem[]; tong: number; gioi_han: number | null }> {
+): Promise<{ ket_qua: KetQuaTimKiem[]; tong: number; gioi_han: number | null; trang: number }> {
   const sql = sqlIn ?? getSql();
   const q = p.q.trim();
   const coLoc = coBoLoc(p.loc);
@@ -146,7 +146,9 @@ export async function timKiem(
   if (tuKhoa.length === 0 && !coLoc) throw new LoiNghiepVu(400, LOI_TU_KHOA);
 
   let phamVi: Frag;
-  let gioiHan: number | null = GIOI_HAN_TIM_KIEM;
+  // Paging (owner 14/11/2026): page size co_trang (≤ GIOI_HAN_TIM_KIEM), 1-based page `trang`.
+  let gioiHan: number | null = Math.min(Math.max(p.co_trang ?? GIOI_HAN_TIM_KIEM, 1), GIOI_HAN_TIM_KIEM);
+  const trang = Math.max(1, Math.floor(p.trang ?? 1));
   switch (p.pham_vi) {
     case 'buoi': {
       if (!p.buoi) throw new LoiNghiepVu(400, 'Thiếu tham số buoi (id hoặc mã buổi khám)');
@@ -170,7 +172,16 @@ export async function timKiem(
 
   const dieuKien = dieuKienTatCaTuKhoa(sql, tuKhoa);
   const dkLoc = p.loc && coLoc ? dieuKienBoLoc(sql, p.loc) : sql`TRUE`;
-  return truyVanKetQua(sql, user, sql`${phamVi} AND ${dieuKien} AND ${dkLoc}`, gioiHan);
+  const where = sql`${phamVi} AND ${dieuKien} AND ${dkLoc}`;
+  const boQua = gioiHan === null ? 0 : (trang - 1) * gioiHan;
+  const kq = await truyVanKetQua(sql, user, where, gioiHan, boQua);
+  if (kq.ket_qua.length === 0 && boQua > 0) {
+    // Page past the end: still report the real total so the UI can jump back.
+    const [{ n }] = await sql<{ n: number }[]>`
+      SELECT count(*)::int AS n FROM ho_so h LEFT JOIN buoi_kham b ON b.id = h.buoi_id WHERE ${where}`;
+    kq.tong = n;
+  }
+  return { ...kq, trang: gioiHan === null ? 1 : trang };
 }
 
 /** Thuần: q rỗng → []; q có nhưng không token hợp lệ → 400. Dùng cho kho chung (q tùy chọn). */
@@ -188,8 +199,9 @@ export async function truyVanKetQua(
   user: AuthUser,
   where: Frag,
   gioiHan: number | null,
+  boQua = 0,
 ): Promise<{ ket_qua: KetQuaTimKiem[]; tong: number; gioi_han: number | null }> {
-  const gioiHanSql = gioiHan === null ? sql`` : sql`LIMIT ${gioiHan}`;
+  const gioiHanSql = gioiHan === null ? sql`` : boQua > 0 ? sql`LIMIT ${gioiHan} OFFSET ${boQua}` : sql`LIMIT ${gioiHan}`;
   const rows = await sql<RowTK[]>`
     SELECT ${sql.unsafe(COT_HO_SO)}, h.vi_tri, h.don_vi_goi_y, h.kho_user_id,
            h.chuyen_tu, h.chuyen_boi, h.chuyen_luc, h.chuyen_ly_do, cb.username AS cb_username, cb.ho_ten AS cb_ho_ten,
