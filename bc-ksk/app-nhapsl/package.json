@@ -13,7 +13,8 @@
     "export:cowork": "tsx scripts/export-cowork.ts",
     "kiem-so": "tsx scripts/kiem-so.ts",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "export:chua-day-cong": "tsx scripts/export-chua-day-cong.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
