@@ -230,28 +230,10 @@ foreach ($d in [System.IO.File]::ReadAllLines($tepEnv)) { if ($d -match '^([A-Z0
 $mkKsk = ([System.Uri]$envApp['DATABASE_URL']).UserInfo.Split(':', 2)[1]
 
 # ---------------------------------------------------------------------------------------------------------------
-Buoc '[6/12] Khởi tạo cụm CSDL (initdb, UTF8, collation C.UTF-8 giống Neon, chỉ nghe 127.0.0.1)...'
-if (-not (Test-Path -LiteralPath (Join-Path $pgData 'PG_VERSION') -PathType Leaf)) {
-    $null = Chay -FilePath (Join-Path $pgBin 'initdb.exe') -ThamSo @('-D', $pgData, '-U', 'postgres', "--pwfile=$tepMkPostgres",
-        '--auth=scram-sha-256', '-E', 'UTF8', '--locale=C', '--locale-provider=builtin', '--builtin-locale=C.UTF-8')
-    Add-Content -LiteralPath (Join-Path $pgData 'postgresql.conf') -Encoding ASCII -Value @(
-        '', '# --- KSK ra soat (cai-dat.ps1) ---',
-        "port = $CongPg",
-        "listen_addresses = '127.0.0.1'",
-        'max_connections = 40',
-        'shared_buffers = 256MB',
-        "timezone = 'GMT'",
-        "log_timezone = 'Asia/Ho_Chi_Minh'",
-        'logging_collector = on',
-        "log_directory = 'log'",
-        "log_filename = 'postgresql-%a.log'",
-        'log_truncate_on_rotation = on',
-        'log_rotation_age = 1d',
-        'log_rotation_size = 0'
-    )
-    $null = Chay -FilePath 'icacls.exe' -ThamSo @($pgData, '/reset', '/T', '/C', '/Q')
-    Write-Host '  Đã tạo pgdata.'
-} else { Write-Host '  pgdata đã có, giữ nguyên.' }
+Buoc '[6/12] Cụm CSDL: do tác vụ giám sát (LOCAL SERVICE) tự initdb ở lần chạy đầu (bước 8)...'
+if (Test-Path -LiteralPath (Join-Path $pgData 'PG_VERSION') -PathType Leaf) { Write-Host '  pgdata đã có, giữ nguyên.' }
+else { Write-Host '  Chưa có pgdata: sẽ tạo ở bước 8 (UTF8, builtin C.UTF-8, timezone GMT, chỉ nghe 127.0.0.1).' }
+
 
 # ---------------------------------------------------------------------------------------------------------------
 Buoc '[7/12] Cài thư viện Node (npm ci)...'
@@ -288,7 +270,7 @@ Start-ScheduledTask -TaskName 'KSK Ra soat Ung dung'
 
 # ---------------------------------------------------------------------------------------------------------------
 Buoc '[9/12] Chờ PostgreSQL (do tác vụ khởi động) rồi tạo vai trò ksk, CSDL ksk và ksk_test...'
-if (-not (Cho-Cong -CongCho $CongPg -Giay 150)) {
+if (-not (Cho-Cong -CongCho $CongPg -Giay 300)) {
     throw ("PostgreSQL chưa lên ở cổng {0}. Xem {1}\postgres-khoi-dong.log và giam-sat-*.log." -f $CongPg, $thuMucNhatKy)
 }
 if ((Psql-Postgres -Db 'postgres' -Sql "SELECT 1 FROM pg_roles WHERE rolname = 'ksk'").Output -notcontains '1') {

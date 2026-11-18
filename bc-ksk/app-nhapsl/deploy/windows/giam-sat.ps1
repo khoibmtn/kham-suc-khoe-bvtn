@@ -47,6 +47,50 @@ function Pg-Dang-Chay {
     return ($kq.ExitCode -eq 0)
 }
 
+# Lần đầu: tạo cụm CSDL bằng chính LOCAL SERVICE. (initdb chạy bằng tài khoản quản trị sẽ tự chạy lại với token hạn chế,
+# mất quyền nhóm Administrators -> không đọc được DLL/khoá trong thư mục cài -> lỗi 0xC0000135.)
+function Khoi-Tao-Pg {
+    param([Parameter(Mandatory = $true)][hashtable]$Cfg)
+    if (Test-Path -LiteralPath (Join-Path $Cfg.PgData 'PG_VERSION') -PathType Leaf) { return $true }
+    $tepMk = Join-Path $Cfg.ThuMucKhoa 'pg-postgres.txt'
+    if (-not (Test-Path -LiteralPath $tepMk -PathType Leaf)) {
+        Ghi-Log -Tep 'giam-sat' -ThongDiep 'Chưa có khoa\pg-postgres.txt; chờ cai-dat.ps1.'
+        return $false
+    }
+    if (Test-Path -LiteralPath $Cfg.PgData) {
+        if (@(Get-ChildItem -LiteralPath $Cfg.PgData -Force -ErrorAction SilentlyContinue).Count -gt 0) {
+            $doiTen = '{0}-hong-{1}' -f $Cfg.PgData, (Get-Date -Format 'yyyyMMdd-HHmmss')
+            Rename-Item -LiteralPath $Cfg.PgData -NewName (Split-Path -Leaf $doiTen)
+            Ghi-Log -Tep 'giam-sat' -ThongDiep ("pgdata có tệp nhưng thiếu PG_VERSION (initdb dở); đã đổi tên thành {0}." -f $doiTen)
+        } else {
+            Remove-Item -LiteralPath $Cfg.PgData -Force
+        }
+    }
+    $kq = Chay-Exe -FilePath (Join-Path $Cfg.PgBin 'initdb.exe') -ThamSo @('-D', $Cfg.PgData, '-U', 'postgres', ('--pwfile=' + $tepMk),
+        '--auth=scram-sha-256', '-E', 'UTF8', '--locale=C', '--locale-provider=builtin', '--builtin-locale=C.UTF-8')
+    if ($kq.ExitCode -ne 0) {
+        Ghi-Log -Tep 'giam-sat' -ThongDiep ("LỖI initdb (mã {0}): {1}" -f $kq.ExitCode, (($kq.Output | Select-Object -Last 8) -join ' | '))
+        return $false
+    }
+    Add-Content -LiteralPath (Join-Path $Cfg.PgData 'postgresql.conf') -Encoding ASCII -Value @(
+        '', '# --- KSK ra soat (giam-sat.ps1) ---',
+        ("port = {0}" -f $Cfg.CongPg),
+        "listen_addresses = '127.0.0.1'",
+        'max_connections = 40',
+        'shared_buffers = 256MB',
+        "timezone = 'GMT'",
+        "log_timezone = 'Asia/Ho_Chi_Minh'",
+        'logging_collector = on',
+        "log_directory = 'log'",
+        "log_filename = 'postgresql-%a.log'",
+        'log_truncate_on_rotation = on',
+        'log_rotation_age = 1d',
+        'log_rotation_size = 0'
+    )
+    Ghi-Log -Tep 'giam-sat' -ThongDiep 'Đã khởi tạo cụm CSDL (initdb, UTF8, builtin C.UTF-8, timezone GMT, chỉ nghe 127.0.0.1).'
+    return $true
+}
+
 function Khoi-Dong-Pg {
     param([Parameter(Mandatory = $true)][hashtable]$Cfg)
     # Sau mất điện, postmaster.pid cũ có thể trỏ tới PID đã bị tiến trình khác dùng lại -> postgres từ chối khởi động.
@@ -128,7 +172,9 @@ try {
             $lanKiemPg = Get-Date
             $pgSan = Cong-Dang-Nghe -Cong $CauHinh.CongPg
             if (-not $pgSan -and (Get-Date) -ge $choPgDen) {
-                if (-not (Pg-Dang-Chay -Cfg $CauHinh)) {
+                if (-not (Khoi-Tao-Pg -Cfg $CauHinh)) {
+                    $choPgDen = (Get-Date).AddSeconds(60)
+                } elseif (-not (Pg-Dang-Chay -Cfg $CauHinh)) {
                     $pgSan = Khoi-Dong-Pg -Cfg $CauHinh
                     if (-not $pgSan) { $choPgDen = (Get-Date).AddSeconds(60) }
                 }
