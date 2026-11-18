@@ -105,7 +105,10 @@ Chạy lệnh quản trị Node (vd `npm run export:cowork`, `npm run kiem-so`) 
   + `next start` production đọc đúng dữ liệu.
 - Rà soát độc lập script bởi subagent: sửa 7 lỗi (pg_ctl treo do thừa kế pipe, cờ cập nhật dở bị xoá sớm, lỗi tạm thời bị coi
   là commit hỏng, sao lưu trước cập nhật lúc app còn chạy, chạy lại cai-dat đụng app đang chạy, mật khẩu role lệch/lộ).
-- Tự cập nhật end-to-end: xem mục 7.
+- Tự cập nhật end-to-end ĐẠT (commit `b74b4f9`): 07:54:26 sao lưu theo giờ (1,27 MB) → 07:54:29 phát hiện commit → build + 246
+  test trong `kiem-tra` xong 07:56:34 (lần đầu có `npm ci`) → 07:56:37 dừng app, sao lưu → 07:56:54 "ĐÃ CẬP NHẬT"; app ngừng
+  phục vụ khoảng 18 giây.
+- Chưa thử: rút điện thật; commit hỏng bị chặn; commit chỉ đổi phần khác của repo (nhánh fast-forward không khởi động lại).
 
 ## 7. Bàn giao cho phiên Claude Code sau
 
