@@ -1,6 +1,0 @@
-data/
-handoff/
-/db/
-*.csv
-*.xlsx
-.env*

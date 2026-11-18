@@ -87,6 +87,34 @@ Chạy lệnh quản trị Node (vd `npm run export:cowork`, `npm run kiem-so`) 
   `count(*)` từng bảng với `dem-so.txt`.
 - Số liệu lúc chuyển: ho_so 12.466 · nhat_ky 16.090 · users 9 · buoi_kham 60 · de_nghi_chuyen 68 · _migrations 6.
 
-## 6. Kết quả cài đặt và kiểm tra
+## 6. Kết quả cài đặt và kiểm tra (18/11/2026, Claude Code qua MacViewer)
 
-(điền sau khi cài — xem mục 6 bản cuối)
+- PostgreSQL 18.7: tải `postgresql-18.7-1-windows-x64-binaries.zip` từ get.enterprisedb.com (anh Khôi đồng ý tải); 6 tệp
+  chạy chính có chữ ký số **Valid** (CN=EnterpriseDB Corporation); máy đã có VC++ runtime.
+- `cai-dat.ps1` lần 1 dừng ở `initdb` (mã 0xC0000135): initdb chạy bằng quản trị viên tự chạy lại với token hạn chế
+  (bỏ nhóm Administrators) nên không đọc được DLL/khoá trong thư mục chỉ cấp quyền cho Administrators/SYSTEM/LOCAL SERVICE.
+  Sửa (`e5966c7`): `giam-sat.ps1` (LOCAL SERVICE) tự `initdb` ở lần chạy đầu. Lần 2 cài trọn 12 bước.
+- Nạp dữ liệu: 10/10 bảng khớp `dem-so.txt`. Neon sau lúc dump không có thay đổi (đối chiếu lại trước khi xoá Vercel;
+  thao tác ghi cuối trên Neon 07:09 18/11/2026).
+- Đang chạy: `postgres.exe` nghe **chỉ** 127.0.0.1:5433, `node.exe` (next start) nghe **chỉ** 127.0.0.1:8028; 2 tác vụ chạy
+  bằng LOCAL SERVICE; `/dang-nhap` 200; `/api/auth/ds-dang-nhap` trả 9 tài khoản. Mật khẩu người dùng giữ nguyên như trên Vercel
+  (bảng `users` chuyển nguyên); khoá phiên mới nên mọi người phải đăng nhập lại.
+- Vercel: `vercel project rm ksk-ra-soat-2026` → URL cũ trả 404 `DEPLOYMENT_NOT_FOUND`. Neon `ksk-ra-soat-db` còn
+  (Vercel → Integrations, không gắn project nào).
+- Kiểm thử trước khi cài (trên Mac, cụm PostgreSQL 18 tạm cùng cấu hình): khôi phục dump sạch, 246/246 test đạt, `next build`
+  + `next start` production đọc đúng dữ liệu.
+- Rà soát độc lập script bởi subagent: sửa 7 lỗi (pg_ctl treo do thừa kế pipe, cờ cập nhật dở bị xoá sớm, lỗi tạm thời bị coi
+  là commit hỏng, sao lưu trước cập nhật lúc app còn chạy, chạy lại cai-dat đụng app đang chạy, mật khẩu role lệch/lộ).
+- Tự cập nhật end-to-end: xem mục 7.
+
+## 7. Bàn giao cho phiên Claude Code sau
+
+- Mọi thao tác trên Windows làm qua skill `windows-qua-macviewer` (anh Khôi kết nối MacViewer). Mở PowerShell riêng trước
+  khi gửi lệnh — máy này thường mở phần mềm HIS (BVST), gửi lệnh khi HIS đang được chọn là gõ nhầm vào HIS.
+  Tài khoản Windows HP **không** phải quản trị: muốn đọc `khoa\`, `pgdata\`, `sao-luu\` phải mở PowerShell quản trị (UAC).
+- Dữ liệu sống nằm ở **Windows**. Neon và bản dump trong `handoff/chuyen-offline/` (chỉ trên Mac) là ảnh chụp 18/11/2026.
+  Muốn số liệu mới để làm báo cáo/Cowork: chạy lệnh export trên Windows, hoặc `pg_dump` bản mới từ Windows về.
+- Dev trên Mac: `npm test` cần `TEST_DATABASE_URL` trỏ tới một CSDL **test** PostgreSQL ≥ 17 (có `unaccent`, `pg_trgm`).
+  Mac có Homebrew `postgresql@18` (cài 18/11/2026) — khi chạy `pg_ctl` trên Mac phải đặt `LC_ALL=en_US.UTF-8`.
+- Chưa làm / để anh Khôi quyết: xoá Neon `ksk-ra-soat-db`; thư mục sao lưu ngoài (ổ khác/USB); truy cập từ máy khác trong
+  LAN (hiện cố ý chỉ 127.0.0.1); xoá `D:\vibe-coding\ksk-ra-soat\tai-ve\` (zip PostgreSQL + dump, chỉ quản trị viên đọc được).

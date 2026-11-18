@@ -1,5 +1,7 @@
 # 03 — THIẾT KẾ KỸ THUẬT
 
+> **Từ 18/11/2026 không còn chạy trên Vercel/Neon**: app chạy offline trên máy Windows TTYT với PostgreSQL cục bộ — xem `docs/05-TRIEN-KHAI-WINDOWS-OFFLINE.md`. Phần kiến trúc Vercel dưới đây giữ làm lịch sử.
+
 ## 1. Kiến trúc (đã chốt: triển khai Vercel, dùng 2 ngày)
 
 | Thành phần | Lựa chọn |

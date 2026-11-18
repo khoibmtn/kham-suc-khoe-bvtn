@@ -1,5 +1,7 @@
 # 04 — KẾ HOẠCH BUILD, NGHIỆM THU, TRIỂN KHAI
 
+> **Từ 18/11/2026 triển khai = `git push`, máy Windows tự cài** — xem `docs/05-TRIEN-KHAI-WINDOWS-OFFLINE.md`. Mục triển khai/gỡ bỏ Vercel dưới đây chỉ còn là lịch sử.
+
 App chỉ dùng 2 ngày → ưu tiên chức năng nhân viên cần ngay; làm theo thứ tự, mỗi giai đoạn xong ghi một dòng vào `handoff/kenh-cowork/`.
 
 ## 1. Giai đoạn
