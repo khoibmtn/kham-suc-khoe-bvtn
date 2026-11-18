@@ -33,9 +33,12 @@ Thư mục dự án: `/Users/buiminhkhoi/Documents/Antigravity/kham-suc-khoe/bc-
 - `npm run users:create` — tạo tài khoản từ `nguoi_dung.csv` của gói, sinh mật khẩu ngẫu nhiên, in ra **một lần** để admin phát cho nhân viên
 - `npm run export:cowork` — xuất kết quả rà soát về `handoff/export/<YYYYMMDD-HHMM>/`
 - `npm test`
-- Production: https://ksk-ra-soat-2026.vercel.app (project Vercel `ksk-ra-soat-2026`, Neon `ksk-ra-soat-db` Singapore)
-- Chạy lệnh quản trị với CSDL production: `vercel env pull .env.vercel.production --environment=production --yes` rồi `node scripts/prod-env.mjs <lệnh>` (vd `node scripts/prod-env.mjs npm run export:cowork`) — không in khóa ra màn hình
-- Deploy: `vercel build --prod` → kiểm `.vercel/output` không có CSV/XLSX → `vercel deploy --prebuilt --prod` (xem `docs/04` mục 5)
+- **Production từ 18/11/2026: chạy OFFLINE trên máy Windows TTYT** (`DESKTOP-A7HNN82`, `D:\vibe-coding\ksk-ra-soat`),
+  chỉ mở trên chính máy đó tại http://127.0.0.1:8028; PostgreSQL 18 cục bộ (127.0.0.1:5433). **Đọc `docs/05-TRIEN-KHAI-WINDOWS-OFFLINE.md` trước khi đụng tới triển khai.**
+- Deploy = `git push` lên `main` (repo công khai `khoibmtn/kham-suc-khoe-bvtn`): máy Windows tự build + test trên CSDL `ksk_test` rồi cài, chỉ trong 7h–17h (`deploy/windows/bao-tri.ps1`). Không còn Vercel.
+- Migration chỉ được THÊM (không xoá/đổi tên cột) — máy Windows có thể quay về commit cũ trên CSDL đã migrate.
+- Script `deploy/windows/*.ps1`: UTF-8 có BOM + CRLF, kiểm cú pháp trên Windows trước khi push (bản cũ đang chạy sẽ cài bản mới).
+- Vercel project `ksk-ra-soat-2026` đã xoá. CSDL Neon `ksk-ra-soat-db` còn giữ để đối chiếu (anh Khôi chưa cho xoá); `scripts/prod-env.mjs` vẫn đọc được Neon qua `.env.vercel.production` — dữ liệu Neon dừng ở 18/11/2026, KHÔNG phải dữ liệu hiện hành.
 - Đăng nhập: chọn tên từ danh sách, mật khẩu mặc định `123456` (anh Khôi chốt 11/11/2026, chấp nhận rủi ro vì app dùng 2 ngày)
 
 ## Giao tiếp với Cowork

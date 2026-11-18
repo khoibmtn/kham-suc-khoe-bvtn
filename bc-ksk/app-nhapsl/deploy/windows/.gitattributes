@@ -1,0 +1,2 @@
+# PowerShell 5.1 needs UTF-8 BOM + CRLF exactly as committed; never let git convert line endings.
+*.ps1 -text

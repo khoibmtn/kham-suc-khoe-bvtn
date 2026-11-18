@@ -75,7 +75,8 @@ export function getSessionCookieOptions(maxAgeSeconds: number = SESSION_TTL_SECO
   return {
     httpOnly: true,
     sameSite: 'lax' as const,
-    secure: process.env.NODE_ENV === 'production',
+    // Offline Windows install serves plain HTTP on 127.0.0.1 and sets SESSION_COOKIE_SECURE=0.
+    secure: process.env.NODE_ENV === 'production' && process.env.SESSION_COOKIE_SECURE !== '0',
     path: '/',
     maxAge: maxAgeSeconds,
   };
