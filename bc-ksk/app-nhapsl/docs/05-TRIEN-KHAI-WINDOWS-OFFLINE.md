@@ -108,6 +108,8 @@ Chạy lệnh quản trị Node (vd `npm run export:cowork`, `npm run kiem-so`) 
 - Tự cập nhật end-to-end ĐẠT (commit `b74b4f9`): 07:54:26 sao lưu theo giờ (1,27 MB) → 07:54:29 phát hiện commit → build + 246
   test trong `kiem-tra` xong 07:56:34 (lần đầu có `npm ci`) → 07:56:37 dừng app, sao lưu → 07:56:54 "ĐÃ CẬP NHẬT"; app ngừng
   phục vụ khoảng 18 giây.
+- Đăng nhập bằng tài khoản thật trên Windows qua `http://127.0.0.1:8028` ĐẠT (anh Khôi xác nhận 18/11/2026) — cookie phiên
+  chạy được trên HTTP nhờ `SESSION_COOKIE_SECURE=0`.
 - Chưa thử: rút điện thật; commit hỏng bị chặn; commit chỉ đổi phần khác của repo (nhánh fast-forward không khởi động lại).
 
 ## 7. Bàn giao cho phiên Claude Code sau
@@ -117,7 +119,9 @@ Chạy lệnh quản trị Node (vd `npm run export:cowork`, `npm run kiem-so`) 
   Tài khoản Windows HP **không** phải quản trị: muốn đọc `khoa\`, `pgdata\`, `sao-luu\` phải mở PowerShell quản trị (UAC).
 - Dữ liệu sống nằm ở **Windows**. Neon và bản dump trong `handoff/chuyen-offline/` (chỉ trên Mac) là ảnh chụp 18/11/2026.
   Muốn số liệu mới để làm báo cáo/Cowork: chạy lệnh export trên Windows, hoặc `pg_dump` bản mới từ Windows về.
-- Dev trên Mac: `npm test` cần `TEST_DATABASE_URL` trỏ tới một CSDL **test** PostgreSQL ≥ 17 (có `unaccent`, `pg_trgm`).
-  Mac có Homebrew `postgresql@18` (cài 18/11/2026) — khi chạy `pg_ctl` trên Mac phải đặt `LC_ALL=en_US.UTF-8`.
+- Dev trên Mac: `npm test` cần `TEST_DATABASE_URL` trỏ tới một CSDL **test** PostgreSQL (tên có chữ "test", có `unaccent`,
+  `pg_trgm`). Hiện dùng Homebrew `postgresql@16` cổng 5432, CSDL `nhapsl_test` — 246/246 đạt (18/11/2026). Máy Windows chạy
+  lại toàn bộ test trên PostgreSQL 18.7 (`ksk_test`) trước khi cài, nên lỗi riêng của bản 18 vẫn bị chặn ở đó.
+  Mac có thêm Homebrew `postgresql@18` (cài 18/11/2026, đang tắt) — khi chạy `pg_ctl` trên Mac phải đặt `LC_ALL=en_US.UTF-8`.
 - Chưa làm / để anh Khôi quyết: xoá Neon `ksk-ra-soat-db`; thư mục sao lưu ngoài (ổ khác/USB); truy cập từ máy khác trong
   LAN (hiện cố ý chỉ 127.0.0.1); xoá `D:\vibe-coding\ksk-ra-soat\tai-ve\` (zip PostgreSQL + dump, chỉ quản trị viên đọc được).
